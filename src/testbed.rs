@@ -1,5 +1,8 @@
 use std::fmt;
 use std::fmt::Display;
+use std::sync::{Arc, RwLock};
+use std::thread;
+use std::time::{Duration, Instant};
 
 use crate::device::Device;
 use crate::io::{IOPin, Mapping};
@@ -23,29 +26,38 @@ impl<'a> Testbed<'a> {
         T: IntoIterator<Item = &'a Test>,
         U: Extend<Evaluation> {
         let mut test_results = Vec::new();
+
+        let watch_ready = Arc::new(RwLock::new(false));
+        let ready = Arc::new(RwLock::new(false));
+        let current_test: Arc<RwLock<Option<&Test>>> = Arc::new(RwLock::new(None));
+
+        println!("Starting response watch thread.");
+        let watch_thread = {
+            let ready = Arc::clone(&watch_ready);
+            let executor_ready = Arc::clone(&ready);
+
+            thread::spawn(move || {
+                println!("Response watch thread started.");
+
+                // wait for executor to be ready
+                while ! *executor_ready.read().unwrap() {
+                    println!("Waiting for testbed to signal ready.");
+                    thread::sleep(Duration::from_millis(50));
+                }
+
+                // prepare to watch current test
+
+                // signal readiness and wait for start time
+                *watch_ready.write().unwrap() = true;
+            })
+        };
+
         for test in tests {
+            *current_test.write().unwrap() = Some(test);
             test_results.push(Evaluation::new("bah", Status::Invalid));
         }
 
-        {
-            let mut io_pin = self.pin_mapping.get_pin(2).unwrap();
-            if let IOPin::Input(ref mut opin) = *io_pin {
-                opin.set_high();
-                std::thread::sleep(std::time::Duration::from_millis(500));
-                opin.set_low();
-                std::thread::sleep(std::time::Duration::from_millis(500));
-            }
-        }
-
-        {
-            let mut io_pin = self.pin_mapping.get_pin(2).unwrap();
-            if let IOPin::Input(ref mut opin) = *io_pin {
-                opin.set_high();
-                std::thread::sleep(std::time::Duration::from_millis(500));
-                opin.set_low();
-                std::thread::sleep(std::time::Duration::from_millis(500));
-            }
-        }
+        watch_thread.join().unwrap(); // need to go to testbed error
 
         out.extend(test_results);
     }
