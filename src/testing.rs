@@ -54,17 +54,25 @@ impl Display for Response {
     }
 }
 
+#[derive(Clone, Debug)]
+pub enum Criterion {
+    Response(u8),
+}
+
 pub struct Test {
     id: String,
     actions: BinaryHeap<Reverse<Operation>>,
+    criteria: Vec<Criterion>,
 }
 
 impl Test {
-    pub fn new<'a, T>(id: &str, ops: T) -> Test where
-        T: IntoIterator<Item = &'a Operation> {
+    pub fn new<'a, T, U>(id: &str, ops: T, criteria: U) -> Test where
+        T: IntoIterator<Item = &'a Operation>,
+        U: IntoIterator<Item = &'a Criterion> {
         Test {
             id: id.to_string(),
             actions: ops.into_iter().map(|x| Reverse(*x)).collect(),
+            criteria: criteria.into_iter().cloned().collect(),
         }
     }
 

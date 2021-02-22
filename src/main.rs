@@ -14,10 +14,11 @@ fn main() {
     let testbed = Testbed::new(&device, &mapping);
     print!("{}\n\n", testbed);
 
-    let test = Test::new("first one", &[
-        Operation { time: 0, input: Signal::High(2) },
-        Operation { time: 500, input: Signal::Low(2) },
-    ]);
+    let test = Test::new(
+        "first one",
+        &[Operation { time: 0, input: Signal::High(2) },
+          Operation { time: 500, input: Signal::Low(2) }],
+        &[]);
 
     print!("{}\n\n", test);
 
