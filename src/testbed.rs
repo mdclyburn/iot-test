@@ -28,12 +28,22 @@ impl<'a> Testbed<'a> {
         }
 
         {
-            let io_pin = self.pin_mapping.get_pin(2).unwrap();
-            if let IOPin::Input(opin) = io_pin {
-                opin.borrow_mut().set_high();
+            let mut io_pin = self.pin_mapping.get_pin(2).unwrap();
+            if let IOPin::Input(ref mut opin) = *io_pin {
+                opin.set_high();
                 std::thread::sleep(std::time::Duration::from_millis(500));
-                opin.borrow_mut()
-                    .set_low();
+                opin.set_low();
+                std::thread::sleep(std::time::Duration::from_millis(500));
+            }
+        }
+
+        {
+            let mut io_pin = self.pin_mapping.get_pin(2).unwrap();
+            if let IOPin::Input(ref mut opin) = *io_pin {
+                opin.set_high();
+                std::thread::sleep(std::time::Duration::from_millis(500));
+                opin.set_low();
+                std::thread::sleep(std::time::Duration::from_millis(500));
             }
         }
 

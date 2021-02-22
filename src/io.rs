@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::convert::From;
 use std::fmt;
@@ -17,6 +17,7 @@ pub enum Error {
     Device(device::Error),
     Gpio(gpio::Error),
     UndefinedPin(u8),
+    InUse(u8),
 }
 
 impl std::error::Error for Error {
@@ -35,6 +36,7 @@ impl Display for Error {
             Error::Device(_) => write!(f, "error with target interface"),
             Error::Gpio(_) => write!(f, "error with GPIO interface"),
             Error::UndefinedPin(pin_no) => write!(f, "target pin {} not mapped", pin_no),
+            Error::InUse(pin_no) => write!(f, "target pin {} in use elsewhere", pin_no),
         }
     }
 }
@@ -56,13 +58,13 @@ impl From<device::Error> for Error {
 // To monitor an output, an input pin needs to be queried.
 #[derive(Debug)]
 pub enum IOPin {
-    Input(RefCell<OutputPin>),
-    Output(RefCell<InputPin>),
+    Input(OutputPin),
+    Output(InputPin),
 }
 
 #[derive(Debug)]
 pub struct Mapping {
-    target_io: HashMap<u8, IOPin>,
+    target_io: HashMap<u8, RefCell<IOPin>>,
 }
 
 impl Mapping {
@@ -82,19 +84,20 @@ impl Mapping {
             match device.direction_of(t_pin)? {
                 device::IODirection::In =>
                     mapping.target_io.insert(
-                        t_pin, IOPin::Input(RefCell::new(acq_res?.into_output()))),
+                        t_pin, RefCell::new(IOPin::Input(acq_res?.into_output()))),
                 device::IODirection::Out =>
                     mapping.target_io.insert(
-                        t_pin, IOPin::Output(RefCell::new(acq_res?.into_input()))),
+                        t_pin, RefCell::new(IOPin::Output(acq_res?.into_input()))),
             };
         }
 
         Ok(mapping)
     }
 
-    pub fn get_pin(&self, pin_no: u8) -> Result<&IOPin> {
+    pub fn get_pin(&self, pin_no: u8) -> Result<RefMut<'_, IOPin>> {
         self.target_io.get(&pin_no)
             .ok_or(Error::UndefinedPin(pin_no))
+            .and_then(|pin| pin.try_borrow_mut().map_err(|_e| Error::InUse(pin_no)))
     }
 }
 
@@ -102,11 +105,11 @@ impl Display for Mapping {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "I/O mapping:\n")?;
         for (target_pin, io_pin) in &self.target_io {
-            match io_pin {
-                IOPin::Input(ref cell) =>
-                    write!(f, "P{:02} ---> P{:02}", cell.borrow_mut().pin(), target_pin)?,
-                IOPin::Output(ref cell) =>
-                    write!(f, "P{:02} <--- P{:02}", cell.borrow_mut().pin(), target_pin)?,
+            match *io_pin.borrow() {
+                IOPin::Input(ref output) =>
+                    write!(f, "P{:02} ---> P{:02}", output.pin(), target_pin)?,
+                IOPin::Output(ref input) =>
+                    write!(f, "P{:02} <--- P{:02}", input.pin(), target_pin)?,
             };
         }
 
