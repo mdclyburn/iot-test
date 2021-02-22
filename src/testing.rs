@@ -5,16 +5,16 @@ use std::fmt::Display;
 use std::iter::IntoIterator;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Output {
+pub enum Signal {
     High(u8),
     Low(u8),
 }
 
-impl Display for Output {
+impl Display for Signal {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Output::High(pin) => write!(f, "DIGITAL HIGH\tP{:02}", pin),
-            Output::Low(pin) => write!(f, "DIGITAL LOW\tP{:02}", pin),
+            Signal::High(pin) => write!(f, "DIGITAL HIGH\tP{:02}", pin),
+            Signal::Low(pin) => write!(f, "DIGITAL LOW\tP{:02}", pin),
         }
     }
 }
@@ -22,12 +22,12 @@ impl Display for Output {
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Operation {
     pub time: u64,
-    pub output: Output,
+    pub input: Signal,
 }
 
 impl Display for Operation {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\t{}", self.time, self.output)
+        write!(f, "{}\tinput: {}", self.time, self.input)
     }
 }
 
@@ -40,6 +40,17 @@ impl Ord for Operation {
 impl PartialOrd for Operation {
     fn partial_cmp(&self, b: &Self) -> Option<Ordering> {
         self.time.partial_cmp(&b.time)
+    }
+}
+
+pub struct Response {
+    pub time: u64,
+    pub output: Signal,
+}
+
+impl Display for Response {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}\toutput: {}", self.time, self.output)
     }
 }
 
