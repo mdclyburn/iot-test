@@ -29,9 +29,10 @@ impl<'a> Testbed<'a> {
         let mut test_results = Vec::new();
 
         let barrier = Arc::new(Barrier::new(2));
-        let current_test: Arc<RwLock<Option<&Test>>> = Arc::new(RwLock::new(None));
+        let current_test: Arc<RwLock<Option<Test>>> = Arc::new(RwLock::new(None));
         let watch_start: Arc<RwLock<Option<Instant>>> = Arc::new(RwLock::new(None));
-        let (schannel, _rchannel) = mpsc::sync_channel(0);
+
+        let (schannel, rchannel) = mpsc::sync_channel(0);
 
         println!("Starting response watch thread.");
         let watch_thread = {
@@ -42,33 +43,72 @@ impl<'a> Testbed<'a> {
             thread::spawn(move || {
                 println!("watcher: started.");
 
-                // prepare to watch current test
                 let mut responses: Vec<Response> = Vec::new();
+                loop {
+                    // wait for next test
+                    barrier.wait();
 
-                // wait for test to begin
-                barrier.wait();
-                println!("watcher: starting watch");
-                *watch_start.write().unwrap() = Some(Instant::now());
+                    // set up to watch for responses according to criteria
+                    if let Some(ref test) = *current_test.read().unwrap() {
+                        for c in test.get_criteria() {
+                            match c {
+                                _ => println!("No watch action specified for {:?}", c)
+                            }
+                        }
+                    } else {
+                        // no more tests to run
+                        break;
+                    }
 
-                for r in &responses {
-                    schannel.send(*r).unwrap();
+                    // wait for test to begin
+                    println!("watcher: ready to begin test");
+                    barrier.wait();
+                    *watch_start.write().unwrap() = Some(Instant::now());
+
+                    println!("watcher: starting watch");
+
+                    // wait for output responses from dut or the end of the test
+                    // can I just wait for the barrier here or will an interrupt stop it?
+                    barrier.wait();
+
+                    for r in responses.drain(..) {
+                        schannel.send(Some(r)).unwrap();
+                    }
+                    schannel.send(None).unwrap();
                 }
+
+                println!("watcher: exiting");
             })
         };
 
         let mut launching_at: Option<Instant> = None;
         for test in tests {
-            *current_test.write().unwrap() = Some(test);
+            *current_test.write().unwrap() = Some(test.clone());
 
             // wait for watcher thread to be ready
             barrier.wait();
-
-            println!("executor: starting");
             launching_at = Some(Instant::now());
 
+            // wait for test to begin
+            barrier.wait();
+            println!("executor: starting");
+
+            // release watcher thread
+            println!("executor: test execution complete");
+            barrier.wait();
+
+            // get responses to build an Evaluation
+            while let Some(response) = rchannel.recv().unwrap() {
+                // build evaluation with this information.
+            }
+
             test_results.push(Evaluation::new("bah", Status::Invalid));
-            println!("Test complete.");
+            println!("executor: test finished.");
         }
+
+        *current_test.write().unwrap() = None;
+        println!("executor: final wait");
+        barrier.wait();
 
         watch_thread.join().unwrap(); // need to go to testbed error
 

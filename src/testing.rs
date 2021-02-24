@@ -60,6 +60,7 @@ pub enum Criterion {
     Response(u8),
 }
 
+#[derive(Clone)]
 pub struct Test {
     id: String,
     actions: BinaryHeap<Reverse<Operation>>,
@@ -79,6 +80,10 @@ impl Test {
 
     pub fn get_id(&self) -> &str {
         &self.id
+    }
+
+    pub fn get_criteria(&self) -> &Vec<Criterion> {
+        &self.criteria
     }
 
     pub fn execute(&self) -> Evaluation {
