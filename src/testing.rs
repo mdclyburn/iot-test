@@ -43,6 +43,7 @@ impl PartialOrd for Operation {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct Response {
     pub time: u64,
     pub output: Signal,
