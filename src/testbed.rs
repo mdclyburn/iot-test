@@ -91,7 +91,9 @@ impl<'a> Testbed<'a> {
 
             // wait for test to begin
             barrier.wait();
-            println!("executor: starting");
+            println!("executor: starting test '{}'", test.get_id());
+
+            test.execute(launching_at.unwrap(), self.pin_mapping);
 
             // release watcher thread
             println!("executor: test execution complete");

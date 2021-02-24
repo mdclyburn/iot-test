@@ -18,6 +18,7 @@ pub enum Error {
     Gpio(gpio::Error),
     UndefinedPin(u8),
     InUse(u8),
+    WrongDir,
 }
 
 impl std::error::Error for Error {
@@ -37,6 +38,7 @@ impl Display for Error {
             Error::Gpio(_) => write!(f, "error with GPIO interface"),
             Error::UndefinedPin(pin_no) => write!(f, "target pin {} not mapped", pin_no),
             Error::InUse(pin_no) => write!(f, "target pin {} in use elsewhere", pin_no),
+            Error::WrongDir => write!(f, "expected an input pin, got an output pin or vice versa"),
         }
     }
 }
@@ -54,12 +56,30 @@ impl From<device::Error> for Error {
 }
 
 // Matching enums for IO from the testbed perspective.
-// To change an input, an output pin needs to be manipulated.
-// To monitor an output, an input pin needs to be queried.
+// To change an input to the DUT, an output pin needs to be manipulated.
+// To monitor an output to the DUT, an input pin needs to be queried.
 #[derive(Debug)]
 pub enum IOPin {
     Input(OutputPin),
     Output(InputPin),
+}
+
+impl IOPin {
+    pub fn expect_output(&mut self) -> Result<&mut OutputPin> {
+        if let IOPin::Input(ref mut p) = self{
+            Ok(p)
+        } else {
+            Err(Error::WrongDir)
+        }
+    }
+
+    pub fn expect_input(&mut self) -> Result<&mut InputPin> {
+        if let IOPin::Output(ref mut p) = self {
+            Ok(p)
+        } else {
+            Err(Error::WrongDir)
+        }
+    }
 }
 
 #[derive(Debug)]

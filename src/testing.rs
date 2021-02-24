@@ -1,8 +1,44 @@
 use std::cmp::{Ord, Ordering, PartialOrd, Reverse};
 use std::collections::BinaryHeap;
+use std::convert::From;
+use std::error;
 use std::fmt;
 use std::fmt::Display;
 use std::iter::IntoIterator;
+use std::time::{Duration, Instant};
+
+use crate::io;
+use crate::io::{IOPin, Mapping};
+
+type Result<T> = std::result::Result<T, Error>;
+
+#[derive(Debug)]
+pub enum Error {
+    IO(io::Error),
+}
+
+impl error::Error for Error {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match self {
+            Error::IO(ref e) => Some(e),
+            _ => None,
+        }
+    }
+}
+
+impl From<io::Error> for Error {
+    fn from(e: io::Error) -> Self {
+        Error::IO(e)
+    }
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Error::IO(ref e) => write!(f, "I/O error: {}", e),
+        }
+    }
+}
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Signal {
@@ -86,9 +122,25 @@ impl Test {
         &self.criteria
     }
 
-    pub fn execute(&self) -> Evaluation {
-        // Run the test and produce an evaluation result.
-        Evaluation::new("go-hon", Status::Invalid)
+    pub fn execute(&self, t0: Instant, mapping: &Mapping) -> Result<()> {
+        let timeline = self.actions.iter()
+            .map(|Reverse(op)| (t0 + Duration::from_millis(op.time), op.input));
+        for (t, input) in timeline {
+            while Instant::now() < t {  } // spin wait
+            match input {
+                Signal::High(pin_no) =>
+                    (*mapping.get_pin(pin_no)?)
+                    .expect_output()?
+                    .set_high(),
+                Signal::Low(pin_no) =>
+                    (*mapping.get_pin(pin_no)?)
+                    .expect_output()?
+                    .set_low(),
+            };
+            println!("{:?}", input);
+        }
+
+        Ok(())
     }
 }
 
