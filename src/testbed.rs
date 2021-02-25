@@ -18,13 +18,13 @@ pub enum Status {
     Error,
 }
 
-impl From<Status> for &'static str {
-    fn from(s: Status) -> Self {
-        match s {
-            Status::Complete => "Complete",
-            Status::Pass => "Pass",
-            Status::Fail => "Fail",
-            Status::Error => "Error",
+impl Display for Status {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Status::Complete => write!(f, "Complete"),
+            Status::Pass => write!(f, "Pass"),
+            Status::Fail => write!(f, "Fail"),
+            Status::Error => write!(f, "Error"),
         }
     }
 }
@@ -62,7 +62,7 @@ impl Display for Evaluation {
         write!(f, "{}\t", self.test_id)?;
         match self.get_outcome() {
             Status::Error => write!(f, "Error ({})", self.get_exec_result().as_ref().unwrap_err()),
-            outcome => write!(f, "{:?}", outcome),
+            outcome => write!(f, "{} (in {:?})", outcome, self.get_exec_result().as_ref().unwrap().get_duration()),
         }
     }
 }

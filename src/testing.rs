@@ -107,6 +107,10 @@ impl Execution {
             duration
         }
     }
+
+    pub fn get_duration(&self) -> &Duration {
+        &self.duration
+    }
 }
 
 #[derive(Clone)]
@@ -153,7 +157,7 @@ impl Test {
             println!("{:?}", input);
         }
 
-        Ok(Execution::new(t0 - Instant::now()))
+        Ok(Execution::new(Instant::now() - t0))
     }
 }
 
