@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::convert::From;
 use std::fmt;
 use std::fmt::Display;
+use std::sync::Mutex;
 
 use rppal::gpio;
 use rppal::gpio::{Gpio, InputPin, OutputPin};
@@ -55,84 +56,89 @@ impl From<device::Error> for Error {
     }
 }
 
-// Matching enums for IO from the testbed perspective.
-// To change an input to the DUT, an output pin needs to be manipulated.
-// To monitor an output to the DUT, an input pin needs to be queried.
-#[derive(Debug)]
-pub enum IOPin {
-    Input(OutputPin),
-    Output(InputPin),
-}
-
-impl IOPin {
-    pub fn expect_output(&mut self) -> Result<&mut OutputPin> {
-        if let IOPin::Input(ref mut p) = self{
-            Ok(p)
-        } else {
-            Err(Error::WrongDir)
-        }
-    }
-
-    pub fn expect_input(&mut self) -> Result<&mut InputPin> {
-        if let IOPin::Output(ref mut p) = self {
-            Ok(p)
-        } else {
-            Err(Error::WrongDir)
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct Mapping {
-    target_io: HashMap<u8, RefCell<IOPin>>,
+    device: Device,
+    numbering: HashMap<u8, u8>,
+    inputs: Mutex<Pins<OutputPin>>,
+    outputs: Mutex<Pins<InputPin>>,
 }
 
 impl Mapping {
     pub fn new<'a, T>(device: &Device, host_target_map: T) -> Result<Mapping> where
         T: IntoIterator<Item = &'a (u8, u8)> {
-        let mut mapping = Mapping {
-            target_io: HashMap::new()
-        };
         let gpio = Gpio::new()?;
-        let it_acquire_io = host_target_map
-            .into_iter()
-            .map(|(h_pin, t_pin)| {
-                (*h_pin, *t_pin, gpio.get(*h_pin))
-            });
 
-        for (h_pin, t_pin, acq_res) in it_acquire_io {
-            match device.direction_of(t_pin)? {
-                device::IODirection::In =>
-                    mapping.target_io.insert(
-                        t_pin, RefCell::new(IOPin::Input(acq_res?.into_output()))),
-                device::IODirection::Out =>
-                    mapping.target_io.insert(
-                        t_pin, RefCell::new(IOPin::Output(acq_res?.into_input()))),
-            };
+        let numbering: HashMap<u8, u8> = host_target_map
+            .into_iter()
+            .map(|(h_pin, t_pin)| (*h_pin, *t_pin))
+            .collect();
+
+        let (mut input_pins, mut output_pins) = (Vec::new(), Vec::new());
+        let mut acquired_gpio = numbering
+            .iter()
+            .map(|(h_pin, t_pin)| { (*t_pin, gpio.get(*h_pin)) });
+        for (t_pin_no, acq_res) in acquired_gpio {
+            let pin = acq_res?;
+            match device.direction_of(t_pin_no)? {
+                device::IODirection::In => input_pins.push((t_pin_no, pin.into_output())),
+                device::IODirection::Out => output_pins.push((t_pin_no, pin.into_input())),
+            }
         }
 
-        Ok(mapping)
+        Ok(Mapping {
+            device: device.clone(),
+            numbering,
+            inputs: Mutex::new(Pins::new(input_pins.into_iter())),
+            outputs: Mutex::new(Pins::new(output_pins.into_iter())),
+        })
     }
 
-    pub fn get_pin(&self, pin_no: u8) -> Result<RefMut<'_, IOPin>> {
-        self.target_io.get(&pin_no)
-            .ok_or(Error::UndefinedPin(pin_no))
-            .and_then(|pin| pin.try_borrow_mut().map_err(|_e| Error::InUse(pin_no)))
+    pub fn get_inputs(&self) -> &Mutex<Pins<OutputPin>> {
+        &self.inputs
     }
 }
 
 impl Display for Mapping {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "I/O mapping:\n")?;
-        for (target_pin, io_pin) in &self.target_io {
-            match *io_pin.borrow() {
-                IOPin::Input(ref output) =>
-                    write!(f, "P{:02} ---> P{:02}", output.pin(), target_pin)?,
-                IOPin::Output(ref input) =>
-                    write!(f, "P{:02} <--- P{:02}", input.pin(), target_pin)?,
+        for (h_pin, t_pin) in &self.numbering {
+            let dev_io_dir = self.device.direction_of(*t_pin).unwrap();
+            let dir_str = if dev_io_dir == device::IODirection::In {
+                "--->"
+            } else {
+                "<---"
             };
+            write!(f, "P{:02} {} P{:02}", h_pin, dir_str, t_pin)?;
         }
 
         Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct Pins<T> {
+    pins: HashMap<u8, RefCell<T>>,
+}
+
+impl<T> Pins<T> {
+    fn new<U>(pins: U) -> Pins<T> where
+        U: IntoIterator<Item = (u8, T)>
+    {
+        Pins {
+            pins: pins.into_iter()
+                .map(|(pin_no, pin)| (pin_no, RefCell::new(pin)))
+                .collect(),
+        }
+    }
+
+    pub fn has_pin(&self, pin_no: u8) -> bool {
+        self.pins.contains_key(&pin_no)
+    }
+
+    pub fn get_pin(&self, pin_no: u8) -> Result<RefMut<'_, T>> {
+        self.pins.get(&pin_no)
+            .ok_or(Error::UndefinedPin(pin_no))
+            .and_then(|pin| pin.try_borrow_mut().map_err(|_e| Error::InUse(pin_no)))
     }
 }

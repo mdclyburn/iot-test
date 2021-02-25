@@ -7,8 +7,10 @@ use std::fmt::Display;
 use std::iter::IntoIterator;
 use std::time::{Duration, Instant};
 
+use rppal::gpio::OutputPin;
+
 use crate::io;
-use crate::io::{IOPin, Mapping};
+use crate::io::Pins;
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -139,19 +141,17 @@ impl Test {
         &self.criteria
     }
 
-    pub fn execute(&self, t0: Instant, mapping: &Mapping) -> Result<Execution> {
+    pub fn execute(&self, t0: Instant, pins: &Pins<OutputPin>) -> Result<Execution> {
         let timeline = self.actions.iter()
             .map(|Reverse(op)| (t0 + Duration::from_millis(op.time), op.input));
         for (t, input) in timeline {
             while Instant::now() < t {  } // spin wait
             match input {
                 Signal::High(pin_no) =>
-                    (*mapping.get_pin(pin_no)?)
-                    .expect_output()?
+                    (*pins.get_pin(pin_no)?)
                     .set_high(),
                 Signal::Low(pin_no) =>
-                    (*mapping.get_pin(pin_no)?)
-                    .expect_output()?
+                    (*pins.get_pin(pin_no)?)
                     .set_low(),
             };
             println!("{:?}", input);

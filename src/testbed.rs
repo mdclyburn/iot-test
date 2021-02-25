@@ -6,7 +6,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use crate::device::Device;
-use crate::io::{IOPin, Mapping};
+use crate::io::Mapping;
 use crate::testing;
 use crate::testing::{Test, Execution, Response};
 
@@ -143,6 +143,8 @@ impl<'a> Testbed<'a> {
         for test in tests {
             *current_test.write().unwrap() = Some(test.clone());
 
+            let inputs = self.pin_mapping.get_inputs().lock().unwrap();
+
             // wait for watcher thread to be ready
             barrier.wait();
             launching_at = Some(Instant::now());
@@ -151,7 +153,7 @@ impl<'a> Testbed<'a> {
             barrier.wait();
             println!("executor: starting test '{}'", test.get_id());
 
-            let exec_result = test.execute(launching_at.unwrap(), self.pin_mapping);
+            let exec_result = test.execute(launching_at.unwrap(), &inputs);
 
             // release watcher thread
             println!("executor: test execution complete");
