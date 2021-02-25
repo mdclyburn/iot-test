@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::convert::From;
 use std::fmt;
 use std::fmt::Display;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use rppal::gpio;
 use rppal::gpio::{Gpio, InputPin, OutputPin};
@@ -12,6 +12,9 @@ use crate::device;
 use crate::device::Device;
 
 type Result<T> = std::result::Result<T, Error>;
+
+pub type DeviceInputs = Pins<OutputPin>;
+pub type DeviceOutputs = Pins<InputPin>;
 
 #[derive(Debug)]
 pub enum Error {
@@ -60,8 +63,8 @@ impl From<device::Error> for Error {
 pub struct Mapping {
     device: Device,
     numbering: HashMap<u8, u8>,
-    inputs: Mutex<Pins<OutputPin>>,
-    outputs: Mutex<Pins<InputPin>>,
+    inputs: Mutex<DeviceInputs>,
+    outputs: Arc<Mutex<DeviceOutputs>>,
 }
 
 impl Mapping {
@@ -90,12 +93,16 @@ impl Mapping {
             device: device.clone(),
             numbering,
             inputs: Mutex::new(Pins::new(input_pins.into_iter())),
-            outputs: Mutex::new(Pins::new(output_pins.into_iter())),
+            outputs: Arc::new(Mutex::new(Pins::new(output_pins.into_iter()))),
         })
     }
 
-    pub fn get_inputs(&self) -> &Mutex<Pins<OutputPin>> {
+    pub fn get_inputs(&self) -> &Mutex<DeviceInputs> {
         &self.inputs
+    }
+
+    pub fn get_outputs(&self) -> &Arc<Mutex<DeviceOutputs>> {
+        &self.outputs
     }
 }
 

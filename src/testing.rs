@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use rppal::gpio::OutputPin;
 
 use crate::io;
-use crate::io::Pins;
+use crate::io::DeviceInputs;
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -141,7 +141,7 @@ impl Test {
         &self.criteria
     }
 
-    pub fn execute(&self, t0: Instant, pins: &Pins<OutputPin>) -> Result<Execution> {
+    pub fn execute(&self, t0: Instant, pins: &DeviceInputs) -> Result<Execution> {
         let timeline = self.actions.iter()
             .map(|Reverse(op)| (t0 + Duration::from_millis(op.time), op.input));
         for (t, input) in timeline {

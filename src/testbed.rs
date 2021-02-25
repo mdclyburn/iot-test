@@ -97,10 +97,12 @@ impl<'a> Testbed<'a> {
             let barrier = Arc::clone(&barrier);
             let current_test = Arc::clone(&current_test);
             let watch_start = Arc::clone(&watch_start);
+            let dut_output = Arc::clone(self.pin_mapping.get_outputs());
 
             thread::spawn(move || {
                 println!("watcher: started.");
 
+                let dut_output = dut_output.lock().unwrap();
                 let mut responses: Vec<Response> = Vec::new();
                 loop {
                     // wait for next test
@@ -110,7 +112,7 @@ impl<'a> Testbed<'a> {
                     if let Some(ref test) = *current_test.read().unwrap() {
                         for c in test.get_criteria() {
                             match c {
-                                _ => println!("No watch action specified for {:?}", c)
+                                _ => println!("watcher: don't know how to watch {:?}", c)
                             }
                         }
                     } else {
