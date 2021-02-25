@@ -7,7 +7,65 @@ use std::time::{Duration, Instant};
 
 use crate::device::Device;
 use crate::io::{IOPin, Mapping};
-use crate::testing::{Test, Evaluation, Response, Status};
+use crate::testing;
+use crate::testing::{Test, Execution, Response};
+
+#[derive(Copy, Clone, Debug)]
+pub enum Status {
+    Complete,
+    Pass,
+    Fail,
+    Error,
+}
+
+impl From<Status> for &'static str {
+    fn from(s: Status) -> Self {
+        match s {
+            Status::Complete => "Complete",
+            Status::Pass => "Pass",
+            Status::Fail => "Fail",
+            Status::Error => "Error",
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Evaluation {
+    test_id: String,
+    exec_result: Result<Execution, testing::Error>,
+}
+
+impl Evaluation {
+    pub fn new(test: &Test, exec_result: Result<Execution, testing::Error>) -> Evaluation {
+        Evaluation {
+            test_id: test.get_id().to_string(),
+            exec_result,
+        }
+    }
+
+    pub fn get_outcome(&self) -> Status {
+        if self.exec_result.is_err() {
+            Status::Error
+        } else {
+            // more nuanced info here
+            Status::Complete
+        }
+    }
+
+    pub fn get_exec_result(&self) -> &Result<Execution, testing::Error> {
+        &self.exec_result
+    }
+}
+
+impl Display for Evaluation {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}\t", self.test_id)?;
+        match self.get_outcome() {
+            Status::Error => write!(f, "Error ({})", self.get_exec_result().as_ref().unwrap_err()),
+            outcome => write!(f, "{:?}", outcome),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct Testbed<'a> {
@@ -93,7 +151,7 @@ impl<'a> Testbed<'a> {
             barrier.wait();
             println!("executor: starting test '{}'", test.get_id());
 
-            test.execute(launching_at.unwrap(), self.pin_mapping);
+            let exec_result = test.execute(launching_at.unwrap(), self.pin_mapping);
 
             // release watcher thread
             println!("executor: test execution complete");
@@ -104,7 +162,7 @@ impl<'a> Testbed<'a> {
                 // build evaluation with this information.
             }
 
-            test_results.push(Evaluation::new("bah", Status::Invalid));
+            test_results.push(Evaluation::new(test, exec_result));
             println!("executor: test finished.");
         }
 

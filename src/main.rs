@@ -16,7 +16,7 @@ fn main() {
 
     let test = Test::new(
         "first one",
-        &[Operation { time: 0, input: Signal::High(2) },
+        &[Operation { time: 0, input: Signal::High(3) },
           Operation { time: 500, input: Signal::Low(2) }],
         &[]);
 

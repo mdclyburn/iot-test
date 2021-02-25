@@ -96,6 +96,19 @@ pub enum Criterion {
     Response(u8),
 }
 
+#[derive(Clone, Debug)]
+pub struct Execution {
+    duration: Duration,
+}
+
+impl Execution {
+    fn new(duration: Duration) -> Execution {
+        Execution {
+            duration
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Test {
     id: String,
@@ -122,7 +135,7 @@ impl Test {
         &self.criteria
     }
 
-    pub fn execute(&self, t0: Instant, mapping: &Mapping) -> Result<()> {
+    pub fn execute(&self, t0: Instant, mapping: &Mapping) -> Result<Execution> {
         let timeline = self.actions.iter()
             .map(|Reverse(op)| (t0 + Duration::from_millis(op.time), op.input));
         for (t, input) in timeline {
@@ -140,7 +153,7 @@ impl Test {
             println!("{:?}", input);
         }
 
-        Ok(())
+        Ok(Execution::new(t0 - Instant::now()))
     }
 }
 
@@ -153,45 +166,5 @@ impl Display for Test {
         }
 
         Ok(())
-    }
-}
-
-#[derive(Debug)]
-pub struct Evaluation {
-    test_id: String,
-    outcome: Status,
-}
-
-impl Evaluation {
-    pub fn new(test_id: &str, outcome: Status) -> Evaluation {
-        Evaluation {
-            test_id: test_id.to_string(),
-            outcome: outcome,
-        }
-    }
-}
-
-impl Display for Evaluation {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\t{:?}", self.test_id, self.outcome)
-    }
-}
-
-#[derive(Debug)]
-pub enum Status {
-    NotExecuted,
-    Pass,
-    Fail,
-    Invalid,
-}
-
-impl From<Status> for &'static str {
-    fn from(s: Status) -> Self {
-        match s {
-            Status::NotExecuted => "Not executed",
-            Status::Pass => "Pass",
-            Status::Fail => "Fail",
-            Status::Invalid => "Invalid",
-        }
     }
 }
