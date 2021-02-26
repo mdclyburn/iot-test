@@ -69,15 +69,13 @@ impl Display for Evaluation {
 
 #[derive(Debug)]
 pub struct Testbed<'a> {
-    dut: &'a Device,
     pin_mapping: &'a Mapping,
 }
 
 impl<'a> Testbed<'a> {
     pub fn new(device: &'a Device, pin_mapping: &'a Mapping) -> Testbed<'a> {
         Testbed {
-            dut: device,
-            pin_mapping: pin_mapping,
+            pin_mapping,
         }
     }
 
