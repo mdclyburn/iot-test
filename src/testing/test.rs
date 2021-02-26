@@ -1,3 +1,5 @@
+//! Defining and executing tests
+
 use std::cmp::{Ord, Ordering, PartialOrd, Reverse};
 use std::collections::BinaryHeap;
 use std::convert::From;
@@ -7,17 +9,18 @@ use std::fmt::Display;
 use std::iter::IntoIterator;
 use std::time::{Duration, Instant};
 
-use rppal::gpio::OutputPin;
-
 use crate::io;
 use crate::io::DeviceInputs;
 use super::Error;
 
 type Result<T> = std::result::Result<T, Error>;
 
+/// An input signal setting for a particular pin.
 #[derive(Copy, Clone, Eq, Debug, PartialEq)]
 pub enum Signal {
+    /// Digital high
     High(u8),
+    /// Digital low
     Low(u8),
 }
 
@@ -30,9 +33,12 @@ impl Display for Signal {
     }
 }
 
+/// An input to perform at a specific time.
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Operation {
+    /// Time to perform the input in milliseconds
     pub time: u64,
+    /// Signal to apply
     pub input: Signal,
 }
 
@@ -54,6 +60,7 @@ impl PartialOrd for Operation {
     }
 }
 
+/// An output response from the device under test.
 #[derive(Copy, Clone)]
 pub struct Response {
     pub time: u64,
@@ -66,11 +73,17 @@ impl Display for Response {
     }
 }
 
+/** Defined response to look for from the device under test.
+
+Criterion are used by [`Test`]s to determine how to inspect the output from a device under test.
+ */
 #[derive(Clone, Debug)]
 pub enum Criterion {
+    /// Record any response on the specified pin.
     Response(u8),
 }
 
+/// Test execution information
 #[derive(Clone, Debug)]
 pub struct Execution {
     duration: Duration,
@@ -83,11 +96,20 @@ impl Execution {
         }
     }
 
+    /// Return the length of time the test ran for (in milliseconds)
     pub fn get_duration(&self) -> &Duration {
         &self.duration
     }
 }
 
+/** Test definition.
+
+A test mainly consists of a timeline of [`Operation`]s to perform (inputs to the device under test)
+and a set of responses ([`Criterion`]) to record (outputs from the device under test).
+
+Executing a test (via [`Test::execute`] produces an [`Execution`] that contains information about the test run.
+
+ */
 #[derive(Clone)]
 pub struct Test {
     id: String,
@@ -96,6 +118,7 @@ pub struct Test {
 }
 
 impl Test {
+    /// Define a new test.
     pub fn new<'a, T, U>(id: &str, ops: T, criteria: U) -> Test where
         T: IntoIterator<Item = &'a Operation>,
         U: IntoIterator<Item = &'a Criterion> {
@@ -106,14 +129,17 @@ impl Test {
         }
     }
 
+    /// Returns the identifier of the test definition.
     pub fn get_id(&self) -> &str {
         &self.id
     }
 
+    /// Returns defined criteria.
     pub fn get_criteria(&self) -> &Vec<Criterion> {
         &self.criteria
     }
 
+    /// Run the test.
     pub fn execute(&self, t0: Instant, pins: &DeviceInputs) -> Result<Execution> {
         let timeline = self.actions.iter()
             .map(|Reverse(op)| (t0 + Duration::from_millis(op.time), op.input));

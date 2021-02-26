@@ -1,8 +1,11 @@
+//! Evaluate test executions
+
 use std::fmt;
 use std::fmt::Display;
 
 use super::{Error, Execution, Result, Test};
 
+/// Summary of an `Evaluation`.
 #[derive(Copy, Clone, Debug)]
 pub enum Status {
     Complete,
@@ -22,6 +25,7 @@ impl Display for Status {
     }
 }
 
+/// In-depth information about a test execution.
 #[derive(Debug)]
 pub struct Evaluation {
     test_id: String,
@@ -29,6 +33,7 @@ pub struct Evaluation {
 }
 
 impl Evaluation {
+    // TODO: implement From<Execution>?
     pub fn new(test: &Test, exec_result: Result<Execution>) -> Evaluation {
         Evaluation {
             test_id: test.get_id().to_string(),

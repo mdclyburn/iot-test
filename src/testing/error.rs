@@ -1,11 +1,15 @@
+//! Testing errors
+
 use std::error;
 use std::fmt;
 use std::fmt::Display;
 
 use crate::io;
 
+/// Test-related error.
 #[derive(Debug)]
 pub enum Error {
+    /// Testbed to device I/O error
     IO(io::Error),
 }
 

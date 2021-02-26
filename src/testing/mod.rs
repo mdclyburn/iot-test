@@ -1,3 +1,6 @@
+/*! Defining and executing tests and evaluating their results.
+ */
+
 mod error;
 mod evaluation;
 mod test;

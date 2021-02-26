@@ -1,3 +1,5 @@
+//! Configuring tests and executing tests
+
 use std::fmt;
 use std::fmt::Display;
 use std::sync::mpsc;
@@ -10,18 +12,31 @@ use crate::io::Mapping;
 
 use super::{Evaluation, Response, Test};
 
+/// Test suite executor
 #[derive(Debug)]
 pub struct Testbed<'a> {
+    // TODO: reference? why?
     pin_mapping: &'a Mapping,
 }
 
 impl<'a> Testbed<'a> {
+    /// Create a new `Testbed`.
     pub fn new(device: &'a Device, pin_mapping: &'a Mapping) -> Testbed<'a> {
         Testbed {
             pin_mapping,
         }
     }
 
+    /** Run tests.
+     *
+     * Execute the given tests one after the other.
+     *
+     * # Examples
+     * ```
+     *    let mut results = Vec::new();
+     *    testbed.execute(&[test], &mut results);
+     * ```
+     */
     pub fn execute<T, U>(&self, tests: T, out: &mut U) where
         T: IntoIterator<Item = &'a Test>,
         U: Extend<Evaluation> {
