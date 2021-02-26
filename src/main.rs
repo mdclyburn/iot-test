@@ -1,12 +1,10 @@
 mod device;
 mod io;
 mod testing;
-mod testbed;
 
 use crate::device::{Device, IODirection};
 use crate::io::Mapping;
-use crate::testbed::Testbed;
-use crate::testing::{Criterion, Test, Operation, Signal};
+use crate::testing::{Criterion, Test, Testbed, Operation, Signal};
 
 fn main() {
     let device = Device::new(&[
