@@ -70,6 +70,7 @@ impl Device {
        (3, (IODirection::Out, Signal::Digital)),
     ]);
     ```
+    !*/
     pub fn new<'a, T>(pin_map: T) -> Device where
         T: IntoIterator<Item = &'a (u8, (IODirection, Signal))> {
         Device {
@@ -77,10 +78,9 @@ impl Device {
         }
     }
 
-    Returns the direction of the pin.
-
-    Returns an error if the pin is not defined.
-    !*/
+    /// Returns the direction of the pin.
+    ///
+    /// Returns an error if the pin is not defined.
     pub fn direction_of(&self, pin: u8) -> Result<IODirection> {
         self.io.get(&pin)
             .map(|&(dir, _sig)| dir )
