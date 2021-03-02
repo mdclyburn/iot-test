@@ -1,5 +1,6 @@
 //! Defining and executing tests
 
+use std::borrow::Borrow;
 use std::cmp::{Ord, Ordering, PartialOrd, Reverse};
 use std::collections::BinaryHeap;
 use std::convert::From;
@@ -9,7 +10,7 @@ use std::fmt::Display;
 use std::iter::IntoIterator;
 use std::time::{Duration, Instant};
 
-use rppal::gpio::{Gpio, Level, Trigger};
+use rppal::gpio::{Gpio, InputPin, Level, Trigger};
 
 use crate::io;
 use crate::io::{DeviceInputs, DeviceOutputs};
@@ -195,8 +196,40 @@ impl Test {
     /// Record test inputs (outputs from the device).
     pub fn observe(&self, t0: Instant, pins: &DeviceOutputs, out: &mut Vec<Response>) -> Result<()> {
         let gpio = Gpio::new()?;
+        let to_poll = unsafe { pins.get()? }; // poll_interrupts wants plain references.
+        let t_end = t0 + self.get_max_runtime();
+
+        while Instant::now() < t_end {
+            let poll = gpio.poll_interrupts(
+                to_poll.as_slice(),
+                false,
+                Some(t_end - Instant::now()))?;
+
+            if let Some((pin, level)) = poll {
+                let response = Response::new(
+                    Instant::now(),
+                    match level {
+                        Level::High => Signal::High(pin.pin()),
+                        Level::Low => Signal::Low(pin.pin()),
+                    });
+                out.push(response);
+            }
+        }
+
 
         Ok(())
+    }
+
+    /// Return the maximum length of time the test can run.
+    ///
+    /// TODO: make this dependent on actions' timing, criteria timing, and another tail duration(?).
+    fn get_max_runtime(&self) -> Duration {
+        let ms = self.actions.iter()
+            .map(|Reverse(action)| action.time)
+            .last()
+            .unwrap_or(0)
+            + 500;
+        Duration::from_millis(ms)
     }
 }
 

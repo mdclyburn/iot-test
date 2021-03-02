@@ -1,4 +1,4 @@
-use std::cell::{RefCell, RefMut};
+use std::cell::{RefCell, Ref, RefMut};
 use std::collections::HashMap;
 use std::convert::From;
 use std::fmt;
@@ -147,5 +147,24 @@ impl<T> Pins<T> {
         self.pins.get(&pin_no)
             .ok_or(Error::UndefinedPin(pin_no))
             .and_then(|pin| pin.try_borrow_mut().map_err(|_e| Error::InUse(pin_no)))
+    }
+
+    /** Return all configured pins as plain references.
+
+    # Safety
+
+    This method is unsafe because it coerces the dynamic [Ref] to a plain reference.
+     */
+    pub unsafe fn get(&self) -> Result<Vec<&T>> {
+        let mut all = Vec::<&T>::new();
+        let it = self.pins.iter()
+            .map(|(pin_no, pin)| pin.try_borrow_unguarded().map_err(|_e| Error::InUse(*pin_no)));
+
+
+        for res_pin in it {
+            all.push(res_pin?);
+        }
+
+        Ok(all)
     }
 }
