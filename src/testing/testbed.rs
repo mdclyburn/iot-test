@@ -3,7 +3,7 @@
 use std::fmt;
 use std::fmt::Display;
 use std::sync::mpsc;
-use std::sync::{Arc, Barrier, RwLock};
+use std::sync::{Arc, Barrier, Mutex, RwLock};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -59,38 +59,40 @@ impl<'a> Testbed<'a> {
                 println!("watcher: started.");
 
                 let dut_output = dut_output.lock().unwrap();
-                let mut responses: Vec<Response> = Vec::new();
+                let mut responses = Vec::new();
                 loop {
                     // wait for next test
                     barrier.wait();
 
                     // set up to watch for responses according to criteria
                     if let Some(ref test) = *current_test.read().unwrap() {
-                        for c in test.get_criteria() {
-                            match c {
-                                _ => println!("watcher: don't know how to watch {:?}", c)
-                            }
+                        test.prep_observe(&dut_output)
+                            .unwrap(); // <-- communicate back?
+
+                        // wait for test to begin
+                        println!("watcher: ready to begin test");
+                        barrier.wait();
+                        let t0 = Instant::now();
+                        *watch_start.write().unwrap() = Some(t0);
+                        println!("watcher: starting watch");
+
+                        test.observe(t0, &dut_output, &mut responses)
+                            .unwrap();
+
+                        // wait for output responses from dut or the end of the test
+                        // can I just wait for the barrier here or will an interrupt stop it?
+                        barrier.wait();
+
+                        // TODO: clear interrupts
+
+                        for r in responses.drain(..) {
+                            schannel.send(Some(r)).unwrap();
                         }
+                        schannel.send(None).unwrap();
                     } else {
                         // no more tests to run
                         break;
                     }
-
-                    // wait for test to begin
-                    println!("watcher: ready to begin test");
-                    barrier.wait();
-                    *watch_start.write().unwrap() = Some(Instant::now());
-
-                    println!("watcher: starting watch");
-
-                    // wait for output responses from dut or the end of the test
-                    // can I just wait for the barrier here or will an interrupt stop it?
-                    barrier.wait();
-
-                    for r in responses.drain(..) {
-                        schannel.send(Some(r)).unwrap();
-                    }
-                    schannel.send(None).unwrap();
                 }
 
                 println!("watcher: exiting");

@@ -9,8 +9,10 @@ use std::fmt::Display;
 use std::iter::IntoIterator;
 use std::time::{Duration, Instant};
 
+use rppal::gpio::{Gpio, Level, Trigger};
+
 use crate::io;
-use crate::io::DeviceInputs;
+use crate::io::{DeviceInputs, DeviceOutputs};
 use super::Error;
 
 type Result<T> = std::result::Result<T, Error>;
@@ -63,13 +65,30 @@ impl PartialOrd for Operation {
 /// An output response from the device under test.
 #[derive(Copy, Clone)]
 pub struct Response {
-    pub time: u64,
-    pub output: Signal,
+    time: Instant,
+    output: Signal,
+}
+
+impl Response {
+    pub fn new(time: Instant, output: Signal) -> Response {
+        Response {
+            time,
+            output,
+        }
+    }
+
+    pub fn get_offset(&self, t0: Instant) -> Duration {
+        self.time - t0
+    }
+
+    pub fn get_output(&self) -> &Signal {
+        &self.output
+    }
 }
 
 impl Display for Response {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\toutput: {}", self.time, self.output)
+        write!(f, "output: {}", self.output)
     }
 }
 
@@ -139,7 +158,7 @@ impl Test {
         &self.criteria
     }
 
-    /// Run the test.
+    /// Drive test outputs (inputs to the device).
     pub fn execute(&self, t0: Instant, pins: &DeviceInputs) -> Result<Execution> {
         let timeline = self.actions.iter()
             .map(|Reverse(op)| (t0 + Duration::from_millis(op.time), op.input));
@@ -157,6 +176,27 @@ impl Test {
         }
 
         Ok(Execution::new(Instant::now() - t0))
+    }
+
+    /// Set up to record test inputs.
+    pub fn prep_observe(&self, pins: &DeviceOutputs) -> Result<()> {
+        for criterion in &self.criteria {
+            match criterion {
+                Criterion::Response(pin_no) => {
+                    pins.get_pin(*pin_no)?
+                        .set_interrupt(Trigger::Both)?
+                },
+            };
+        }
+
+        Ok(())
+    }
+
+    /// Record test inputs (outputs from the device).
+    pub fn observe(&self, t0: Instant, pins: &DeviceOutputs, out: &mut Vec<Response>) -> Result<()> {
+        let gpio = Gpio::new()?;
+
+        Ok(())
     }
 }
 
