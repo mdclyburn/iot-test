@@ -64,7 +64,7 @@ impl PartialOrd for Operation {
 }
 
 /// An output response from the device under test.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Response {
     time: Instant,
     output: Signal,

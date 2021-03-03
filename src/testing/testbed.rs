@@ -121,11 +121,12 @@ impl<'a> Testbed<'a> {
             barrier.wait();
 
             // get responses to build an Evaluation
+            let mut responses = Vec::new();
             while let Some(response) = rchannel.recv().unwrap() {
-                // build evaluation with this information.
+                responses.push(response);
             }
 
-            test_results.push(Evaluation::new(test, exec_result));
+            test_results.push(Evaluation::new(test, exec_result, responses));
             println!("executor: test finished.");
         }
 

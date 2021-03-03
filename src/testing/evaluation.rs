@@ -3,7 +3,7 @@
 use std::fmt;
 use std::fmt::Display;
 
-use super::{Error, Execution, Result, Test};
+use super::{Error, Execution, Response, Result, Test};
 
 /// Summary of an `Evaluation`.
 #[derive(Copy, Clone, Debug)]
@@ -30,14 +30,17 @@ impl Display for Status {
 pub struct Evaluation {
     test_id: String,
     exec_result: Result<Execution>,
+    device_responses: Vec<Response>,
 }
 
 impl Evaluation {
-    // TODO: implement From<Execution>?
-    pub fn new(test: &Test, exec_result: Result<Execution>) -> Evaluation {
+    pub fn new(test: &Test,
+               exec_result: Result<Execution>,
+               device_responses: Vec<Response>) -> Evaluation {
         Evaluation {
             test_id: test.get_id().to_string(),
             exec_result,
+            device_responses,
         }
     }
 
