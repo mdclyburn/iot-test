@@ -122,7 +122,7 @@ impl Display for Mapping {
             } else {
                 "<---"
             };
-            write!(f, "P{:02} {} P{:02}", h_pin, dir_str, t_pin)?;
+            write!(f, "P{:02} {} P{:02}\n", h_pin, dir_str, t_pin)?;
         }
 
         Ok(())
