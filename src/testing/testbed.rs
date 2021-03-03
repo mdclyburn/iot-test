@@ -10,7 +10,9 @@ use std::time::{Duration, Instant};
 use crate::device::Device;
 use crate::io::Mapping;
 
-use super::{Evaluation, Response, Test};
+use super::{Error, Evaluation, Response, Test};
+
+type Result<T> = std::result::Result<T, Error>;
 
 /// Test suite executor
 #[derive(Debug)]
@@ -37,9 +39,9 @@ impl<'a> Testbed<'a> {
      *    testbed.execute(&[test], &mut results);
      * ```
      */
-    pub fn execute<T, U>(&self, tests: T, out: &mut U) where
-        T: IntoIterator<Item = &'a Test>,
-        U: Extend<Evaluation> {
+    pub fn execute<T>(&self, tests: T) -> Result<Vec<Evaluation>> where
+        T: IntoIterator<Item = &'a Test>
+    {
         let mut test_results = Vec::new();
 
         let barrier = Arc::new(Barrier::new(2));
@@ -53,12 +55,11 @@ impl<'a> Testbed<'a> {
             let barrier = Arc::clone(&barrier);
             let current_test = Arc::clone(&current_test);
             let watch_start = Arc::clone(&watch_start);
-            let dut_output = Arc::clone(self.pin_mapping.get_outputs());
+            let mut outputs = self.pin_mapping.get_outputs()?;
 
             thread::spawn(move || {
                 println!("watcher: started.");
 
-                let dut_output = dut_output.lock().unwrap();
                 let mut responses = Vec::new();
                 loop {
                     // wait for next test
@@ -66,7 +67,7 @@ impl<'a> Testbed<'a> {
 
                     // set up to watch for responses according to criteria
                     if let Some(ref test) = *current_test.read().unwrap() {
-                        test.prep_observe(&dut_output)
+                        test.prep_observe(&mut outputs)
                             .unwrap(); // <-- communicate back?
 
                         // wait for test to begin
@@ -76,7 +77,7 @@ impl<'a> Testbed<'a> {
                         *watch_start.write().unwrap() = Some(t0);
                         println!("watcher: starting watch");
 
-                        test.observe(t0, &dut_output, &mut responses)
+                        test.observe(t0, &outputs, &mut responses)
                             .unwrap();
 
                         // wait for output responses from dut or the end of the test
@@ -103,7 +104,7 @@ impl<'a> Testbed<'a> {
         for test in tests {
             *current_test.write().unwrap() = Some(test.clone());
 
-            let inputs = self.pin_mapping.get_inputs().lock().unwrap();
+            let mut inputs = self.pin_mapping.get_inputs()?;
 
             // wait for watcher thread to be ready
             barrier.wait();
@@ -113,7 +114,7 @@ impl<'a> Testbed<'a> {
             barrier.wait();
             println!("executor: starting test '{}'", test.get_id());
 
-            let exec_result = test.execute(launching_at.unwrap(), &inputs);
+            let exec_result = test.execute(launching_at.unwrap(), &mut inputs);
 
             // release watcher thread
             println!("executor: test execution complete");
@@ -143,7 +144,7 @@ impl<'a> Testbed<'a> {
         };
         println!("threads de-synced on time by {:?}", desync);
 
-        out.extend(test_results);
+        Ok(test_results)
     }
 }
 

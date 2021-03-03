@@ -63,46 +63,52 @@ impl From<device::Error> for Error {
 pub struct Mapping {
     device: Device,
     numbering: HashMap<u8, u8>,
-    inputs: Mutex<DeviceInputs>,
-    outputs: Arc<Mutex<DeviceOutputs>>,
 }
 
 impl Mapping {
     pub fn new<'a, T>(device: &Device, host_target_map: T) -> Result<Mapping> where
         T: IntoIterator<Item = &'a (u8, u8)> {
-        let gpio = Gpio::new()?;
-
         let numbering: HashMap<u8, u8> = host_target_map
             .into_iter()
             .map(|(h_pin, t_pin)| (*h_pin, *t_pin))
             .collect();
 
-        let (mut input_pins, mut output_pins) = (Vec::new(), Vec::new());
-        let mut acquired_gpio = numbering
-            .iter()
-            .map(|(h_pin, t_pin)| { (*t_pin, gpio.get(*h_pin)) });
-        for (t_pin_no, acq_res) in acquired_gpio {
-            let pin = acq_res?;
-            match device.direction_of(t_pin_no)? {
-                device::IODirection::In => input_pins.push((t_pin_no, pin.into_output())),
-                device::IODirection::Out => output_pins.push((t_pin_no, pin.into_input())),
-            }
-        }
+        device.has_pins(numbering.iter().map(|(h, t)| *t))?;
 
         Ok(Mapping {
             device: device.clone(),
             numbering,
-            inputs: Mutex::new(Pins::new(input_pins.into_iter())),
-            outputs: Arc::new(Mutex::new(Pins::new(output_pins.into_iter()))),
         })
     }
 
-    pub fn get_inputs(&self) -> &Mutex<DeviceInputs> {
-        &self.inputs
+    pub fn get_inputs(&self) -> Result<DeviceInputs> {
+        let input_numbering = self.numbering.iter()
+            .map(|(h, t)| (*h, *t))
+            .filter(|(h, t)| self.device.direction_of(*t).unwrap() == device::IODirection::In);
+        let mut inputs = Vec::new();
+        let gpio = Gpio::new()?;
+
+        for (h_pin, t_pin) in input_numbering {
+            let pin = gpio.get(h_pin)?;
+            inputs.push((t_pin, pin.into_output()));
+        }
+
+        Ok(DeviceInputs::new(inputs))
     }
 
-    pub fn get_outputs(&self) -> &Arc<Mutex<DeviceOutputs>> {
-        &self.outputs
+    pub fn get_outputs(&self) -> Result<DeviceOutputs> {
+        let output_numbering = self.numbering.iter()
+            .map(|(h, t)| (*h, *t))
+            .filter(|(h, t)| self.device.direction_of(*t).unwrap() == device::IODirection::Out);
+        let mut outputs = Vec::new();
+        let gpio = Gpio::new()?;
+
+        for (h_pin, t_pin) in output_numbering {
+            let pin = gpio.get(h_pin)?;
+            outputs.push((t_pin, pin.into_input()));
+        }
+
+        Ok(DeviceOutputs::new(outputs))
     }
 }
 
@@ -125,7 +131,7 @@ impl Display for Mapping {
 
 #[derive(Debug)]
 pub struct Pins<T> {
-    pins: HashMap<u8, RefCell<T>>,
+    pins: HashMap<u8, T>,
 }
 
 impl<T> Pins<T> {
@@ -134,7 +140,7 @@ impl<T> Pins<T> {
     {
         Pins {
             pins: pins.into_iter()
-                .map(|(pin_no, pin)| (pin_no, RefCell::new(pin)))
+                .map(|(pin_no, pin)| (pin_no, pin))
                 .collect(),
         }
     }
@@ -143,28 +149,21 @@ impl<T> Pins<T> {
         self.pins.contains_key(&pin_no)
     }
 
-    pub fn get_pin(&self, pin_no: u8) -> Result<RefMut<'_, T>> {
+    pub fn get_pin(&self, pin_no: u8) -> Result<&T> {
         self.pins.get(&pin_no)
             .ok_or(Error::UndefinedPin(pin_no))
-            .and_then(|pin| pin.try_borrow_mut().map_err(|_e| Error::InUse(pin_no)))
     }
 
-    /** Return all configured pins as plain references.
+    pub fn get_pin_mut(&mut self, pin_no: u8) -> Result<&mut T> {
+        self.pins.get_mut(&pin_no)
+            .ok_or(Error::UndefinedPin(pin_no))
+    }
 
-    # Safety
-
-    This method is unsafe because it coerces the dynamic [Ref] to a plain reference.
-     */
-    pub unsafe fn get(&self) -> Result<Vec<&T>> {
-        let mut all = Vec::<&T>::new();
-        let it = self.pins.iter()
-            .map(|(pin_no, pin)| pin.try_borrow_unguarded().map_err(|_e| Error::InUse(*pin_no)));
-
-
-        for res_pin in it {
-            all.push(res_pin?);
-        }
-
-        Ok(all)
+    /// Returns all configured pins as plain references.
+    pub fn get(&self) -> Result<Vec<&T>> {
+        let pins = self.pins.iter()
+            .map(|(pin_no, pin)| pin)
+            .collect();
+        Ok(pins)
     }
 }

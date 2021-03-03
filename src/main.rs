@@ -23,9 +23,12 @@ fn main() {
 
     print!("{}\n\n", test);
 
-    let mut results = Vec::new();
-    testbed.execute(&[test], &mut results);
-    for r in results {
-        println!("{}", r);
+    let mut res = testbed.execute(&[test]);
+    if let Ok(results) = res {
+        for r in results {
+            println!("{}", r);
+        }
+    } else {
+        println!("Error running tests: {}", res.unwrap_err());
     }
 }

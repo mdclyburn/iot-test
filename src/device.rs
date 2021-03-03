@@ -78,6 +78,22 @@ impl Device {
         }
     }
 
+    pub fn has_pin(&self, pin_no: u8) -> bool {
+        self.io.contains_key(&pin_no)
+    }
+
+    pub fn has_pins<T>(&self, pins: T) -> Result<()> where
+        T: IntoIterator<Item = u8>
+    {
+        for pin_no in pins {
+            if !self.has_pin(pin_no) {
+                return Err(Error::UndefinedPin(pin_no));
+            }
+        }
+
+        Ok(())
+    }
+
     /// Returns the direction of the pin.
     ///
     /// Returns an error if the pin is not defined.

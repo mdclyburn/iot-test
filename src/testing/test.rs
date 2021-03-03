@@ -160,17 +160,17 @@ impl Test {
     }
 
     /// Drive test outputs (inputs to the device).
-    pub fn execute(&self, t0: Instant, pins: &DeviceInputs) -> Result<Execution> {
+    pub fn execute(&self, t0: Instant, pins: &mut DeviceInputs) -> Result<Execution> {
         let timeline = self.actions.iter()
             .map(|Reverse(op)| (t0 + Duration::from_millis(op.time), op.input));
         for (t, input) in timeline {
             while Instant::now() < t {  } // spin wait
             match input {
                 Signal::High(pin_no) =>
-                    (*pins.get_pin(pin_no)?)
+                    (*pins.get_pin_mut(pin_no)?)
                     .set_high(),
                 Signal::Low(pin_no) =>
-                    (*pins.get_pin(pin_no)?)
+                    (*pins.get_pin_mut(pin_no)?)
                     .set_low(),
             };
             println!("{:?}", input);
@@ -180,11 +180,11 @@ impl Test {
     }
 
     /// Set up to record test inputs.
-    pub fn prep_observe(&self, pins: &DeviceOutputs) -> Result<()> {
+    pub fn prep_observe(&self, pins: &mut DeviceOutputs) -> Result<()> {
         for criterion in &self.criteria {
             match criterion {
                 Criterion::Response(pin_no) => {
-                    pins.get_pin(*pin_no)?
+                    pins.get_pin_mut(*pin_no)?
                         .set_interrupt(Trigger::Both)?
                 },
             };
@@ -196,12 +196,11 @@ impl Test {
     /// Record test inputs (outputs from the device).
     pub fn observe(&self, t0: Instant, pins: &DeviceOutputs, out: &mut Vec<Response>) -> Result<()> {
         let gpio = Gpio::new()?;
-        let to_poll = unsafe { pins.get()? }; // poll_interrupts wants plain references.
         let t_end = t0 + self.get_max_runtime();
 
         while Instant::now() < t_end {
             let poll = gpio.poll_interrupts(
-                to_poll.as_slice(),
+                pins.get()?.as_slice(),
                 false,
                 Some(t_end - Instant::now()))?;
 
