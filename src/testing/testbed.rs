@@ -122,7 +122,7 @@ impl<'a> Testbed<'a> {
 
             // get responses to build an Evaluation
             let mut responses = Vec::new();
-            while let Some(response) = rchannel.recv().unwrap() {
+            while let Some(response) = rchannel.recv()? {
                 responses.push(response);
             }
 
