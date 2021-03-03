@@ -251,6 +251,12 @@ impl Display for Test {
         for Reverse(ref action) in &self.actions {
             write!(f, "{}\n", action)?;
         }
+        write!(f, "\n")?;
+
+        write!(f, "Criteria =====\n")?;
+        for criterion in &self.criteria {
+            write!(f, "- {}\n", criterion)?;
+        }
 
         Ok(())
     }
