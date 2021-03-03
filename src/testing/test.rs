@@ -103,6 +103,14 @@ pub enum Criterion {
     Response(u8),
 }
 
+impl Display for Criterion {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Criterion::Response(pin_no) => write!(f, "any activity on device pin {}", pin_no),
+        }
+    }
+}
+
 /// Test execution information
 #[derive(Clone, Debug)]
 pub struct Execution {
@@ -182,10 +190,11 @@ impl Test {
     /// Set up to record test inputs.
     pub fn prep_observe(&self, pins: &mut DeviceOutputs) -> Result<()> {
         for criterion in &self.criteria {
+            println!("observer: watching for {}", criterion);
             match criterion {
                 Criterion::Response(pin_no) => {
                     pins.get_pin_mut(*pin_no)?
-                        .set_interrupt(Trigger::Both)?
+                        .set_interrupt(Trigger::Both)?;
                 },
             };
         }

@@ -26,7 +26,7 @@ fn main() {
     let mut res = testbed.execute(&[test]);
     if let Ok(results) = res {
         for r in results {
-            println!("{}", r);
+            println!("{:?}", r);
         }
     } else {
         println!("Error running tests: {}", res.unwrap_err());
