@@ -64,6 +64,15 @@ impl Display for Evaluation {
         match self.get_outcome() {
             Status::Error => write!(f, "Error ({})", self.get_exec_result().as_ref().unwrap_err()),
             outcome => write!(f, "{} (in {:?})", outcome, self.get_exec_result().as_ref().unwrap().get_duration()),
+        }?;
+        write!(f, "\n");
+
+        if let Ok(ref execution) = self.exec_result {
+            for response in &self.device_responses {
+                write!(f, "  @{:?}\t{}\n", response.get_offset(*execution.get_start()), response)?
+            }
         }
+
+        Ok(())
     }
 }

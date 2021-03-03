@@ -114,19 +114,26 @@ impl Display for Criterion {
 /// Test execution information
 #[derive(Clone, Debug)]
 pub struct Execution {
-    duration: Duration,
+    started_at: Instant,
+    finished_at: Instant,
 }
 
 impl Execution {
-    fn new(duration: Duration) -> Execution {
+    fn new(started_at: Instant, finished_at: Instant) -> Execution {
         Execution {
-            duration
+            started_at,
+            finished_at,
         }
     }
 
-    /// Return the length of time the test ran for (in milliseconds)
-    pub fn get_duration(&self) -> &Duration {
-        &self.duration
+    /// Return the point in time the test execution started.
+    pub fn get_start(&self) -> &Instant {
+        &self.started_at
+    }
+
+    /// Return the length of time the test ran for.
+    pub fn get_duration(&self) -> Duration {
+        self.finished_at - self.started_at
     }
 }
 
@@ -184,7 +191,7 @@ impl Test {
             println!("{:?}", input);
         }
 
-        Ok(Execution::new(Instant::now() - t0))
+        Ok(Execution::new(t0, Instant::now()))
     }
 
     /// Set up to record test inputs.
