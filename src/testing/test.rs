@@ -198,10 +198,11 @@ impl Test {
         let gpio = Gpio::new()?;
         let t_end = t0 + self.get_max_runtime();
         let mut t = Instant::now();
+        let pins = pins.get()?;
 
         while t < t_end {
             let poll = gpio.poll_interrupts(
-                pins.get()?.as_slice(),
+                pins.as_slice(),
                 false,
                 Some(t_end - t))?;
 
