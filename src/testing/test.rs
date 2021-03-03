@@ -197,12 +197,13 @@ impl Test {
     pub fn observe(&self, t0: Instant, pins: &DeviceOutputs, out: &mut Vec<Response>) -> Result<()> {
         let gpio = Gpio::new()?;
         let t_end = t0 + self.get_max_runtime();
+        let mut t = Instant::now();
 
-        while Instant::now() < t_end {
+        while t < t_end {
             let poll = gpio.poll_interrupts(
                 pins.get()?.as_slice(),
                 false,
-                Some(t_end - Instant::now()))?;
+                Some(t_end - t))?;
 
             if let Some((pin, level)) = poll {
                 let response = Response::new(
@@ -213,8 +214,9 @@ impl Test {
                     });
                 out.push(response);
             }
-        }
 
+            t = Instant::now();
+        }
 
         Ok(())
     }

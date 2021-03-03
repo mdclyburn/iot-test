@@ -145,15 +145,18 @@ impl<T> Pins<T> {
         }
     }
 
+    /// Returns whether the device has the pin mapped.
     pub fn has_pin(&self, pin_no: u8) -> bool {
         self.pins.contains_key(&pin_no)
     }
 
+    /// Returns a reference to the specified pin.
     pub fn get_pin(&self, pin_no: u8) -> Result<&T> {
         self.pins.get(&pin_no)
             .ok_or(Error::UndefinedPin(pin_no))
     }
 
+    /// Returns a mutable reference to the specified pin.
     pub fn get_pin_mut(&mut self, pin_no: u8) -> Result<&mut T> {
         self.pins.get_mut(&pin_no)
             .ok_or(Error::UndefinedPin(pin_no))
