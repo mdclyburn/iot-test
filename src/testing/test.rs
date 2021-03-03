@@ -254,13 +254,19 @@ impl Test {
 impl Display for Test {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Test: {}\n", self.id)?;
-        write!(f, "Operations =====\n")?;
+        write!(f, "=== Operation timeline\n")?;
+        write!(f, "|{:>10}|{:^5}|{:^20}|\n", "time (ms)", "pin", "operation")?;
+        write!(f, "|----------|-----|--------------------|\n")?;
         for Reverse(ref action) in &self.actions {
-            write!(f, "{}\n", action)?;
+            let (sig_text, pin_no) = match action.input {
+                Signal::High(p) => ("HIGH", p),
+                Signal::Low(p) => ("LOW", p),
+            };
+            write!(f, "|{:>10}|{:^5}|{:^20}|\n", action.time, pin_no, sig_text)?;
         }
         write!(f, "\n")?;
 
-        write!(f, "Criteria =====\n")?;
+        write!(f, "=== Criteria\n")?;
         for criterion in &self.criteria {
             write!(f, "- {}\n", criterion)?;
         }
