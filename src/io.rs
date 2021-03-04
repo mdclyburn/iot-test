@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex};
 use rppal::gpio;
 use rppal::gpio::{Gpio, InputPin, OutputPin};
 
+use crate::comm::Direction;
 use crate::device;
 use crate::device::Device;
 
@@ -84,7 +85,7 @@ impl Mapping {
     pub fn get_inputs(&self) -> Result<DeviceInputs> {
         let input_numbering = self.numbering.iter()
             .map(|(h, t)| (*h, *t))
-            .filter(|(h, t)| self.device.direction_of(*t).unwrap() == device::IODirection::In);
+            .filter(|(h, t)| self.device.direction_of(*t).unwrap() == Direction::In);
         let mut inputs = Vec::new();
         let gpio = Gpio::new()?;
 
@@ -99,7 +100,7 @@ impl Mapping {
     pub fn get_outputs(&self) -> Result<DeviceOutputs> {
         let output_numbering = self.numbering.iter()
             .map(|(h, t)| (*h, *t))
-            .filter(|(h, t)| self.device.direction_of(*t).unwrap() == device::IODirection::Out);
+            .filter(|(h, t)| self.device.direction_of(*t).unwrap() == Direction::Out);
         let mut outputs = Vec::new();
         let gpio = Gpio::new()?;
 
@@ -117,7 +118,7 @@ impl Display for Mapping {
         write!(f, "I/O mapping:\n")?;
         for (h_pin, t_pin) in &self.numbering {
             let dev_io_dir = self.device.direction_of(*t_pin).unwrap();
-            let dir_str = if dev_io_dir == device::IODirection::In {
+            let dir_str = if dev_io_dir == Direction::In {
                 "--->"
             } else {
                 "<---"

@@ -12,7 +12,6 @@ pub use testbed::Testbed;
 pub use test::{
     Criterion,
     Operation,
-    Signal,
     Test,
     Execution,
     Response,

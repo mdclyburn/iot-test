@@ -1,15 +1,17 @@
+mod comm;
 mod device;
 mod io;
 mod testing;
 
-use crate::device::{Device, IODirection};
+use crate::comm::{Direction, Class as SignalClass, Signal};
+use crate::device::Device;
 use crate::io::Mapping;
-use crate::testing::{Criterion, Test, Testbed, Operation, Signal};
+use crate::testing::{Criterion, Test, Testbed, Operation};
 
 fn main() {
     let device = Device::new(&[
-        (13, (IODirection::Out, device::Signal::Digital)),
-        (23, (IODirection::In, device::Signal::Digital)),
+        (13, (Direction::Out, SignalClass::Digital)),
+        (23, (Direction::In, SignalClass::Digital)),
     ]);
     let mapping = Mapping::new(&device, &[(17, 23), (2, 13)]).unwrap();
     let testbed = Testbed::new(&device, &mapping);
@@ -17,8 +19,8 @@ fn main() {
 
     let test = Test::new(
         "first one",
-        &[Operation { time: 0, input: Signal::High(23) },
-          Operation { time: 500, input: Signal::Low(23) }],
+        &[Operation { time: 0, pin_no: 23, input: Signal::Digital(true) },
+          Operation { time: 500, pin_no: 23, input: Signal::Digital(false) }],
         &[Criterion::Response(13)]);
 
     print!("{}\n\n", test);

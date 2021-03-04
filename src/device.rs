@@ -13,6 +13,8 @@ use std::iter::IntoIterator;
 use std::fmt;
 use std::fmt::Display;
 
+use crate::comm::{Direction, Class as SignalClass};
+
 type Result<T> = std::result::Result<T, Error>;
 
 /// Device-related errors
@@ -32,28 +34,10 @@ impl Display for Error {
     }
 }
 
-/// I/O pin direction from the perspective of the device under test
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum IODirection {
-    /// Input to the device
-    In,
-    /// Output from the device
-    Out,
-}
-
-/// Signal type
-#[derive(Copy, Clone, Debug)]
-pub enum Signal {
-    /// Analog signal
-    Analog,
-    /// Digital signal
-    Digital,
-}
-
 /// Properties about a device under test
 #[derive(Clone, Debug)]
 pub struct Device {
-    io: HashMap<u8, (IODirection, Signal)>,
+    io: HashMap<u8, (Direction, SignalClass)>,
 }
 
 impl Device {
@@ -66,13 +50,13 @@ impl Device {
 
     ```
     Device::new(&[
-       (2, (IODirection::In, Signal::Digital)),
-       (3, (IODirection::Out, Signal::Digital)),
+       (2, (Direction::In, SignalClass::Digital)),
+       (3, (Direction::Out, SignalClass::Digital)),
     ]);
     ```
     !*/
     pub fn new<'a, T>(pin_map: T) -> Device where
-        T: IntoIterator<Item = &'a (u8, (IODirection, Signal))> {
+        T: IntoIterator<Item = &'a (u8, (Direction, SignalClass))> {
         Device {
             io: pin_map.into_iter().map(|x| *x).collect(),
         }
@@ -99,7 +83,7 @@ impl Device {
     /// Returns the direction of the pin.
     ///
     /// Returns an error if the pin is not defined.
-    pub fn direction_of(&self, pin: u8) -> Result<IODirection> {
+    pub fn direction_of(&self, pin: u8) -> Result<Direction> {
         self.io.get(&pin)
             .map(|&(dir, _sig)| dir )
             .ok_or(Error::UndefinedPin(pin))
@@ -108,7 +92,7 @@ impl Device {
     /// Returns the signal of the pin.
     ///
     /// Returns an error if the pin is not defined.
-    pub fn signal_of(&self, pin: u8) -> Result<Signal> {
+    pub fn signal_of(&self, pin: u8) -> Result<SignalClass> {
         self.io.get(&pin)
             .map(|&(_dir, sig)| sig)
             .ok_or(Error::UndefinedPin(pin))

@@ -12,29 +12,13 @@ use std::time::{Duration, Instant};
 
 use rppal::gpio::{Gpio, InputPin, Level, Trigger};
 
+use crate::comm::Signal;
 use crate::io;
 use crate::io::{DeviceInputs, DeviceOutputs};
+
 use super::Error;
 
 type Result<T> = std::result::Result<T, Error>;
-
-/// An input signal setting for a particular pin.
-#[derive(Copy, Clone, Eq, Debug, PartialEq)]
-pub enum Signal {
-    /// Digital high
-    High(u8),
-    /// Digital low
-    Low(u8),
-}
-
-impl Display for Signal {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Signal::High(pin) => write!(f, "DIGITAL HIGH\tP{:02}", pin),
-            Signal::Low(pin) => write!(f, "DIGITAL LOW\tP{:02}", pin),
-        }
-    }
-}
 
 /// An input to perform at a specific time.
 #[derive(Copy, Clone, Eq, PartialEq)]
@@ -43,6 +27,8 @@ pub struct Operation {
     pub time: u64,
     /// Signal to apply
     pub input: Signal,
+    /// Device pin to apply the signal to.
+    pub pin_no: u8,
 }
 
 impl Display for Operation {
@@ -67,19 +53,25 @@ impl PartialOrd for Operation {
 #[derive(Copy, Clone, Debug)]
 pub struct Response {
     time: Instant,
+    pin_no: u8,
     output: Signal,
 }
 
 impl Response {
-    pub fn new(time: Instant, output: Signal) -> Response {
+    pub fn new(time: Instant, pin_no: u8, output: Signal) -> Response {
         Response {
             time,
+            pin_no,
             output,
         }
     }
 
     pub fn get_offset(&self, t0: Instant) -> Duration {
         self.time - t0
+    }
+
+    pub fn get_pin_no(&self) -> u8 {
+        self.pin_no
     }
 
     pub fn get_output(&self) -> &Signal {
@@ -177,18 +169,19 @@ impl Test {
     /// Drive test outputs (inputs to the device).
     pub fn execute(&self, t0: Instant, pins: &mut DeviceInputs) -> Result<Execution> {
         let timeline = self.actions.iter()
-            .map(|Reverse(op)| (t0 + Duration::from_millis(op.time), op.input));
-        for (t, input) in timeline {
+            .map(|Reverse(op)| (t0 + Duration::from_millis(op.time), op));
+        for (t, op) in timeline {
             while Instant::now() < t {  } // spin wait
-            match input {
-                Signal::High(pin_no) =>
-                    (*pins.get_pin_mut(pin_no)?)
+            match op.input {
+                Signal::Digital(true) =>
+                    (*pins.get_pin_mut(op.pin_no)?)
                     .set_high(),
-                Signal::Low(pin_no) =>
-                    (*pins.get_pin_mut(pin_no)?)
+                Signal::Digital(false) =>
+                    (*pins.get_pin_mut(op.pin_no)?)
                     .set_low(),
+                input => panic!("Unhandled input type: {:?}", input),
             };
-            println!("{:?}", input);
+            println!("{:?}", op.input);
         }
 
         Ok(Execution::new(t0, Instant::now()))
@@ -225,9 +218,10 @@ impl Test {
             if let Some((pin, level)) = poll {
                 let response = Response::new(
                     Instant::now(),
+                    pin.pin(),
                     match level {
-                        Level::High => Signal::High(pin.pin()),
-                        Level::Low => Signal::Low(pin.pin()),
+                        Level::High => Signal::Digital(true),
+                        Level::Low => Signal::Digital(false),
                     });
                 out.push(response);
             }
@@ -258,11 +252,15 @@ impl Display for Test {
         write!(f, "|{:>10}|{:^5}|{:^20}|\n", "time (ms)", "pin", "operation")?;
         write!(f, "|----------|-----|--------------------|\n")?;
         for Reverse(ref action) in &self.actions {
-            let (sig_text, pin_no) = match action.input {
-                Signal::High(p) => ("HIGH", p),
-                Signal::Low(p) => ("LOW", p),
+            let sig_text = match action.input {
+                Signal::Digital(true) => "digital 1".to_string(),
+                Signal::Digital(false) => "digital 0".to_string(),
+                Signal::Analog(lv) => format!("analog {:5}", lv),
             };
-            write!(f, "|{:>10}|{:^5}|{:^20}|\n", action.time, pin_no, sig_text)?;
+            write!(f, "|{:>10}|{:^5}|{:^20}|\n",
+                   action.time,
+                   action.pin_no,
+                   sig_text)?;
         }
         write!(f, "\n")?;
 
