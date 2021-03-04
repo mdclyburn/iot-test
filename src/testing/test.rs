@@ -54,6 +54,7 @@ pub struct Response {
 }
 
 impl Response {
+    /// Create a new Response.
     pub fn new(time: Instant, pin_no: u8, output: Signal) -> Response {
         Response {
             time,
@@ -62,6 +63,13 @@ impl Response {
         }
     }
 
+    /** Obtain the amount of time between a fixed point and the occurence of this Response.
+
+    This is typically used to get the point in time during a test a response occured.
+
+    # Panics
+    This function performs arithmetic with [`Instant`]s which will panic if `t0` is after the time this Response occured.
+     */
     pub fn get_offset(&self, t0: Instant) -> Duration {
         self.time - t0
     }
@@ -99,6 +107,7 @@ pub struct Execution {
 }
 
 impl Execution {
+    /// Create a new Execution.
     fn new(started_at: Instant, finished_at: Instant) -> Execution {
         Execution {
             started_at,
@@ -122,7 +131,7 @@ impl Execution {
 A test mainly consists of a timeline of [`Operation`]s to perform (inputs to the device under test)
 and a set of responses ([`Criterion`]) to record (outputs from the device under test).
 
-Executing a test (via [`Test::execute`] produces an [`Execution`] that contains information about the test run.
+Executing a test (via [`Test::execute`]) produces an [`Execution`] that contains information about the test run.
 
  */
 #[derive(Clone)]

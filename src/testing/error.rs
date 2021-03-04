@@ -14,8 +14,11 @@ use crate::io;
 pub enum Error {
     /// Testbed to device I/O error
     IO(io::Error),
+    /// GPIO-related error
     GPIO(gpio::Error),
+    /// Executor-observer thread communication error
     Comm(mpsc::RecvError),
+    /// Observer thread spawning error
     Observer(std::io::Error),
 }
 

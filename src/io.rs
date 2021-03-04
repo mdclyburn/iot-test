@@ -1,4 +1,7 @@
-//! Configure and access I/O.
+/*! Interacting with inputs and outputs.
+
+This module contains types for organizing and managing the I/O between the Raspberry Pi and the device under test.
+ */
 
 use std::collections::HashMap;
 use std::convert::From;
@@ -15,17 +18,19 @@ use crate::device::Device;
 
 type Result<T> = std::result::Result<T, Error>;
 
+/// Set of pins that provide input _to_ the device under test.
 pub type DeviceInputs = Pins<OutputPin>;
+/// Set of pins that accept output _from_ the device under test.
 pub type DeviceOutputs = Pins<InputPin>;
 
-/// I/O error.
+/// Errors related to acquiring and configuring I/O.
 #[derive(Debug)]
 pub enum Error {
-    /// Error originating in the device configuration.
+    /// Device-specific error
     Device(device::Error),
-    /// Error originating from the GPIO access implementation.
+    /// GPIO-specific error
     Gpio(gpio::Error),
-    /// The specified pin is not available.
+    /// Requested pin is not mapped
     UndefinedPin(u8),
 }
 
@@ -96,10 +101,10 @@ impl Mapping {
         })
     }
 
-    /** Returns the I/O that provides inputs to the device under test.
+    /** Returns GPIO pins that are inputs _to the device_ (i.e., outputs from the testbed).
 
-    Obtains the outputs from the testbed that are connected to _inputs_ to the device under test.
-    This call will only succeed with an `Ok(...)` if _all_ pins are available.
+    This function returns Ok([`DeviceInputs`]) only when *all* pins are available.
+    The pins defined in the mapping must not be held elsewhere in the program.
      */
     pub fn get_inputs(&self) -> Result<DeviceInputs> {
         let input_numbering = self.numbering.iter()
@@ -116,10 +121,10 @@ impl Mapping {
         Ok(DeviceInputs::new(inputs))
     }
 
-    /** Returns the I/O that provides outputs to the device under test.
+    /** Returns GPIO pins that are outputs _from the device_ (i.e., inputs to the testbed).
 
-    Obtains the inputs from the testbed that are connected to _outputs_ from the device under test.
-    This call will only succeed with an `Ok(...)` if _all_ pins are available.
+    This function returns Ok([`DeviceOutputs`]) only when *all* pins are available.
+    The pins defined in the mapping must not be held elsewhere in the program.
      */
     pub fn get_outputs(&self) -> Result<DeviceOutputs> {
         let output_numbering = self.numbering.iter()
@@ -162,6 +167,7 @@ pub struct Pins<T> {
 }
 
 impl<T> Pins<T> {
+    /// Create a new collectio of pins.
     fn new<U>(pins: U) -> Pins<T> where
         U: IntoIterator<Item = (u8, T)>
     {
