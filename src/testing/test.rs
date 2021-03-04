@@ -69,7 +69,7 @@ impl Response {
 
 impl Display for Response {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "response: {}", self.output)
+        write!(f, "response on P{:02} {}", self.pin_no, self.output)
     }
 }
 
@@ -233,7 +233,7 @@ impl Display for Test {
         write!(f, "Test: {}\n", self.id)?;
         write!(f, "=== Operation timeline\n")?;
         write!(f, "|{:>10}|{:^5}|{:^20}|\n", "time (ms)", "pin", "operation")?;
-        write!(f, "|----------|-----|--------------------|\n")?;
+        write!(f, "|----------+-----+--------------------|\n")?;
         for Reverse(ref action) in &self.actions {
             let sig_text = match action.input {
                 Signal::Digital(true) => "digital 1".to_string(),

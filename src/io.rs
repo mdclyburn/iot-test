@@ -111,14 +111,15 @@ impl Mapping {
 impl Display for Mapping {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "I/O mapping:\n")?;
+        write!(f, "{:^9} {:^3} {:^7}\n", "testbed", "dir", "device")?;
         for (h_pin, t_pin) in &self.numbering {
             let dev_io_dir = self.device.direction_of(*t_pin).unwrap();
             let dir_str = if dev_io_dir == Direction::In {
-                "--->"
+                "->"
             } else {
-                "<---"
+                "<-"
             };
-            write!(f, "P{:02} {} P{:02}\n", h_pin, dir_str, t_pin)?;
+            write!(f, "   P{:02}    {}   P{:02}\n", h_pin, dir_str, t_pin)?;
         }
 
         Ok(())
