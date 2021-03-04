@@ -78,10 +78,12 @@ impl Device {
         }
     }
 
+    /// Returns true if the device definition defines a pin.
     pub fn has_pin(&self, pin_no: u8) -> bool {
         self.io.contains_key(&pin_no)
     }
 
+    /// Returns Ok(()) if the device definition defines all the given pins.
     pub fn has_pins<T>(&self, pins: T) -> Result<()> where
         T: IntoIterator<Item = u8>
     {

@@ -129,6 +129,7 @@ impl Display for Mapping {
     }
 }
 
+/// Wrapper around a set of pins.
 #[derive(Debug)]
 pub struct Pins<T> {
     pins: HashMap<u8, T>,
