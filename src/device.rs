@@ -92,6 +92,7 @@ impl Device {
     /// Returns the signal of the pin.
     ///
     /// Returns an error if the pin is not defined.
+    #[allow(dead_code)]
     pub fn signal_of(&self, pin: u8) -> Result<SignalClass> {
         self.io.get(&pin)
             .map(|&(_dir, sig)| sig)

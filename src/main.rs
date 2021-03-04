@@ -14,7 +14,7 @@ fn main() {
         (23, (Direction::In, SignalClass::Digital)),
     ]);
     let mapping = Mapping::new(&device, &[(17, 23), (2, 13)]).unwrap();
-    let testbed = Testbed::new(&device, &mapping);
+    let testbed = Testbed::new(&mapping);
     print!("{}\n\n", testbed);
 
     let test = Test::new(
@@ -25,7 +25,7 @@ fn main() {
 
     print!("{}\n\n", test);
 
-    let mut res = testbed.execute(&[test]);
+    let res = testbed.execute(&[test]);
     if let Ok(results) = res {
         for r in results {
             println!("{}", r);

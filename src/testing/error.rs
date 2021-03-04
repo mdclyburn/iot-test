@@ -24,7 +24,6 @@ impl error::Error for Error {
             Error::IO(ref e) => Some(e),
             Error::GPIO(ref e) => Some(e),
             Error::Comm(ref e) => Some(e),
-            _ => None,
         }
     }
 }

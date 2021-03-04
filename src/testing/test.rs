@@ -1,19 +1,15 @@
 //! Defining and executing tests
 
-use std::borrow::Borrow;
 use std::cmp::{Ord, Ordering, PartialOrd, Reverse};
 use std::collections::BinaryHeap;
-use std::convert::From;
-use std::error;
 use std::fmt;
 use std::fmt::Display;
 use std::iter::IntoIterator;
 use std::time::{Duration, Instant};
 
-use rppal::gpio::{Gpio, InputPin, Level, Trigger};
+use rppal::gpio::{Gpio, Level, Trigger};
 
 use crate::comm::Signal;
-use crate::io;
 use crate::io::{DeviceInputs, DeviceOutputs};
 
 use super::Error;
@@ -69,19 +65,11 @@ impl Response {
     pub fn get_offset(&self, t0: Instant) -> Duration {
         self.time - t0
     }
-
-    pub fn get_pin_no(&self) -> u8 {
-        self.pin_no
-    }
-
-    pub fn get_output(&self) -> &Signal {
-        &self.output
-    }
 }
 
 impl Display for Response {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "output: {}", self.output)
+        write!(f, "response: {}", self.output)
     }
 }
 
@@ -159,11 +147,6 @@ impl Test {
     /// Returns the identifier of the test definition.
     pub fn get_id(&self) -> &str {
         &self.id
-    }
-
-    /// Returns defined criteria.
-    pub fn get_criteria(&self) -> &Vec<Criterion> {
-        &self.criteria
     }
 
     /// Drive test outputs (inputs to the device).

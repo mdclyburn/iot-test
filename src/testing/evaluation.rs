@@ -3,9 +3,10 @@
 use std::fmt;
 use std::fmt::Display;
 
-use super::{Error, Execution, Response, Result, Test};
+use super::{Execution, Response, Result, Test};
 
 /// Summary of an `Evaluation`.
+#[allow(dead_code)]
 #[derive(Copy, Clone, Debug)]
 pub enum Status {
     Complete,
@@ -65,7 +66,7 @@ impl Display for Evaluation {
             Status::Error => write!(f, "Error ({})", self.get_exec_result().as_ref().unwrap_err()),
             outcome => write!(f, "{} (in {:?})", outcome, self.get_exec_result().as_ref().unwrap().get_duration()),
         }?;
-        write!(f, "\n");
+        write!(f, "\n")?;
 
         if let Ok(ref execution) = self.exec_result {
             for response in &self.device_responses {

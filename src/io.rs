@@ -1,9 +1,7 @@
-use std::cell::{RefCell, Ref, RefMut};
 use std::collections::HashMap;
 use std::convert::From;
 use std::fmt;
 use std::fmt::Display;
-use std::sync::{Arc, Mutex};
 
 use rppal::gpio;
 use rppal::gpio::{Gpio, InputPin, OutputPin};
@@ -22,8 +20,6 @@ pub enum Error {
     Device(device::Error),
     Gpio(gpio::Error),
     UndefinedPin(u8),
-    InUse(u8),
-    WrongDir,
 }
 
 impl std::error::Error for Error {
@@ -39,11 +35,9 @@ impl std::error::Error for Error {
 impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Error::Device(_) => write!(f, "error with target interface"),
-            Error::Gpio(_) => write!(f, "error with GPIO interface"),
+            Error::Device(ref e) => write!(f, "error with target interface: {}", e),
+            Error::Gpio(ref e) => write!(f, "error with GPIO interface: {}", e),
             Error::UndefinedPin(pin_no) => write!(f, "target pin {} not mapped", pin_no),
-            Error::InUse(pin_no) => write!(f, "target pin {} in use elsewhere", pin_no),
-            Error::WrongDir => write!(f, "expected an input pin, got an output pin or vice versa"),
         }
     }
 }
@@ -74,7 +68,7 @@ impl Mapping {
             .map(|(h_pin, t_pin)| (*h_pin, *t_pin))
             .collect();
 
-        device.has_pins(numbering.iter().map(|(h, t)| *t))?;
+        device.has_pins(numbering.iter().map(|(_h, t)| *t))?;
 
         Ok(Mapping {
             device: device.clone(),
@@ -85,7 +79,7 @@ impl Mapping {
     pub fn get_inputs(&self) -> Result<DeviceInputs> {
         let input_numbering = self.numbering.iter()
             .map(|(h, t)| (*h, *t))
-            .filter(|(h, t)| self.device.direction_of(*t).unwrap() == Direction::In);
+            .filter(|(_h, t)| self.device.direction_of(*t).unwrap() == Direction::In);
         let mut inputs = Vec::new();
         let gpio = Gpio::new()?;
 
@@ -100,7 +94,7 @@ impl Mapping {
     pub fn get_outputs(&self) -> Result<DeviceOutputs> {
         let output_numbering = self.numbering.iter()
             .map(|(h, t)| (*h, *t))
-            .filter(|(h, t)| self.device.direction_of(*t).unwrap() == Direction::Out);
+            .filter(|(_h, t)| self.device.direction_of(*t).unwrap() == Direction::Out);
         let mut outputs = Vec::new();
         let gpio = Gpio::new()?;
 
@@ -147,12 +141,8 @@ impl<T> Pins<T> {
         }
     }
 
-    /// Returns whether the device has the pin mapped.
-    pub fn has_pin(&self, pin_no: u8) -> bool {
-        self.pins.contains_key(&pin_no)
-    }
-
     /// Returns a reference to the specified pin.
+    #[allow(dead_code)]
     pub fn get_pin(&self, pin_no: u8) -> Result<&T> {
         self.pins.get(&pin_no)
             .ok_or(Error::UndefinedPin(pin_no))
@@ -167,7 +157,7 @@ impl<T> Pins<T> {
     /// Returns all configured pins as plain references.
     pub fn get(&self) -> Result<Vec<&T>> {
         let pins = self.pins.iter()
-            .map(|(pin_no, pin)| pin)
+            .map(|(_pin_no, pin)| pin)
             .collect();
         Ok(pins)
     }

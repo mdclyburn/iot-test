@@ -3,14 +3,13 @@
 use std::fmt;
 use std::fmt::Display;
 use std::sync::mpsc;
-use std::sync::{Arc, Barrier, Mutex, RwLock};
+use std::sync::{Arc, Barrier, RwLock};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
-use crate::device::Device;
 use crate::io::Mapping;
 
-use super::{Error, Evaluation, Response, Test};
+use super::{Error, Evaluation, Test};
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -23,7 +22,7 @@ pub struct Testbed<'a> {
 
 impl<'a> Testbed<'a> {
     /// Create a new `Testbed`.
-    pub fn new(device: &'a Device, pin_mapping: &'a Mapping) -> Testbed<'a> {
+    pub fn new(pin_mapping: &'a Mapping) -> Testbed<'a> {
         Testbed {
             pin_mapping,
         }
