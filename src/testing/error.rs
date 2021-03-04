@@ -16,6 +16,7 @@ pub enum Error {
     IO(io::Error),
     GPIO(gpio::Error),
     Comm(mpsc::RecvError),
+    Observer(std::io::Error),
 }
 
 impl error::Error for Error {
@@ -24,6 +25,7 @@ impl error::Error for Error {
             Error::IO(ref e) => Some(e),
             Error::GPIO(ref e) => Some(e),
             Error::Comm(ref e) => Some(e),
+            Error::Observer(ref e) => Some(e),
         }
     }
 }
@@ -52,6 +54,7 @@ impl Display for Error {
             Error::IO(ref e) => write!(f, "I/O error: {}", e),
             Error::GPIO(ref e) => write!(f, "GPIO error while testing: {}", e),
             Error::Comm(ref e) => write!(f, "Thread communication error: {}", e),
+            Error::Observer(ref e) => write!(f, "Could not start observer thread: {}", e),
         }
     }
 }

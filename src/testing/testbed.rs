@@ -56,47 +56,50 @@ impl<'a> Testbed<'a> {
             let watch_start = Arc::clone(&watch_start);
             let mut outputs = self.pin_mapping.get_outputs()?;
 
-            thread::spawn(move || {
-                println!("watcher: started.");
+            thread::Builder::new()
+                .name("test-observer".to_string())
+                .spawn(move || {
+                    println!("observer: started.");
 
-                let mut responses = Vec::new();
-                loop {
-                    // wait for next test
-                    barrier.wait();
-
-                    // set up to watch for responses according to criteria
-                    if let Some(ref test) = *current_test.read().unwrap() {
-                        test.prep_observe(&mut outputs)
-                            .unwrap(); // <-- communicate back?
-
-                        // wait for test to begin
-                        println!("watcher: ready to begin test");
-                        barrier.wait();
-                        let t0 = Instant::now();
-                        *watch_start.write().unwrap() = Some(t0);
-                        println!("watcher: starting watch");
-
-                        test.observe(t0, &outputs, &mut responses)
-                            .unwrap();
-
-                        // wait for output responses from dut or the end of the test
-                        // can I just wait for the barrier here or will an interrupt stop it?
+                    let mut responses = Vec::new();
+                    loop {
+                        // wait for next test
                         barrier.wait();
 
-                        // TODO: clear interrupts
+                        // set up to watch for responses according to criteria
+                        if let Some(ref test) = *current_test.read().unwrap() {
+                            test.prep_observe(&mut outputs)
+                                .unwrap(); // <-- communicate back?
 
-                        for r in responses.drain(..) {
-                            schannel.send(Some(r)).unwrap();
+                            // wait for test to begin
+                            println!("observer: ready to begin test");
+                            barrier.wait();
+                            let t0 = Instant::now();
+                            *watch_start.write().unwrap() = Some(t0);
+                            println!("observer: starting watch");
+
+                            test.observe(t0, &outputs, &mut responses)
+                                .unwrap();
+
+                            // wait for output responses from dut or the end of the test
+                            // can I just wait for the barrier here or will an interrupt stop it?
+                            barrier.wait();
+
+                            // TODO: clear interrupts
+
+                            for r in responses.drain(..) {
+                                schannel.send(Some(r)).unwrap();
+                            }
+                            schannel.send(None).unwrap();
+                        } else {
+                            // no more tests to run
+                            break;
                         }
-                        schannel.send(None).unwrap();
-                    } else {
-                        // no more tests to run
-                        break;
                     }
-                }
 
-                println!("watcher: exiting");
-            })
+                    println!("observer: exiting");
+                })
+                .map_err(|e| Error::Observer(e))?
         };
 
         let mut launching_at: Option<Instant> = None;
@@ -105,7 +108,7 @@ impl<'a> Testbed<'a> {
 
             let mut inputs = self.pin_mapping.get_inputs()?;
 
-            // wait for watcher thread to be ready
+            // wait for observer thread to be ready
             barrier.wait();
             launching_at = Some(Instant::now());
 
@@ -115,7 +118,7 @@ impl<'a> Testbed<'a> {
 
             let exec_result = test.execute(launching_at.unwrap(), &mut inputs);
 
-            // release watcher thread
+            // release observer thread
             println!("executor: test execution complete");
             barrier.wait();
 
