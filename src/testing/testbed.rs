@@ -85,7 +85,10 @@ impl<'a> Testbed<'a> {
                             // can I just wait for the barrier here or will an interrupt stop it?
                             barrier.wait();
 
-                            // TODO: clear interrupts
+                            println!("observer: cleaning up interrupts");
+                            for pin in &mut outputs {
+                                pin.clear_interrupt().unwrap();
+                            }
 
                             for r in responses.drain(..) {
                                 schannel.send(Some(r)).unwrap();

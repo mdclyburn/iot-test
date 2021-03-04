@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::convert::From;
 use std::fmt;
 use std::fmt::Display;
+use std::iter::{Iterator, IntoIterator};
 
 use rppal::gpio;
 use rppal::gpio::{Gpio, InputPin, OutputPin};
@@ -160,5 +161,35 @@ impl<T> Pins<T> {
             .map(|(_pin_no, pin)| pin)
             .collect();
         Ok(pins)
+    }
+}
+
+pub struct PinsIterMut<'a, T> {
+    pins_it: std::collections::hash_map::IterMut<'a, u8, T>,
+}
+
+impl<'a, T> PinsIterMut<'a, T> {
+    fn new(pins: &'a mut HashMap<u8, T>) -> PinsIterMut<'a, T> {
+        PinsIterMut {
+            pins_it: pins.iter_mut(),
+        }
+    }
+}
+
+impl<'a, T> Iterator for PinsIterMut<'a, T> {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.pins_it.next()
+            .map(|(_pin_no, pin)| pin)
+    }
+}
+
+impl<'a, T> IntoIterator for &'a mut Pins<T> {
+    type Item = &'a mut T;
+    type IntoIter = PinsIterMut<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PinsIterMut::new(&mut self.pins)
     }
 }
