@@ -1,3 +1,5 @@
+//! Configure and access I/O.
+
 use std::collections::HashMap;
 use std::convert::From;
 use std::fmt;
@@ -16,10 +18,14 @@ type Result<T> = std::result::Result<T, Error>;
 pub type DeviceInputs = Pins<OutputPin>;
 pub type DeviceOutputs = Pins<InputPin>;
 
+/// I/O error.
 #[derive(Debug)]
 pub enum Error {
+    /// Error originating in the device configuration.
     Device(device::Error),
+    /// Error originating from the GPIO access implementation.
     Gpio(gpio::Error),
+    /// The specified pin is not available.
     UndefinedPin(u8),
 }
 
@@ -55,6 +61,11 @@ impl From<device::Error> for Error {
     }
 }
 
+/** Interface to I/O between the testbed and the device under test.
+
+`Mapping` defines the interface between the testbed and the device under test.
+Creating a mapping with [`Mapping::new`] ensures a valid testbed-device configuration provided the [`Device`] definition is correct.
+*/
 #[derive(Debug)]
 pub struct Mapping {
     device: Device,
@@ -62,6 +73,14 @@ pub struct Mapping {
 }
 
 impl Mapping {
+    /** Create a new `Mapping`.
+
+    Returns and Ok(Mapping) or an error with the reason for the failure.
+
+    # Examples
+    ```
+    let mapping = Mapping::new(&device, &[(17, 23), (2, 13)]);
+     */
     pub fn new<'a, T>(device: &Device, host_target_map: T) -> Result<Mapping> where
         T: IntoIterator<Item = &'a (u8, u8)> {
         let numbering: HashMap<u8, u8> = host_target_map
@@ -77,6 +96,11 @@ impl Mapping {
         })
     }
 
+    /** Returns the I/O that provides inputs to the device under test.
+
+    Obtains the outputs from the testbed that are connected to _inputs_ to the device under test.
+    This call will only succeed with an `Ok(...)` if _all_ pins are available.
+     */
     pub fn get_inputs(&self) -> Result<DeviceInputs> {
         let input_numbering = self.numbering.iter()
             .map(|(h, t)| (*h, *t))
@@ -92,6 +116,11 @@ impl Mapping {
         Ok(DeviceInputs::new(inputs))
     }
 
+    /** Returns the I/O that provides outputs to the device under test.
+
+    Obtains the inputs from the testbed that are connected to _outputs_ from the device under test.
+    This call will only succeed with an `Ok(...)` if _all_ pins are available.
+     */
     pub fn get_outputs(&self) -> Result<DeviceOutputs> {
         let output_numbering = self.numbering.iter()
             .map(|(h, t)| (*h, *t))
@@ -165,6 +194,21 @@ impl<T> Pins<T> {
     }
 }
 
+/** An iterator over mutable pins.
+
+This iterator allows the pins that are iterated over to change state
+(e.g., set/clear interrupts or change logic state).
+
+# Examples
+```
+for p in &mut pins {
+    println!("Pin #{:02}", p.pin());
+    p.set_high()?;
+    thread::sleep(500);
+    p.set_low()?;
+}
+```
+*/
 pub struct PinsIterMut<'a, T> {
     pins_it: std::collections::hash_map::IterMut<'a, u8, T>,
 }
