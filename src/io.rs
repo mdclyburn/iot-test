@@ -11,10 +11,12 @@ use std::iter::{Iterator, IntoIterator};
 
 use rppal::gpio;
 use rppal::gpio::{Gpio, InputPin, OutputPin};
+use rppal::i2c::I2c;
 
 use crate::comm::Direction;
 use crate::device;
 use crate::device::Device;
+use crate::energy::EnergyMeter;
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -32,6 +34,8 @@ pub enum Error {
     Gpio(gpio::Error),
     /// Requested pin is not mapped
     UndefinedPin(u8),
+    /// Impossible mapping specified
+    InvalidMap(String),
 }
 
 impl std::error::Error for Error {
@@ -50,6 +54,7 @@ impl Display for Error {
             Error::Device(ref e) => write!(f, "error with target interface: {}", e),
             Error::Gpio(ref e) => write!(f, "error with GPIO interface: {}", e),
             Error::UndefinedPin(pin_no) => write!(f, "target pin {} not mapped", pin_no),
+            Error::InvalidMap(ref msg) => write!(f, "bad mapping: {}", msg),
         }
     }
 }
@@ -75,6 +80,7 @@ Creating a mapping with [`Mapping::new`] ensures a valid testbed-device configur
 pub struct Mapping {
     device: Device,
     numbering: HashMap<u8, u8>,
+    energy_meter: Option<I2c>,
 }
 
 impl Mapping {
@@ -85,9 +91,14 @@ impl Mapping {
     # Examples
     ```
     let mapping = Mapping::new(&device, &[(17, 23), (2, 13)]);
+    ```
      */
-    pub fn new<'a, T>(device: &Device, host_target_map: T) -> Result<Mapping> where
-        T: IntoIterator<Item = &'a (u8, u8)> {
+    pub fn new<'a, T>(device: &Device,
+                      host_target_map: T,
+                      provide_i2c: bool) -> Result<Mapping>
+    where
+        T: IntoIterator<Item = &'a (u8, u8)>
+    {
         let numbering: HashMap<u8, u8> = host_target_map
             .into_iter()
             .map(|(h_pin, t_pin)| (*h_pin, *t_pin))
@@ -95,9 +106,20 @@ impl Mapping {
 
         device.has_pins(numbering.iter().map(|(_h, t)| *t))?;
 
+        // Allocate I2C pins.
+        if provide_i2c {
+            let mapped = numbering.iter()
+                .find(|(h, _t)| **h == 3 || **h == 5);
+            if let Some((h_pin, _t_pin)) = mapped {
+                let msg = format!("Pin {} cannot be allocated for separate I2C because it is mapped.", h_pin);
+                return Err(Error::InvalidMap(msg));
+            }
+        }
+
         Ok(Mapping {
             device: device.clone(),
             numbering,
+            energy_meter: None,
         })
     }
 

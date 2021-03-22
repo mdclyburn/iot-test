@@ -1,5 +1,6 @@
 mod comm;
 mod device;
+mod energy;
 mod io;
 mod testing;
 
@@ -13,7 +14,7 @@ fn main() {
         (13, (Direction::Out, SignalClass::Digital)),
         (23, (Direction::In, SignalClass::Digital)),
     ]);
-    let mapping = Mapping::new(&device, &[(17, 23), (2, 13)]).unwrap();
+    let mapping = Mapping::new(&device, &[(17, 23), (2, 13)], false).unwrap();
     let testbed = Testbed::new(&mapping);
     print!("{}\n\n", testbed);
 
