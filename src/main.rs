@@ -1,6 +1,7 @@
 mod comm;
 mod device;
-mod energy;
+mod facility;
+mod hw;
 mod io;
 mod testing;
 
