@@ -11,6 +11,7 @@ use std::iter::{Iterator, IntoIterator};
 
 use rppal::gpio;
 use rppal::gpio::{Gpio, InputPin, OutputPin};
+use rppal::i2c;
 use rppal::i2c::I2c;
 
 use crate::comm::Direction;
@@ -34,8 +35,10 @@ pub enum Error {
     Gpio(gpio::Error),
     /// Requested pin is not mapped
     UndefinedPin(u8),
-    /// Impossible mapping specified
-    InvalidMap(String),
+    /// Mapping does not allow I2C
+    I2CUnavailable,
+    /// I2C initialization error
+    I2C(i2c::Error),
 }
 
 impl std::error::Error for Error {
@@ -54,7 +57,8 @@ impl Display for Error {
             Error::Device(ref e) => write!(f, "error with target interface: {}", e),
             Error::Gpio(ref e) => write!(f, "error with GPIO interface: {}", e),
             Error::UndefinedPin(pin_no) => write!(f, "target pin {} not mapped", pin_no),
-            Error::InvalidMap(ref msg) => write!(f, "bad mapping: {}", msg),
+            Error::I2CUnavailable => write!(f, "I2C pins (2, 3) are mapped"),
+            Error::I2C(ref e) => write!(f, "could obtain I2C interface: {}", e),
         }
     }
 }
@@ -62,6 +66,12 @@ impl Display for Error {
 impl From<gpio::Error> for Error {
     fn from(e: gpio::Error) -> Self {
         Error::Gpio(e)
+    }
+}
+
+impl From<i2c::Error> for Error {
+    fn from(e: i2c::Error) -> Self {
+        Error::I2C(e)
     }
 }
 
@@ -80,7 +90,6 @@ Creating a mapping with [`Mapping::new`] ensures a valid testbed-device configur
 pub struct Mapping {
     device: Device,
     numbering: HashMap<u8, u8>,
-    energy_meter: Option<I2c>,
 }
 
 impl Mapping {
@@ -93,9 +102,7 @@ impl Mapping {
     let mapping = Mapping::new(&device, &[(17, 23), (2, 13)]);
     ```
      */
-    pub fn new<'a, T>(device: &Device,
-                      host_target_map: T,
-                      provide_i2c: bool) -> Result<Mapping>
+    pub fn new<'a, T>(device: &Device, host_target_map: T) -> Result<Mapping>
     where
         T: IntoIterator<Item = &'a (u8, u8)>
     {
@@ -106,20 +113,9 @@ impl Mapping {
 
         device.has_pins(numbering.iter().map(|(_h, t)| *t))?;
 
-        // Allocate I2C pins.
-        if provide_i2c {
-            let mapped = numbering.iter()
-                .find(|(h, _t)| **h == 3 || **h == 5);
-            if let Some((h_pin, _t_pin)) = mapped {
-                let msg = format!("Pin {} cannot be allocated for separate I2C because it is mapped.", h_pin);
-                return Err(Error::InvalidMap(msg));
-            }
-        }
-
         Ok(Mapping {
             device: device.clone(),
             numbering,
-            energy_meter: None,
         })
     }
 
@@ -128,7 +124,7 @@ impl Mapping {
     This function returns Ok([`DeviceInputs`]) only when *all* pins are available.
     The pins defined in the mapping must not be held elsewhere in the program.
      */
-    pub fn get_inputs(&self) -> Result<DeviceInputs> {
+    pub fn get_gpio_inputs(&self) -> Result<DeviceInputs> {
         let input_numbering = self.numbering.iter()
             .map(|(h, t)| (*h, *t))
             .filter(|(_h, t)| self.device.direction_of(*t).unwrap() == Direction::In);
@@ -148,7 +144,7 @@ impl Mapping {
     This function returns Ok([`DeviceOutputs`]) only when *all* pins are available.
     The pins defined in the mapping must not be held elsewhere in the program.
      */
-    pub fn get_outputs(&self) -> Result<DeviceOutputs> {
+    pub fn get_gpio_outputs(&self) -> Result<DeviceOutputs> {
         let output_numbering = self.numbering.iter()
             .map(|(h, t)| (*h, *t))
             .filter(|(_h, t)| self.device.direction_of(*t).unwrap() == Direction::Out);
@@ -161,6 +157,17 @@ impl Mapping {
         }
 
         Ok(DeviceOutputs::new(outputs))
+    }
+
+    pub fn get_i2c(&self) -> Result<I2c> {
+        let i2c_pins_mapped =
+            self.numbering.contains_key(&2)
+            || self.numbering.contains_key(&3);
+        if i2c_pins_mapped {
+            Err(Error::I2CUnavailable)
+        } else {
+            Ok(I2c::new()?)
+        }
     }
 }
 

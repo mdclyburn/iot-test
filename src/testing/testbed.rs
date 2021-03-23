@@ -54,7 +54,7 @@ impl<'a> Testbed<'a> {
             let barrier = Arc::clone(&barrier);
             let current_test = Arc::clone(&current_test);
             let watch_start = Arc::clone(&watch_start);
-            let mut outputs = self.pin_mapping.get_outputs()?;
+            let mut outputs = self.pin_mapping.get_gpio_outputs()?;
 
             thread::Builder::new()
                 .name("test-observer".to_string())
@@ -109,7 +109,7 @@ impl<'a> Testbed<'a> {
         for test in tests {
             *current_test.write().unwrap() = Some(test.clone());
 
-            let mut inputs = self.pin_mapping.get_inputs()?;
+            let mut inputs = self.pin_mapping.get_gpio_inputs()?;
 
             // wait for observer thread to be ready
             barrier.wait();
