@@ -21,4 +21,8 @@ impl ADC for PCF8591 {
     fn get_channel(&self, channel_no: u8) -> ADCChannel {
         ADCChannel::new(self, channel_no)
     }
+
+    fn sample(&self, channel_no: u8) -> u32 {
+        0
+    }
 }

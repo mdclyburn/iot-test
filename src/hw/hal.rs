@@ -3,6 +3,9 @@ use std::fmt::Debug;
 pub trait ADC: Debug {
     /// Retrieve an ADC channel.
     fn get_channel(&self, channel_no: u8) -> ADCChannel;
+
+    /// Sample a channel's analog signal.
+    fn sample(&self, channel_no: u8) -> u32;
 }
 
 #[derive(Debug)]
@@ -20,6 +23,6 @@ impl<'a> ADCChannel<'a> {
     }
 
     fn sample(&self) -> u32 {
-        0
+        self.adc.sample(self.channel)
     }
 }
