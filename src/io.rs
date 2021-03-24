@@ -17,7 +17,6 @@ use rppal::i2c::I2c;
 use crate::comm::Direction;
 use crate::device;
 use crate::device::Device;
-use crate::facility::EnergyMeter;
 
 type Result<T> = std::result::Result<T, Error>;
 

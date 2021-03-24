@@ -4,13 +4,14 @@ use crate::facility::EnergyMeter;
 
 pub mod acs723;
 pub mod pcf8591;
+pub mod hal;
 
 pub use acs723::ACS723;
 pub use pcf8591::PCF8591;
 
-pub type PCF8591_ACS723 = (PCF8591, ACS723);
+use hal::ADCChannel;
 
-impl EnergyMeter for PCF8591_ACS723 {
+impl<'a> EnergyMeter for (ADCChannel<'a>, ACS723) {
     fn current_draw(&self) -> u32 {
         0
     }
