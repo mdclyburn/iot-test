@@ -5,8 +5,11 @@ mod hw;
 mod io;
 mod testing;
 
+use rppal;
+
 use crate::comm::{Direction, Class as SignalClass, Signal};
 use crate::device::Device;
+use crate::hw::{ACS723, PCF8591};
 use crate::io::Mapping;
 use crate::testing::{Criterion, Test, Testbed, Operation};
 
@@ -16,6 +19,12 @@ fn main() {
         (23, (Direction::In, SignalClass::Digital)),
     ]);
     let mapping = Mapping::new(&device, &[(17, 23), (2, 13)]).unwrap();
+
+    let _energy_meter = (
+        PCF8591::new(rppal::i2c::I2c::new().unwrap()),
+        ACS723
+    );
+    let _emr: &facility::EnergyMeter = &_energy_meter;
     let testbed = Testbed::new(&mapping);
     print!("{}\n\n", testbed);
 

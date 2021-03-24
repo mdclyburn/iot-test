@@ -159,6 +159,12 @@ impl Mapping {
         Ok(DeviceOutputs::new(outputs))
     }
 
+    /** Configures and returns the I2C interface.
+
+    # Errors
+    - If the I/O mapping has mapped the pins used for the I2C bus, this function returns `Error::I2CUnavailable`.
+    - If the underlying implementation encounters an error initializing I2C, this function returns `Error::I2C`.
+     */
     pub fn get_i2c(&self) -> Result<I2c> {
         let i2c_pins_mapped =
             self.numbering.contains_key(&2)
