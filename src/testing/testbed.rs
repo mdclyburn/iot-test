@@ -1,5 +1,6 @@
 //! Configuring tests and executing tests
 
+use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Display;
 use std::sync::mpsc;
@@ -7,6 +8,7 @@ use std::sync::{Arc, Barrier, RwLock};
 use std::thread;
 use std::time::Instant;
 
+use crate::facility::EnergyMetering;
 use crate::io::Mapping;
 
 use super::{Error, Evaluation, Test};
@@ -15,16 +17,23 @@ type Result<T> = std::result::Result<T, Error>;
 
 /// Test suite executor
 #[derive(Debug)]
-pub struct Testbed<'a> {
+pub struct Testbed<'a, 'b> {
     // TODO: reference? why?
     pin_mapping: &'a Mapping,
+    energy_meters: HashMap<String, &'b dyn EnergyMetering>
 }
 
-impl<'a> Testbed<'a> {
+impl<'a, 'b> Testbed<'a, 'b> {
     /// Create a new `Testbed`.
-    pub fn new(pin_mapping: &'a Mapping) -> Testbed<'a> {
+    pub fn new<T>(pin_mapping: &'a Mapping, energy_meters: T) -> Testbed<'a, 'b>
+    where
+        T: IntoIterator<Item = (&'b str, &'b dyn EnergyMetering)>
+    {
         Testbed {
             pin_mapping,
+            energy_meters: energy_meters.into_iter()
+                .map(|(id, meter)| (id.to_string(), meter))
+                .collect()
         }
     }
 
@@ -154,7 +163,7 @@ impl<'a> Testbed<'a> {
     }
 }
 
-impl<'a> Display for Testbed<'a> {
+impl<'a, 'b> Display for Testbed<'a, 'b> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Testbed\n{}", self.pin_mapping)
     }
