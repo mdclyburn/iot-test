@@ -9,7 +9,6 @@ use crate::comm::{Direction, Class as SignalClass, Signal};
 use crate::device::Device;
 use crate::facility::EnergyMetering;
 use crate::hw::INA219;
-use crate::hw::hal::ADC;
 use crate::io::Mapping;
 use crate::testing::{Criterion, Test, Testbed, Operation};
 
@@ -19,18 +18,16 @@ fn main() {
         (13, (Direction::Out, SignalClass::Digital)),
         (23, (Direction::In, SignalClass::Digital)),
     ]);
-    let mapping = Mapping::new(&device, &[(17, 23), (2, 13)]).unwrap();
+    let mapping = Mapping::new(&device, &[(17, 23), (27, 13)]).unwrap();
 
     // energy metering
-    let ina219 = INA219::new(
-        mapping.get_i2c().unwrap(),
-        0b10000000)
+    let ina219 = INA219::new(mapping.get_i2c().unwrap(), 0b01000000)
         .unwrap();
-    let energy_meters: &[(&str, &dyn EnergyMetering)] = &[("system", &ina219)];
+    let energy_meters: Vec<(&str, Box<dyn EnergyMetering>)> = vec![("system", Box::new(ina219))];
 
     let testbed = Testbed::new(
         &mapping,
-        energy_meters.iter().copied());
+        energy_meters);
     print!("{}\n\n", testbed);
 
     let test = Test::new(

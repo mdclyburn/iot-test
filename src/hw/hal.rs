@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-pub trait ADC: Debug {
+pub trait ADC: Debug + Send {
     /// Retrieve an ADC channel.
     fn get_channel(&self, channel_no: u8) -> ADCChannel;
 

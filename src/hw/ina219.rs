@@ -1,4 +1,6 @@
+use std::borrow::BorrowMut;
 use std::cell::RefCell;
+use std::sync::{Mutex, MutexGuard};
 
 use rppal::i2c::I2c;
 
@@ -20,14 +22,14 @@ mod register {
 #[derive(Debug)]
 pub struct INA219 {
     address: u8,
-    i2c: RefCell<I2c>,
+    i2c: Mutex<RefCell<I2c>>,
 }
 
 impl INA219 {
     pub fn new(i2c: I2c, address: u8) -> Result<INA219, &'static str> {
         let ina = INA219 {
             address,
-            i2c: RefCell::new(i2c),
+            i2c: Mutex::new(RefCell::new(i2c)),
         };
         ina.init()?;
 
@@ -39,8 +41,14 @@ impl INA219 {
     }
 
     fn init(&self) -> Result<(), &'static str> {
-        self.i2c.borrow_mut()
-            .set_slave_address(self.address as u16)
+        let i2c = self.lock_i2c()?;
+        let result = (*i2c).borrow_mut()
+            .set_slave_address(self.address as u16);
+        if let Err(ref e) = result {
+            println!("Failed to set peripheral address: {}", e);
+        }
+
+        result
             .map_err(|_e| "failed to set peripheral address")
     }
 
@@ -48,9 +56,10 @@ impl INA219 {
         let buf = [reg_addr];
         let mut out = [0; 2];
 
-        self.i2c.borrow_mut().write(&buf)
+        let i2c = self.lock_i2c()?;
+        (*i2c).borrow_mut().write(&buf)
             .map_err(|_e| "failed to write register pointer")?;
-        self.i2c.borrow_mut().read(&mut out)
+        (*i2c).borrow_mut().read(&mut out)
             .map_err(|_e| "failed to read register contents")?;
 
         Ok(((out[0] as u16) << 8) & (out[1] as u16))
@@ -60,10 +69,18 @@ impl INA219 {
         let buf = [reg_addr,
                    (value >> 8) as u8,
                    (value & 0xFF) as u8];
+        let i2c = self.lock_i2c()?;
 
-        self.i2c.borrow_mut().write(&buf)
+        let result = (*i2c).borrow_mut().write(&buf)
             .map(|_bytes_written| ())
-            .map_err(|_e| "failed to write register")
+            .map_err(|_e| "failed to write register");
+
+        result
+    }
+
+    fn lock_i2c(&self) -> Result<MutexGuard<'_, RefCell<I2c>>, &'static str> {
+        self.i2c.lock()
+            .map_err(|_e| "failed to lock I2C interface")
     }
 }
 

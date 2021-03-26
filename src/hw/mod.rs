@@ -13,8 +13,8 @@ pub use pcf8591::PCF8591;
 
 use hal::ADCChannel;
 
-impl<'a> EnergyMetering for (ADCChannel<'a>, ACS723) {
-    fn current_draw(&self) -> u32 {
-        0
-    }
-}
+// impl<'a> EnergyMetering for (ADCChannel<'a>, ACS723) {
+//     fn current_draw(&self) -> u32 {
+//         0
+//     }
+// }

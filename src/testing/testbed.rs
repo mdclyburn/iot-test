@@ -4,7 +4,10 @@ use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Display;
 use std::sync::mpsc;
-use std::sync::{Arc, Barrier, RwLock};
+use std::sync::{Arc,
+                Barrier,
+                Mutex,
+                RwLock};
 use std::thread;
 use std::time::Instant;
 
@@ -17,23 +20,25 @@ type Result<T> = std::result::Result<T, Error>;
 
 /// Test suite executor
 #[derive(Debug)]
-pub struct Testbed<'a, 'b> {
+pub struct Testbed<'a> {
     // TODO: reference? why?
     pin_mapping: &'a Mapping,
-    energy_meters: HashMap<String, &'b dyn EnergyMetering>
+    energy_meters: Arc<Mutex<HashMap<String, Box<dyn EnergyMetering>>>>,
 }
 
-impl<'a, 'b> Testbed<'a, 'b> {
+impl<'a> Testbed<'a> {
     /// Create a new `Testbed`.
-    pub fn new<T>(pin_mapping: &'a Mapping, energy_meters: T) -> Testbed<'a, 'b>
+    pub fn new<'b, T>(pin_mapping: &'a Mapping, energy_meters: T) -> Testbed<'a>
     where
-        T: IntoIterator<Item = (&'b str, &'b dyn EnergyMetering)>
+        T: IntoIterator<Item = (&'b str, Box<dyn EnergyMetering>)>
     {
+        let energy_meters = energy_meters.into_iter()
+            .map(|(id, meter)| (id.to_string(), meter))
+            .collect();
+
         Testbed {
             pin_mapping,
-            energy_meters: energy_meters.into_iter()
-                .map(|(id, meter)| (id.to_string(), meter))
-                .collect()
+            energy_meters: Arc::new(Mutex::new(energy_meters)),
         }
     }
 
@@ -114,6 +119,23 @@ impl<'a, 'b> Testbed<'a, 'b> {
                 .map_err(|e| Error::Observer(e))?
         };
 
+        println!("Starting energy metering thread.");
+        let energy_thread = {
+            let meters = Arc::clone(&self.energy_meters);
+
+            thread::Builder::new()
+                .name("test-metering".to_string())
+                .spawn(move || {
+                    println!("metering: started.");
+
+                    let meters = meters.lock().unwrap();
+
+                    for (id, meter) in &(*meters) {
+                        println!("metering: {} says {}", id, meter.current_draw());
+                    }
+                })
+        };
+
         let mut launching_at: Option<Instant> = None;
         for test in tests {
             *current_test.write().unwrap() = Some(test.clone());
@@ -163,7 +185,7 @@ impl<'a, 'b> Testbed<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Display for Testbed<'a, 'b> {
+impl<'a> Display for Testbed<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Testbed\n{}", self.pin_mapping)
     }
