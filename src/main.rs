@@ -21,7 +21,7 @@ fn main() {
     let mapping = Mapping::new(&device, &[(17, 23), (27, 13)]).unwrap();
 
     // energy metering
-    let ina219 = INA219::new(mapping.get_i2c().unwrap(), 0b01000000)
+    let ina219 = INA219::new(mapping.get_i2c().unwrap(), 0x40)
         .unwrap();
     let energy_meters: Vec<(&str, Box<dyn EnergyMetering>)> = vec![("system", Box::new(ina219))];
 
