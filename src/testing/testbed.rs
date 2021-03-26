@@ -57,7 +57,7 @@ impl<'a> Testbed<'a> {
     {
         let mut test_results = Vec::new();
 
-        let barrier = Arc::new(Barrier::new(2));
+        let barrier = Arc::new(Barrier::new(3));
         let current_test: Arc<RwLock<Option<Test>>> = Arc::new(RwLock::new(None));
         let watch_start: Arc<RwLock<Option<Instant>>> = Arc::new(RwLock::new(None));
 
@@ -121,6 +121,8 @@ impl<'a> Testbed<'a> {
 
         println!("Starting energy metering thread.");
         let energy_thread = {
+            let barrier = Arc::clone(&barrier);
+            let current_test = Arc::clone(&current_test);
             let meters = Arc::clone(&self.energy_meters);
 
             thread::Builder::new()
@@ -128,10 +130,29 @@ impl<'a> Testbed<'a> {
                 .spawn(move || {
                     println!("metering: started.");
 
-                    let meters = meters.lock().unwrap();
+                    loop {
+                        let meters = meters.lock().unwrap();
 
-                    for (id, meter) in &(*meters) {
-                        println!("metering: {} says {}", id, meter.current_draw());
+                        // wait for next test
+                        barrier.wait();
+
+                        if let Some(ref test) = *current_test.read().unwrap() {
+                            // wait for test to begin
+                            println!("metering: ready to begin test");
+                            barrier.wait();
+                        }
+
+                        println!("metering: starting metering");
+
+                        // do metering
+
+                        for (id, meter) in &(*meters) {
+                            println!("metering: {} says {}", id, meter.current_draw());
+                        }
+
+                        barrier.wait();
+
+                        // communicate results back
                     }
                 })
         };
