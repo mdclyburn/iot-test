@@ -30,7 +30,7 @@ fn main() {
 
     let testbed = Testbed::new(
         &mapping,
-        energy_meters.iter().cloned());
+        energy_meters.iter().copied());
     print!("{}\n\n", testbed);
 
     let test = Test::new(
