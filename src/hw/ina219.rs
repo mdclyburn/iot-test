@@ -1,5 +1,5 @@
 use std::cell::{RefCell, RefMut};
-use std::sync::{Mutex, MutexGuard};
+use std::sync::Mutex;
 
 use rppal::i2c::I2c;
 
@@ -23,6 +23,7 @@ pub struct INA219 {
 }
 
 impl INA219 {
+    /// Create a new INA219 driver.
     pub fn new(i2c: I2c, address: u8) -> Result<INA219, String> {
         let ina = INA219 {
             address,
@@ -33,6 +34,13 @@ impl INA219 {
         Ok(ina)
     }
 
+    /// Reset the INA219.
+    pub fn reset(&self) -> Result<(), String> {
+        let config = self.current_configuration()? | ((1 as u16) << 15);
+        self.write(register::CONFIGURATION, config)
+    }
+
+    /// Return the current reading.
     pub fn read_current(&self) -> Result<u16, String> {
         self.read(register::CURRENT)
     }
@@ -43,9 +51,6 @@ impl INA219 {
                 .map_err(|e| format!("failed to set peripheral address: {}", e))
         })?;
 
-        let conf = self.read(register::CONFIGURATION)
-            .map_err(|e| format!("failed to read conf register: {}", e))?;
-        println!("configuration register: {:X}", conf);
         Ok(())
     }
 
@@ -79,6 +84,10 @@ impl INA219 {
             .map_err(|e| format!("failed to lock I2C interface: {}", e))?;
 
         op(i2c_cell.borrow_mut())
+    }
+
+    fn current_configuration(&self) -> Result<u16, String> {
+        self.read(register::CONFIGURATION)
     }
 }
 
