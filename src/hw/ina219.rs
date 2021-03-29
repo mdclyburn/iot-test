@@ -1,12 +1,9 @@
-use std::borrow::BorrowMut;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::sync::{Mutex, MutexGuard};
 
 use rppal::i2c::I2c;
 
 use crate::facility::EnergyMetering;
-
-use super::hal::{ADC, ADCChannel};
 
 #[allow(unused)]
 mod register {
@@ -41,40 +38,47 @@ impl INA219 {
     }
 
     fn init(&self) -> Result<(), String> {
-        let i2c = self.lock_i2c()?;
-        let result = (*i2c).borrow_mut()
-            .set_slave_address(self.address as u16)
-            .map_err(|e| format!("failed to set peripheral address: {}", e));
+        self.with_i2c(|mut i2c| {
+            i2c.set_slave_address(self.address as u16)
+                .map_err(|e| format!("failed to set peripheral address: {}", e))
+        })?;
 
-        result
+        let conf = self.read(register::CONFIGURATION)
+            .map_err(|e| format!("failed to read conf register: {}", e))?;
+        println!("configuration register: {:X}", conf);
+        Ok(())
     }
 
     fn read(&self, reg_addr: u8) -> Result<u16, String> {
         let mut out = [0xff; 2];
-        let i2c = self.lock_i2c()?;
-
-        (*i2c).borrow_mut().write_read(&[reg_addr], &mut out)
-            .map_err(|e| format!("failed to perform write-read: {}", e))?;
-
-        Ok(((out[0] as u16) << 8) | (out[1] as u16))
+        self.with_i2c(|i2c| {
+            i2c.write_read(&[reg_addr], &mut out)
+                .map_err(|e| format!("failed to perform write-read: {}", e))?;
+            Ok(((out[0] as u16) << 8) | (out[1] as u16))
+        })
     }
 
     fn write(&self, reg_addr: u8, value: u16) -> Result<(), String> {
-        let buf = [reg_addr,
-                   (value >> 8) as u8,
-                   (value & 0xFF) as u8];
-        let i2c = self.lock_i2c()?;
-
-        let result = (*i2c).borrow_mut().write(&buf)
-            .map(|_bytes_written| ())
-            .map_err(|e| format!("failed to write register: {}", e));
-
-        result
+        let buf = [
+            reg_addr,
+            (value >> 8) as u8,
+            (value & 0xFF) as u8,
+        ];
+        self.with_i2c(|mut i2c| {
+            i2c.write(&buf)
+                .map(|_bytes_written| ())
+                .map_err(|e| format!("failed to write {:X} register: {}", reg_addr, e))
+        })
     }
 
-    fn lock_i2c(&self) -> Result<MutexGuard<'_, RefCell<I2c>>, String> {
-        self.i2c.lock()
-            .map_err(|e| format!("failed to lock I2C interface: {}", e))
+    fn with_i2c<F, T>(&self, op: F) -> Result<T, String>
+    where
+        F: FnOnce(RefMut<'_, I2c>) -> Result<T, String>
+    {
+        let i2c_cell = self.i2c.lock()
+            .map_err(|e| format!("failed to lock I2C interface: {}", e))?;
+
+        op(i2c_cell.borrow_mut())
     }
 }
 
