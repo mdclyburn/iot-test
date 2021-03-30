@@ -1,5 +1,7 @@
 use std::cell::{RefCell, RefMut};
 use std::sync::Mutex;
+use std::thread;
+use std::time::Duration;
 
 use rppal::i2c::I2c;
 
@@ -50,6 +52,25 @@ impl INA219 {
             i2c.set_slave_address(self.address as u16)
                 .map_err(|e| format!("failed to set peripheral address: {}", e))
         })?;
+
+        // Perform a reset by writing to the highest configuration bit.
+        self.write(register::CONFIGURATION, (1 as u16) << 15)?;
+        thread::sleep(Duration::from_micros(40)); // need >=40us after reset.
+
+        /* Set configuration; see INA219 documentation for details.
+
+        - gain amplifier: /4
+        - ADC resolution/averaging: 12-bit
+        - shunt ADC resolution: 12-bit
+        - operating mode: shunt + bus, continuous
+        -----
+        Should yield a +/- 1.6A range with 0.390625mA resolution.
+         */
+        let config = 0b0_0_0_10_1111_0011_111;
+        self.write(register::CONFIGURATION, config)?;
+        self.write(register::CALIBRATION, 1025)?;
+        println!("Configuration: {:016b}", self.read(register::CONFIGURATION)?);
+        println!("Calibration: {:016b}", self.read(register::CALIBRATION)?);
 
         Ok(())
     }

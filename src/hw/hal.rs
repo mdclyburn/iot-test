@@ -14,6 +14,7 @@ pub struct ADCChannel<'a> {
     channel: u8,
 }
 
+#[allow(unused)]
 impl<'a> ADCChannel<'a> {
     pub fn new(adc: &'a dyn ADC, channel: u8) -> ADCChannel<'a> {
         ADCChannel {
