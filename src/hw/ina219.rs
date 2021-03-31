@@ -130,7 +130,7 @@ fn calculate_calibration(max_expected_current: f32, r_shunt: f32) -> u16 {
 }
 
 impl EnergyMetering for INA219 {
-    fn current_draw(&self) -> u32 {
-        self.current().unwrap() as u32
+    fn current(&self) -> f32 {
+        self.current().unwrap()
     }
 }

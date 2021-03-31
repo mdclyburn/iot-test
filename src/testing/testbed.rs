@@ -147,8 +147,7 @@ impl<'a> Testbed<'a> {
                         // do metering
 
                         for (id, meter) in &(*meters) {
-                            let draw = meter.current_draw();
-                            println!("metering: {} says {:016b} ({})", id, draw, draw);
+                            println!("metering: {} meter reads {:.2}mA", id, meter.current());
                         }
 
                         barrier.wait();
