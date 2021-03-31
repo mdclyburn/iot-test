@@ -20,6 +20,8 @@ pub enum Error {
     Comm(mpsc::RecvError),
     /// Observer thread spawning error
     Observer(std::io::Error),
+    /// Metering thread spawning error
+    Meter(std::io::Error),
 }
 
 impl error::Error for Error {
@@ -29,6 +31,7 @@ impl error::Error for Error {
             Error::GPIO(ref e) => Some(e),
             Error::Comm(ref e) => Some(e),
             Error::Observer(ref e) => Some(e),
+            Error::Meter(ref e) => Some(e),
         }
     }
 }
@@ -58,6 +61,7 @@ impl Display for Error {
             Error::GPIO(ref e) => write!(f, "GPIO error while testing: {}", e),
             Error::Comm(ref e) => write!(f, "Thread communication error: {}", e),
             Error::Observer(ref e) => write!(f, "Could not start observer thread: {}", e),
+            Error::Meter(ref e) => write!(f, "Could not start metering thread: {}", e),
         }
     }
 }

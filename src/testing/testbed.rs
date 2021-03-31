@@ -136,7 +136,7 @@ impl<'a> Testbed<'a> {
                         // wait for next test
                         barrier.wait();
 
-                        if let Some(ref test) = *current_test.read().unwrap() {
+                        if let Some(ref _test) = *current_test.read().unwrap() {
                             // wait for test to begin
                             println!("metering: ready to begin test");
                             barrier.wait();
@@ -158,6 +158,7 @@ impl<'a> Testbed<'a> {
                         // communicate results back
                     }
                 })
+                .map_err(|e| Error::Meter(e))?
         };
 
         let mut launching_at: Option<Instant> = None;
@@ -195,6 +196,7 @@ impl<'a> Testbed<'a> {
         barrier.wait();
 
         watch_thread.join().unwrap(); // need to go to testbed error
+        energy_thread.join().unwrap(); // uh... you need to handle this
 
         let main_start = launching_at.unwrap();
         let watch_starta = watch_start.read().unwrap().unwrap();
