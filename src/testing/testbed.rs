@@ -140,6 +140,9 @@ impl<'a> Testbed<'a> {
                             // wait for test to begin
                             println!("metering: ready to begin test");
                             barrier.wait();
+                        } else {
+                            // no more tests to run
+                            break;
                         }
 
                         println!("metering: starting metering");
