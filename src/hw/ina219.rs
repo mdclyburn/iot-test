@@ -17,6 +17,9 @@ mod register {
     pub const CALIBRATION: u8   = 0x05;
 }
 
+// 4mV per value when reading bus voltage.
+const BUS_VOLTAGE_LSB: f32 = 0.004;
+
 /// Driver for the TI INA219 current sensor.
 #[derive(Debug)]
 pub struct INA219 {
@@ -38,13 +41,22 @@ impl INA219 {
 
     /// Reset the INA219.
     pub fn reset(&self) -> Result<(), String> {
-        let config = self.current_configuration()? | ((1 as u16) << 15);
-        self.write(register::CONFIGURATION, config)
+        // Just write the default configuration, as that should be safe.
+        let config = 0x399F | ((1 as u16) << 15);
+        self.write(register::CONFIGURATION, config)?;
+        thread::sleep(Duration::from_micros(40)); // need >=40us after reset.
+
+        Ok(())
     }
 
-    /// Return the current reading.
-    pub fn read_current(&self) -> Result<u16, String> {
-        self.read(register::CURRENT)
+    pub fn current(&self) -> Result<f32, String> {
+        let current_lsb: f32 = 0.0305;
+        Ok(self.read(register::CURRENT)? as f32 * current_lsb)
+    }
+
+    pub fn bus_voltage(&self) -> Result<f32, String> {
+        let raw = self.read(register::BUS_VOLTAGE)?;
+        Ok(((raw >> 3) as f32) * BUS_VOLTAGE_LSB)
     }
 
     fn init(&self) -> Result<(), String> {
@@ -52,25 +64,24 @@ impl INA219 {
             i2c.set_slave_address(self.address as u16)
                 .map_err(|e| format!("failed to set peripheral address: {}", e))
         })?;
-
-        // Perform a reset by writing to the highest configuration bit.
-        self.write(register::CONFIGURATION, (1 as u16) << 15)?;
-        thread::sleep(Duration::from_micros(40)); // need >=40us after reset.
+        self.reset()?;
 
         /* Set configuration; see INA219 documentation for details.
 
-        - gain amplifier: /4
+        - gain amplifier: /4 (+/- 160mV)
         - ADC resolution/averaging: 12-bit
         - shunt ADC resolution: 12-bit
         - operating mode: shunt + bus, continuous
         -----
         Should yield a +/- 1.6A range with 0.390625mA resolution.
          */
-        let config = 0b0_0_0_10_1111_0011_111;
+        let config = 0b0_0_1_11_0011_0011_111;
         self.write(register::CONFIGURATION, config)?;
-        self.write(register::CALIBRATION, 1025)?;
-        println!("Configuration: {:016b}", self.read(register::CONFIGURATION)?);
-        println!("Calibration: {:016b}", self.read(register::CALIBRATION)?);
+
+        // expecting 1A with .1 ohm resistor
+        let cal = calculate_calibration(1f32, 0.1);
+        self.write(register::CALIBRATION, cal)?;
+        println!("Calibration: {}", cal);
 
         Ok(())
     }
@@ -106,14 +117,20 @@ impl INA219 {
 
         op(i2c_cell.borrow_mut())
     }
+}
 
-    fn current_configuration(&self) -> Result<u16, String> {
-        self.read(register::CONFIGURATION)
-    }
+/// Calculate the current LSB.
+fn current_unit(max_expected_current: f32) -> f32 {
+    max_expected_current / 2f32.powi(15)
+}
+
+/// Calculate the calibration value for the calibration register.
+fn calculate_calibration(max_expected_current: f32, r_shunt: f32) -> u16 {
+    (0.04096f32 / (current_unit(max_expected_current) * r_shunt)) as u16
 }
 
 impl EnergyMetering for INA219 {
     fn current_draw(&self) -> u32 {
-        self.read_current().unwrap() as u32
+        self.current().unwrap() as u32
     }
 }

@@ -23,12 +23,14 @@ fn main() {
     // energy metering
     let ina219 = INA219::new(mapping.get_i2c().unwrap(), 0x40)
         .unwrap();
+    println!("INA219 voltage: {:.2}V", ina219.bus_voltage().unwrap());
     let energy_meters: Vec<(&str, Box<dyn EnergyMetering>)> = vec![("system", Box::new(ina219))];
 
     let testbed = Testbed::new(
         &mapping,
         energy_meters);
     print!("{}\n\n", testbed);
+    // std::process::exit(0);
 
     let test = Test::new(
         "example-blink-test",
