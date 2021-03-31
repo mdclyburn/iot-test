@@ -49,11 +49,13 @@ impl INA219 {
         Ok(())
     }
 
+    /// Return the current current draw in milliamps.
     pub fn current(&self) -> Result<f32, String> {
         let current_lsb: f32 = 0.0305;
         Ok(self.read(register::CURRENT)? as f32 * current_lsb)
     }
 
+    /// Return the bus voltage in volts.
     pub fn bus_voltage(&self) -> Result<f32, String> {
         let raw = self.read(register::BUS_VOLTAGE)?;
         Ok(((raw >> 3) as f32) * BUS_VOLTAGE_LSB)
@@ -119,14 +121,12 @@ impl INA219 {
     }
 }
 
-/// Calculate the current LSB.
-fn current_unit(max_expected_current: f32) -> f32 {
-    max_expected_current / 2f32.powi(15)
-}
-
-/// Calculate the calibration value for the calibration register.
+// Calculate the calibration value for the calibration register.
+// max_expected_current is current in amperes.
+// r_shunt is resistance in ohms.
 fn calculate_calibration(max_expected_current: f32, r_shunt: f32) -> u16 {
-    (0.04096f32 / (current_unit(max_expected_current) * r_shunt)) as u16
+    let amps_per_bit = max_expected_current / 2f32.powi(15);
+    (0.04096f32 / (amps_per_bit * r_shunt)) as u16
 }
 
 impl EnergyMetering for INA219 {
