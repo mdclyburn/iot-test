@@ -24,6 +24,7 @@ fn main() {
     let ina219 = INA219::new(mapping.get_i2c().unwrap(), 0x40)
         .unwrap();
     println!("INA219 voltage: {:.2}V", ina219.bus_voltage().unwrap());
+    println!("INA219 wattage: {:.2}mW", ina219.power().unwrap());
     let energy_meters: Vec<(&str, Box<dyn EnergyMetering>)> = vec![("system", Box::new(ina219))];
 
     let testbed = Testbed::new(

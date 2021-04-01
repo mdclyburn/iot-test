@@ -28,6 +28,8 @@ pub struct INA219 {
 }
 
 impl INA219 {
+    const CURRENT_LSB: f32 = 0.0305;
+
     /// Create a new INA219 driver.
     pub fn new(i2c: I2c, address: u8) -> Result<INA219, String> {
         let ina = INA219 {
@@ -51,8 +53,12 @@ impl INA219 {
 
     /// Return the current current draw in milliamps.
     pub fn current(&self) -> Result<f32, String> {
-        let current_lsb: f32 = 0.0305;
-        Ok(self.read(register::CURRENT)? as f32 * current_lsb)
+        Ok(self.read(register::CURRENT)? as f32 * INA219::CURRENT_LSB)
+    }
+
+    /// Return the current power measurement in milliwatts.
+    pub fn power(&self) -> Result<f32, String> {
+        Ok(self.read(register::POWER)? as f32 * 20.0f32 * INA219::CURRENT_LSB)
     }
 
     /// Return the bus voltage in volts.
