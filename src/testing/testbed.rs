@@ -9,6 +9,7 @@ use std::sync::{Arc,
                 Mutex,
                 RwLock};
 use std::thread;
+use std::thread::JoinHandle;
 use std::time::Instant;
 
 use crate::facility::EnergyMetering;
@@ -119,47 +120,8 @@ impl<'a> Testbed<'a> {
                 .map_err(|e| Error::Observer(e))?
         };
 
-        println!("Starting energy metering thread.");
-        let energy_thread = {
-            let barrier = Arc::clone(&barrier);
-            let current_test = Arc::clone(&current_test);
-            let meters = Arc::clone(&self.energy_meters);
-
-            thread::Builder::new()
-                .name("test-metering".to_string())
-                .spawn(move || {
-                    println!("metering: started.");
-
-                    loop {
-                        let meters = meters.lock().unwrap();
-
-                        // wait for next test
-                        barrier.wait();
-
-                        if let Some(ref _test) = *current_test.read().unwrap() {
-                            // wait for test to begin
-                            println!("metering: ready to begin test");
-                            barrier.wait();
-                        } else {
-                            // no more tests to run
-                            break;
-                        }
-
-                        println!("metering: starting metering");
-
-                        // do metering
-
-                        for (id, meter) in &(*meters) {
-                            println!("metering: {} meter reads {:.2}mA", id, meter.current());
-                        }
-
-                        barrier.wait();
-
-                        // communicate results back
-                    }
-                })
-                .map_err(|e| Error::Meter(e))?
-        };
+        let energy_thread = self.launch_metering(Arc::clone(&current_test),
+                                                 Arc::clone(&barrier))?;
 
         let mut launching_at: Option<Instant> = None;
         for test in tests {
@@ -208,6 +170,51 @@ impl<'a> Testbed<'a> {
         println!("threads de-synced on time by {:?}", desync);
 
         Ok(test_results)
+    }
+
+    fn launch_metering(
+        &self,
+        test_container: Arc<RwLock<Option<Test>>>,
+        barrier: Arc<Barrier>,
+    ) -> Result<JoinHandle<()>> {
+        println!("Starting energy metering thread.");
+
+        let meters = Arc::clone(&self.energy_meters);
+
+        thread::Builder::new()
+            .name("test-metering".to_string())
+            .spawn(move || {
+                println!("metering: started.");
+
+                loop {
+                    let meters = meters.lock().unwrap();
+
+                    // wait for next test
+                    barrier.wait();
+
+                    if let Some(ref _test) = *test_container.read().unwrap() {
+                        // wait for test to begin
+                        println!("metering: ready to begin test");
+                        barrier.wait();
+                    } else {
+                        // no more tests to run
+                        break;
+                    }
+
+                    println!("metering: starting metering");
+
+                    // do metering
+
+                    for (id, meter) in &(*meters) {
+                        println!("metering: {} meter reads {:.2}mA", id, meter.current());
+                    }
+
+                    barrier.wait();
+
+                    // communicate results back
+                }
+            })
+            .map_err(|e| Error::Meter(e))
     }
 }
 
