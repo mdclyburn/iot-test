@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Display;
 use std::sync::mpsc;
+use std::sync::mpsc::SyncSender;
 use std::sync::{Arc,
                 Barrier,
                 Mutex,
@@ -14,6 +15,7 @@ use std::time::Instant;
 
 use crate::facility::EnergyMetering;
 use crate::io::Mapping;
+use crate::testing::test::Response;
 
 use super::{Error, Evaluation, Test};
 
@@ -60,84 +62,27 @@ impl<'a> Testbed<'a> {
 
         let barrier = Arc::new(Barrier::new(3));
         let current_test: Arc<RwLock<Option<Test>>> = Arc::new(RwLock::new(None));
-        let watch_start: Arc<RwLock<Option<Instant>>> = Arc::new(RwLock::new(None));
 
-        let (schannel, rchannel) = mpsc::sync_channel(0);
-
-        println!("Starting response watch thread.");
-        let watch_thread = {
-            let barrier = Arc::clone(&barrier);
-            let current_test = Arc::clone(&current_test);
-            let watch_start = Arc::clone(&watch_start);
-            let mut outputs = self.pin_mapping.get_gpio_outputs()?;
-
-            thread::Builder::new()
-                .name("test-observer".to_string())
-                .spawn(move || {
-                    println!("observer: started.");
-
-                    let mut responses = Vec::new();
-                    loop {
-                        // wait for next test
-                        barrier.wait();
-
-                        // set up to watch for responses according to criteria
-                        if let Some(ref test) = *current_test.read().unwrap() {
-                            test.prep_observe(&mut outputs)
-                                .unwrap(); // <-- communicate back?
-
-                            // wait for test to begin
-                            println!("observer: ready to begin test");
-                            barrier.wait();
-                            let t0 = Instant::now();
-                            *watch_start.write().unwrap() = Some(t0);
-                            println!("observer: starting watch");
-
-                            test.observe(t0, &outputs, &mut responses)
-                                .unwrap();
-
-                            // wait for output responses from dut or the end of the test
-                            // can I just wait for the barrier here or will an interrupt stop it?
-                            barrier.wait();
-
-                            println!("observer: cleaning up interrupts");
-                            for pin in &mut outputs {
-                                pin.clear_interrupt().unwrap();
-                            }
-
-                            for r in responses.drain(..) {
-                                schannel.send(Some(r)).unwrap();
-                            }
-                            schannel.send(None).unwrap();
-                        } else {
-                            // no more tests to run
-                            break;
-                        }
-                    }
-
-                    println!("observer: exiting");
-                })
-                .map_err(|e| Error::Observer(e))?
-        };
-
+        let (test_result_schannel, rchannel) = mpsc::sync_channel(0);
+        let watch_thread = self.launch_observer(Arc::clone(&current_test),
+                                                Arc::clone(&barrier),
+                                                test_result_schannel)?;
         let energy_thread = self.launch_metering(Arc::clone(&current_test),
                                                  Arc::clone(&barrier))?;
 
-        let mut launching_at: Option<Instant> = None;
         for test in tests {
             *current_test.write().unwrap() = Some(test.clone());
 
             let mut inputs = self.pin_mapping.get_gpio_inputs()?;
 
-            // wait for observer thread to be ready
+            // wait for observer, metering thread to be ready
             barrier.wait();
-            launching_at = Some(Instant::now());
 
             // wait for test to begin
             barrier.wait();
             println!("executor: starting test '{}'", test.get_id());
 
-            let exec_result = test.execute(launching_at.unwrap(), &mut inputs);
+            let exec_result = test.execute(Instant::now(), &mut inputs);
 
             // release observer thread
             println!("executor: test execution complete");
@@ -158,19 +103,67 @@ impl<'a> Testbed<'a> {
         barrier.wait();
 
         watch_thread.join().unwrap(); // need to go to testbed error
-        energy_thread.join().unwrap(); // uh... you need to handle this
-
-        let main_start = launching_at.unwrap();
-        let watch_starta = watch_start.read().unwrap().unwrap();
-        let desync = if main_start > watch_starta {
-            main_start - watch_starta
-        } else {
-            watch_starta - main_start
-        };
-        println!("threads de-synced on time by {:?}", desync);
+        energy_thread.join().unwrap(); // uh... you need to handle these
 
         Ok(test_results)
     }
+
+    fn launch_observer(
+        &self,
+        test_container: Arc<RwLock<Option<Test>>>,
+        barrier: Arc<Barrier>,
+        response_schannel: SyncSender<Option<Response>>,
+    ) -> Result<JoinHandle<()>> {
+        let mut outputs = self.pin_mapping.get_gpio_outputs()?;
+
+        thread::Builder::new()
+            .name("test-observer".to_string())
+            .spawn(move || {
+                println!("observer: started.");
+
+                let mut responses = Vec::new();
+                loop {
+                    // wait for next test
+                    barrier.wait();
+
+                    // set up to watch for responses according to criteria
+                    if let Some(ref test) = *test_container.read().unwrap() {
+                        test.prep_observe(&mut outputs)
+                            .unwrap(); // <-- communicate back?
+
+                        // wait for test to begin
+                        println!("observer: ready to begin test");
+                        barrier.wait();
+                        println!("observer: starting watch");
+
+                        let t0 = Instant::now();
+                        test.observe(t0, &outputs, &mut responses)
+                            .unwrap();
+
+                        // wait for output responses from dut or the end of the test
+                        // can I just wait for the barrier here or will an interrupt stop it?
+                        barrier.wait();
+
+                        println!("observer: cleaning up interrupts");
+                        for pin in &mut outputs {
+                            pin.clear_interrupt().unwrap();
+                        }
+
+                        for r in responses.drain(..) {
+                            response_schannel.send(Some(r)).unwrap();
+                        }
+                        response_schannel.send(None).unwrap();
+                    } else {
+                        // no more tests to run
+                        break;
+                    }
+                }
+
+                println!("observer: exiting");
+            })
+            .map_err(|e| Error::Observer(e))
+    }
+
 
     fn launch_metering(
         &self,
