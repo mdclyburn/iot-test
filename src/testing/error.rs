@@ -22,6 +22,8 @@ pub enum Error {
     Observer(std::io::Error),
     /// Metering thread spawning error
     Meter(std::io::Error),
+    /// Energy meter does not exist.
+    NoSuchMeter(String),
 }
 
 impl error::Error for Error {
@@ -32,6 +34,7 @@ impl error::Error for Error {
             Error::Comm(ref e) => Some(e),
             Error::Observer(ref e) => Some(e),
             Error::Meter(ref e) => Some(e),
+            _ => None,
         }
     }
 }
@@ -62,6 +65,7 @@ impl Display for Error {
             Error::Comm(ref e) => write!(f, "Thread communication error: {}", e),
             Error::Observer(ref e) => write!(f, "Could not start observer thread: {}", e),
             Error::Meter(ref e) => write!(f, "Could not start metering thread: {}", e),
+            Error::NoSuchMeter(ref id) => write!(f, "The meter '{}' does not exist", id),
         }
     }
 }

@@ -188,7 +188,8 @@ impl<'a> Testbed<'a> {
                     barrier.wait();
 
                     if let Some(ref test) = *test_container.read().unwrap() {
-                        let need_metering = test.prep_meter(&mut samples);
+                        // here, better error management across threads would be nice
+                        let need_metering = test.prep_meter(&mut samples).unwrap();
                         if !need_metering {
                             println!("metering: idling; not needed for this test");
                             barrier.wait();

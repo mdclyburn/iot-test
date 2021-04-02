@@ -86,7 +86,7 @@ impl Display for Response {
 Criterion are used by [`Test`]s to determine how to inspect the output from a device under test.
  */
 #[allow(unused)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum Criterion {
     /// GPIO activity.
     GPIO(GPIOCriterion),
@@ -118,16 +118,16 @@ impl Display for GPIOCriterion {
 }
 
 #[allow(unused)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum EnergyCriterion {
-    /// Track total energy consumption.
-    Consumption,
+    /// Track total energy consumption through the named meter.
+    Consumption(String),
 }
 
 impl Display for EnergyCriterion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            EnergyCriterion::Consumption => write!(f, "track total consumption"),
+            EnergyCriterion::Consumption(ref meter) => write!(f, "track total consumption with meter '{}'", meter),
         }
     }
 }
@@ -272,8 +272,26 @@ impl Test {
     /// # Returns
     /// Returns true if there are energy metering criteria in this test.
     /// [`Test::meter`] should be called when running the test.
-    pub fn prep_meter(&self, out: &mut HashMap<String, Vec<f32>>) -> bool {
-        false
+    pub fn prep_meter(&self, out: &mut HashMap<String, Vec<f32>>) -> Result<bool> {
+        let mut has_energy_critieria = false;
+        for criterion in &self.criteria {
+            if let Criterion::Energy(ref energy_criterion) = criterion {
+                has_energy_critieria = true;
+                match energy_criterion {
+                    EnergyCriterion::Consumption(id) => self.reserve_for_samples(id, out)?,
+                };
+            }
+        }
+
+        Ok(has_energy_critieria)
+    }
+
+    fn reserve_for_samples(&self, meter_id: &str, out: &mut HashMap<String, Vec<f32>>) -> Result<()> {
+        let sample_buffer = out.get_mut(meter_id)
+            .ok_or(Error::NoSuchMeter(meter_id.to_string()))?;
+        sample_buffer.reserve_exact(self.sampling_intervals());
+
+        Ok(())
     }
 
     pub fn meter(&self, out: &mut HashMap<String, Vec<f32>>) {
