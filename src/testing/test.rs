@@ -1,7 +1,7 @@
 //! Defining and executing tests
 
 use std::cmp::{Ord, Ordering, PartialOrd, Reverse};
-use std::collections::BinaryHeap;
+use std::collections::{BinaryHeap, HashMap};
 use std::fmt;
 use std::fmt::Display;
 use std::iter::IntoIterator;
@@ -85,16 +85,29 @@ impl Display for Response {
 
 Criterion are used by [`Test`]s to determine how to inspect the output from a device under test.
  */
+#[allow(unused)]
 #[derive(Clone, Debug)]
 pub enum Criterion {
     /// Record any response on the specified pin.
     Response(u8),
+    /// Record total energy consumption.
+    EnergyTotal,
+    /// Test total energy consumption.
+    EnergyTotalLimit(f32),
+    /// Record average energy consumption.
+    EnergyAverage,
+    /// Test average energy consumption.
+    EnergyAverageLimit(f32),
 }
 
 impl Display for Criterion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Criterion::Response(pin_no) => write!(f, "any activity on device pin {}", pin_no),
+            Criterion::EnergyTotal => write!(f, "total energy consumption"),
+            Criterion::EnergyTotalLimit(limit) => write!(f, "total energy consumption <= {:.2}", limit),
+            Criterion::EnergyAverage => write!(f, "average energy consumption"),
+            Criterion::EnergyAverageLimit(limit) => write!(f, "average energy consumption <= {:.2}", limit),
         }
     }
 }
@@ -139,6 +152,7 @@ pub struct Test {
     id: String,
     actions: BinaryHeap<Reverse<Operation>>,
     criteria: Vec<Criterion>,
+    energy_sampling_rate: Duration,
 }
 
 impl Test {
@@ -150,6 +164,7 @@ impl Test {
             id: id.to_string(),
             actions: ops.into_iter().map(|x| Reverse(*x)).collect(),
             criteria: criteria.into_iter().cloned().collect(),
+            energy_sampling_rate: Duration::from_millis(10), // TODO: make this adjustable.
         }
     }
 
@@ -163,7 +178,7 @@ impl Test {
         let timeline = self.actions.iter()
             .map(|Reverse(op)| (t0 + Duration::from_millis(op.time), op));
         for (t, op) in timeline {
-            while Instant::now() < t {  } // spin wait
+            while Instant::now() < t {  } // spin wait?
             match op.input {
                 Signal::Digital(true) =>
                     (*pins.get_pin_mut(op.pin_no)?)
@@ -188,6 +203,7 @@ impl Test {
                     pins.get_pin_mut(*pin_no)?
                         .set_interrupt(Trigger::Both)?;
                 },
+                _ => {  } // criteria not handled here
             };
         }
 
@@ -224,6 +240,18 @@ impl Test {
         Ok(())
     }
 
+    /// Prepare structures for energy metering.
+    ///
+    /// # Returns
+    /// Returns true if there are energy metering criteria in this test.
+    /// [`Test::meter`] should be called when running the test.
+    pub fn prep_meter(&self, out: &mut HashMap<String, Vec<f32>>) -> bool {
+        false
+    }
+
+    pub fn meter(&self, out: &mut HashMap<String, Vec<f32>>) {
+    }
+
     /// Return the maximum length of time the test can run.
     ///
     /// TODO: make this dependent on actions' timing, criteria timing, and another tail duration(?).
@@ -234,6 +262,20 @@ impl Test {
             .unwrap_or(0)
             + 500;
         Duration::from_millis(ms)
+    }
+
+    /// Number of opportunities there will be to sample based on [`Test::get_max_runtime`].
+    fn sampling_intervals(&self) -> usize {
+        let mut sum = 1;
+        for multiplier in 2.. {
+            if self.energy_sampling_rate * multiplier < self.get_max_runtime() {
+                sum += 1;
+            } else {
+                break;
+            }
+        }
+
+        sum
     }
 }
 

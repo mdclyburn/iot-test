@@ -164,7 +164,6 @@ impl<'a> Testbed<'a> {
             .map_err(|e| Error::Observer(e))
     }
 
-
     fn launch_metering(
         &self,
         test_container: Arc<RwLock<Option<Test>>>,
@@ -179,27 +178,31 @@ impl<'a> Testbed<'a> {
             .spawn(move || {
                 println!("metering: started.");
 
-                loop {
-                    let meters = meters.lock().unwrap();
+                let meters = meters.lock().unwrap();
+                let mut samples: HashMap<String, Vec<f32>> = meters.keys()
+                    .map(|meter_id| { (meter_id.clone(), Vec::new()) })
+                    .collect();
 
+                loop {
                     // wait for next test
                     barrier.wait();
 
-                    if let Some(ref _test) = *test_container.read().unwrap() {
-                        // wait for test to begin
-                        println!("metering: ready to begin test");
-                        barrier.wait();
+                    if let Some(ref test) = *test_container.read().unwrap() {
+                        let need_metering = test.prep_meter(&mut samples);
+                        if !need_metering {
+                            println!("metering: idling; not needed for this test");
+                            barrier.wait();
+                        } else {
+                            // wait for test to begin
+                            println!("metering: ready to begin test");
+                            barrier.wait();
+
+                            test.meter(&mut samples);
+                        }
+
                     } else {
                         // no more tests to run
                         break;
-                    }
-
-                    println!("metering: starting metering");
-
-                    // do metering
-
-                    for (id, meter) in &(*meters) {
-                        println!("metering: {} meter reads {:.2}mA", id, meter.current());
                     }
 
                     barrier.wait();

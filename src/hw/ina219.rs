@@ -52,16 +52,19 @@ impl INA219 {
     }
 
     /// Return the current current draw in milliamps.
+    #[allow(unused)]
     pub fn current(&self) -> Result<f32, String> {
         Ok(self.read(register::CURRENT)? as f32 * INA219::CURRENT_LSB)
     }
 
     /// Return the current power measurement in milliwatts.
+    #[allow(unused)]
     pub fn power(&self) -> Result<f32, String> {
         Ok(self.read(register::POWER)? as f32 * 20.0f32 * INA219::CURRENT_LSB)
     }
 
     /// Return the bus voltage in volts.
+    #[allow(unused)]
     pub fn bus_voltage(&self) -> Result<f32, String> {
         let raw = self.read(register::BUS_VOLTAGE)?;
         Ok(((raw >> 3) as f32) * BUS_VOLTAGE_LSB)
