@@ -11,6 +11,8 @@ pub use evaluation::Evaluation;
 pub use testbed::Testbed;
 pub use test::{
     Criterion,
+    EnergyCriterion,
+    GPIOCriterion,
     Operation,
     Test,
     Execution,

@@ -86,28 +86,48 @@ impl Display for Response {
 Criterion are used by [`Test`]s to determine how to inspect the output from a device under test.
  */
 #[allow(unused)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum Criterion {
-    /// Record any response on the specified pin.
-    Response(u8),
-    /// Record total energy consumption.
-    EnergyTotal,
-    /// Test total energy consumption.
-    EnergyTotalLimit(f32),
-    /// Record average energy consumption.
-    EnergyAverage,
-    /// Test average energy consumption.
-    EnergyAverageLimit(f32),
+    /// GPIO activity.
+    GPIO(GPIOCriterion),
+    /// Energy consumption.
+    Energy(EnergyCriterion),
 }
 
 impl Display for Criterion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Criterion::Response(pin_no) => write!(f, "any activity on device pin {}", pin_no),
-            Criterion::EnergyTotal => write!(f, "total energy consumption"),
-            Criterion::EnergyTotalLimit(limit) => write!(f, "total energy consumption <= {:.2}", limit),
-            Criterion::EnergyAverage => write!(f, "average energy consumption"),
-            Criterion::EnergyAverageLimit(limit) => write!(f, "average energy consumption <= {:.2}", limit),
+            Criterion::GPIO(ref c) => write!(f, "GPIO activity: {}", c),
+            Criterion::Energy(ref c) => write!(f, "Energy: {}", c),
+        }
+    }
+}
+
+#[allow(unused)]
+#[derive(Clone, Copy, Debug)]
+pub enum GPIOCriterion {
+    Any(u8),
+}
+
+impl Display for GPIOCriterion {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            GPIOCriterion::Any(pin_no) => write!(f, "any output on device pin {}", pin_no),
+        }
+    }
+}
+
+#[allow(unused)]
+#[derive(Clone, Copy, Debug)]
+pub enum EnergyCriterion {
+    /// Track total energy consumption.
+    Consumption,
+}
+
+impl Display for EnergyCriterion {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            EnergyCriterion::Consumption => write!(f, "track total consumption"),
         }
     }
 }
@@ -196,14 +216,21 @@ impl Test {
 
     /// Set up to record test inputs.
     pub fn prep_observe(&self, pins: &mut DeviceOutputs) -> Result<()> {
-        for criterion in &self.criteria {
+        let gpio_criteria = self.criteria.iter()
+            .filter_map(|criterion| {
+                if let Criterion::GPIO(gpio_crit) = criterion {
+                    Some(gpio_crit)
+                } else {
+                    None
+                }
+            });
+        for criterion in gpio_criteria {
             println!("observer: watching for {}", criterion);
             match criterion {
-                Criterion::Response(pin_no) => {
+                GPIOCriterion::Any(pin_no) => {
                     pins.get_pin_mut(*pin_no)?
                         .set_interrupt(Trigger::Both)?;
                 },
-                _ => {  } // criteria not handled here
             };
         }
 

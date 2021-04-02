@@ -10,7 +10,13 @@ use crate::device::Device;
 use crate::facility::EnergyMetering;
 use crate::hw::INA219;
 use crate::io::Mapping;
-use crate::testing::{Criterion, Test, Testbed, Operation};
+use crate::testing::{
+    Criterion,
+    GPIOCriterion,
+    Test,
+    Testbed,
+    Operation,
+};
 
 fn main() {
     // physical mapping
@@ -34,7 +40,7 @@ fn main() {
         "example-blink-test",
         &[Operation { time: 0, pin_no: 23, input: Signal::Digital(true) },
           Operation { time: 500, pin_no: 23, input: Signal::Digital(false) }],
-        &[Criterion::Response(13)]);
+        &[Criterion::GPIO(GPIOCriterion::Any(13))]);
     let tests = [test];
 
     print!("{}\n\n", tests[0]);
