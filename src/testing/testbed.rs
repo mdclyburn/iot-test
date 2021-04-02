@@ -198,9 +198,8 @@ impl<'a> Testbed<'a> {
                             println!("metering: ready to begin test");
                             barrier.wait();
 
-                            test.meter(&mut samples);
+                            test.meter(&meters, &mut samples);
                         }
-
                     } else {
                         // no more tests to run
                         break;

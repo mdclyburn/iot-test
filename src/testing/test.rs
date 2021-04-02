@@ -5,11 +5,13 @@ use std::collections::{BinaryHeap, HashMap};
 use std::fmt;
 use std::fmt::Display;
 use std::iter::IntoIterator;
+use std::thread;
 use std::time::{Duration, Instant};
 
 use rppal::gpio::{Gpio, Level, Trigger};
 
 use crate::comm::Signal;
+use crate::facility::EnergyMetering;
 use crate::io::{DeviceInputs, DeviceOutputs};
 
 use super::Error;
@@ -273,28 +275,45 @@ impl Test {
     /// Returns true if there are energy metering criteria in this test.
     /// [`Test::meter`] should be called when running the test.
     pub fn prep_meter(&self, out: &mut HashMap<String, Vec<f32>>) -> Result<bool> {
-        let mut has_energy_critieria = false;
+        let mut has_energy_criteria = false;
         for criterion in &self.criteria {
             if let Criterion::Energy(ref energy_criterion) = criterion {
-                has_energy_critieria = true;
+                has_energy_criteria = true;
                 match energy_criterion {
                     EnergyCriterion::Consumption(id) => self.reserve_for_samples(id, out)?,
                 };
             }
         }
 
-        Ok(has_energy_critieria)
+        Ok(has_energy_criteria)
     }
 
     fn reserve_for_samples(&self, meter_id: &str, out: &mut HashMap<String, Vec<f32>>) -> Result<()> {
+        let sampling_interval_count = 1 + self.sampling_intervals();
+        println!("Reserving {} slots in buffer for samples from '{}'.",
+                 sampling_interval_count,
+                 meter_id);
+
         let sample_buffer = out.get_mut(meter_id)
             .ok_or(Error::NoSuchMeter(meter_id.to_string()))?;
-        sample_buffer.reserve_exact(self.sampling_intervals());
+        sample_buffer.clear();
+        sample_buffer.reserve_exact(sampling_interval_count);
 
         Ok(())
     }
 
-    pub fn meter(&self, out: &mut HashMap<String, Vec<f32>>) {
+    /// Perform energy metering.
+    pub fn meter(&self, meters: &HashMap<String, Box<dyn EnergyMetering>>, out: &mut HashMap<String, Vec<f32>>) {
+        let start = Instant::now();
+        let runtime = self.get_max_runtime();
+        while Instant::now() - start < runtime {
+            for (id, buf) in &mut *out {
+                let meter = meters.get(id).unwrap();
+                buf.push(meter.current());
+
+                thread::sleep(self.energy_sampling_rate);
+            }
+        }
     }
 
     /// Return the maximum length of time the test can run.

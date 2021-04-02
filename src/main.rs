@@ -12,6 +12,7 @@ use crate::hw::INA219;
 use crate::io::Mapping;
 use crate::testing::{
     Criterion,
+    EnergyCriterion,
     GPIOCriterion,
     Test,
     Testbed,
@@ -40,7 +41,8 @@ fn main() {
         "example-blink-test",
         &[Operation { time: 0, pin_no: 23, input: Signal::Digital(true) },
           Operation { time: 500, pin_no: 23, input: Signal::Digital(false) }],
-        &[Criterion::GPIO(GPIOCriterion::Any(13))]);
+        &[Criterion::GPIO(GPIOCriterion::Any(13)),
+          Criterion::Energy(EnergyCriterion::Consumption("system".to_string()))]);
     let tests = [test];
 
     print!("{}\n\n", tests[0]);
