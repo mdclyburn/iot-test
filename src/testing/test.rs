@@ -315,7 +315,17 @@ impl Test {
     pub fn meter(&self, meters: &HashMap<String, Box<dyn EnergyMetering>>, out: &mut HashMap<String, Vec<f32>>) {
         let start = Instant::now();
         let runtime = self.get_max_runtime();
-        while Instant::now() - start < runtime {
+
+        // Without the call to thread::sleep, a single loop iteration
+        // takes between 545.568us and 699.682us, averages 568.521us.
+        // Reading a single meter in this loop yields me 94 samples.
+        // So, sampling interval is actually: self.energy_sampling_rate + ~.5ms.
+        // It makes sense to lose about 5 out of 100 samples for
+        // self.energy_sampling_rate = 10ms given a test that executes for
+        // 1000ms. 1000ms / 10.5ms/samples = 95.238 samples.
+        loop {
+            if Instant::now() - start >= runtime { break; }
+
             for (id, buf) in &mut *out {
                 let meter = meters.get(id).unwrap();
                 buf.push(meter.current());
