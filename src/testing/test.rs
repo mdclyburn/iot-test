@@ -19,7 +19,7 @@ use super::Error;
 type Result<T> = std::result::Result<T, Error>;
 
 /// An input to perform at a specific time.
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Operation {
     /// Time to perform the input in milliseconds
     pub time: u64,
@@ -169,7 +169,7 @@ and a set of responses ([`Criterion`]) to record (outputs from the device under 
 Executing a test (via [`Test::execute`]) produces an [`Execution`] that contains information about the test run.
 
  */
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Test {
     id: String,
     actions: BinaryHeap<Reverse<Operation>>,
@@ -193,6 +193,16 @@ impl Test {
     /// Returns the identifier of the test definition.
     pub fn get_id(&self) -> &str {
         &self.id
+    }
+
+    /// Returns defined test criteria.
+    pub fn get_criteria(&self) -> &Vec<Criterion> {
+        &self.criteria
+    }
+
+    /// Get the energy sampling rate.
+    pub fn get_energy_sampling_rate(&self) -> Duration {
+        self.energy_sampling_rate
     }
 
     /// Drive test outputs (inputs to the device).
@@ -328,7 +338,7 @@ impl Test {
 
             for (id, buf) in &mut *out {
                 let meter = meters.get(id).unwrap();
-                buf.push(meter.current());
+                buf.push(meter.power());
 
                 thread::sleep(self.energy_sampling_rate);
             }

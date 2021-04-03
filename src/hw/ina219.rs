@@ -142,4 +142,8 @@ impl EnergyMetering for INA219 {
     fn current(&self) -> f32 {
         self.current().unwrap()
     }
+
+    fn power(&self) -> f32 {
+        self.power().unwrap()
+    }
 }

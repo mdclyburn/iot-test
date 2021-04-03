@@ -3,8 +3,15 @@
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Display;
+use std::time::Duration;
 
-use super::{Execution, Response, Result, Test};
+use super::{Criterion,
+            GPIOCriterion,
+            EnergyCriterion,
+            Execution,
+            Response,
+            Result,
+            Test};
 
 /// Summary of an `Evaluation`.
 #[allow(dead_code)]
@@ -30,7 +37,7 @@ impl Display for Status {
 /// In-depth information about a test execution.
 #[derive(Debug)]
 pub struct Evaluation {
-    test_id: String,
+    test: Test,
     exec_result: Result<Execution>,
     device_responses: Vec<Response>,
     energy_metrics: HashMap<String, Vec<f32>>,
@@ -43,31 +50,60 @@ impl Evaluation {
                energy_metrics: HashMap<String, Vec<f32>>
     ) -> Evaluation {
         Evaluation {
-            test_id: test.get_id().to_string(),
+            test: test.clone(),
             exec_result,
             device_responses,
             energy_metrics,
         }
     }
 
-    pub fn get_outcome(&self) -> Status {
+    pub fn get_exec_result(&self) -> &Result<Execution> {
+        &self.exec_result
+    }
+
+    pub fn outcome(&self) -> Status {
         if self.exec_result.is_err() {
             Status::Error
         } else {
-            // more nuanced info here
             Status::Complete
         }
     }
 
-    pub fn get_exec_result(&self) -> &Result<Execution> {
-        &self.exec_result
+    fn evaluate(&self, criterion: &Criterion) -> (Status, Option<String>) {
+        match criterion {
+            Criterion::GPIO(criterion) => {
+                match criterion {
+                    GPIOCriterion::Any(_pin) => (Status::Complete, None),
+                }
+            },
+
+            Criterion::Energy(criterion) => {
+                match criterion {
+                    EnergyCriterion::Consumption(meter_id) => {
+                        let sample_rate_us = self.test.get_energy_sampling_rate()
+                            .as_micros();
+                        let frac = sample_rate_us as f32 / Duration::from_secs(1).as_micros() as f32;
+                        // Should exist in map because criterion stated it should be tracked.
+                        let samples = self.energy_metrics.get(meter_id).unwrap();
+
+                        let mut total = 0f32;
+                        for sample in samples {
+                            // mJ/s * fraction of the second the sample accounts for
+                            total += sample * frac
+                        }
+
+                        (Status::Complete, Some(format!("{:.2}mJ consumed", total)))
+                    }
+                }
+            }
+        }
     }
 }
 
 impl Display for Evaluation {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\t", self.test_id)?;
-        match self.get_outcome() {
+        write!(f, "{}\t", self.test.get_id())?;
+        match self.outcome() {
             Status::Error => write!(f, "Error ({})", self.get_exec_result().as_ref().unwrap_err()),
             outcome => write!(f, "{} (in {:?})", outcome, self.get_exec_result().as_ref().unwrap().get_duration()),
         }?;
@@ -85,6 +121,18 @@ impl Display for Evaluation {
                 write!(f, "  Energy metering:\n")?;
                 for (meter_id, samples) in &self.energy_metrics {
                     write!(f, "    {:<10} ({} samples)\n", meter_id, samples.len())?;
+                }
+            }
+
+            write!(f, "\n")?;
+
+            // Show criteria results.
+            write!(f, "=== Criteria summary:\n")?;
+            for criterion in self.test.get_criteria() {
+                let (status, opt_message) = self.evaluate(criterion);
+                write!(f, "  - {} ({})\n", criterion, status)?;
+                if let Some(ref message) = opt_message {
+                    write!(f, "    Message: {}", message)?;
                 }
             }
         }
