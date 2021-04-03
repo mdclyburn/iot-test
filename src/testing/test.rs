@@ -274,32 +274,41 @@ impl Test {
     /// # Returns
     /// Returns true if there are energy metering criteria in this test.
     /// [`Test::meter`] should be called when running the test.
-    pub fn prep_meter(&self, out: &mut HashMap<String, Vec<f32>>) -> Result<bool> {
+    pub fn prep_meter(&self,
+                      meters: &HashMap<String, Box<dyn EnergyMetering>>,
+                      out: &mut HashMap<String, Vec<f32>>,
+    ) -> Result<bool> {
+        // only care about meters defined in the criteria
+        out.clear();
+
+        let mut max_sample_count = 0;
+        while max_sample_count * self.energy_sampling_rate < self.get_max_runtime() {
+            max_sample_count += 1;
+        }
+        // we take a sample at t = 0
+        max_sample_count += 1;
+
         let mut has_energy_criteria = false;
+        // pre-allocate space in sample output vectors
         for criterion in &self.criteria {
             if let Criterion::Energy(ref energy_criterion) = criterion {
                 has_energy_criteria = true;
-                match energy_criterion {
-                    EnergyCriterion::Consumption(id) => self.reserve_for_samples(id, out)?,
+                // get the meter referred to in the criterion
+                let meter_id = match energy_criterion {
+                    EnergyCriterion::Consumption(id) => id,
                 };
+
+                if !meters.contains_key(meter_id) {
+                    return Err(Error::NoSuchMeter(meter_id.to_string()));
+                } else {
+                    out.entry(meter_id.clone())
+                        .or_insert(Vec::new())
+                        .reserve_exact(max_sample_count as usize);
+                }
             }
         }
 
         Ok(has_energy_criteria)
-    }
-
-    fn reserve_for_samples(&self, meter_id: &str, out: &mut HashMap<String, Vec<f32>>) -> Result<()> {
-        let sampling_interval_count = 1 + self.sampling_intervals();
-        println!("Reserving {} slots in buffer for samples from '{}'.",
-                 sampling_interval_count,
-                 meter_id);
-
-        let sample_buffer = out.get_mut(meter_id)
-            .ok_or(Error::NoSuchMeter(meter_id.to_string()))?;
-        sample_buffer.clear();
-        sample_buffer.reserve_exact(sampling_interval_count);
-
-        Ok(())
     }
 
     /// Perform energy metering.
@@ -326,20 +335,6 @@ impl Test {
             .unwrap_or(0)
             + 500;
         Duration::from_millis(ms)
-    }
-
-    /// Number of opportunities there will be to sample based on [`Test::get_max_runtime`].
-    fn sampling_intervals(&self) -> usize {
-        let mut sum = 1;
-        for multiplier in 2.. {
-            if self.energy_sampling_rate * multiplier < self.get_max_runtime() {
-                sum += 1;
-            } else {
-                break;
-            }
-        }
-
-        sum
     }
 }
 

@@ -67,8 +67,11 @@ impl<'a> Testbed<'a> {
         let watch_thread = self.launch_observer(Arc::clone(&current_test),
                                                 Arc::clone(&barrier),
                                                 test_result_schannel)?;
+
+        let (energy_schannel, energy_rchannel) = mpsc::sync_channel(0);
         let energy_thread = self.launch_metering(Arc::clone(&current_test),
-                                                 Arc::clone(&barrier))?;
+                                                 Arc::clone(&barrier),
+                                                 energy_schannel)?;
 
         for test in tests {
             *current_test.write().unwrap() = Some(test.clone());
@@ -88,13 +91,21 @@ impl<'a> Testbed<'a> {
             println!("executor: test execution complete");
             barrier.wait();
 
-            // get responses to build an Evaluation
+            // get GPIO responses
             let mut responses = Vec::new();
             while let Some(response) = rchannel.recv()? {
                 responses.push(response);
             }
 
-            test_results.push(Evaluation::new(test, exec_result, responses));
+            // get energy data
+            let mut energy_data = HashMap::new();
+            while let Some((meter_id, sample)) = energy_rchannel.recv()? {
+                energy_data.entry(meter_id)
+                    .or_insert(Vec::new())
+                    .push(sample);
+            }
+
+            test_results.push(Evaluation::new(test, exec_result, responses, energy_data));
             println!("executor: test finished.");
         }
 
@@ -168,6 +179,7 @@ impl<'a> Testbed<'a> {
         &self,
         test_container: Arc<RwLock<Option<Test>>>,
         barrier: Arc<Barrier>,
+        energy_schannel: SyncSender<Option<(String, f32)>>,
     ) -> Result<JoinHandle<()>> {
         println!("Starting energy metering thread.");
 
@@ -188,8 +200,8 @@ impl<'a> Testbed<'a> {
                     barrier.wait();
 
                     if let Some(ref test) = *test_container.read().unwrap() {
-                        // here, better error management across threads would be nice
-                        let need_metering = test.prep_meter(&mut samples).unwrap();
+                        // here, better error management across threads would be nice!
+                        let need_metering = test.prep_meter(&meters, &mut samples).unwrap();
                         if !need_metering {
                             println!("metering: idling; not needed for this test");
                             barrier.wait();
@@ -208,6 +220,15 @@ impl<'a> Testbed<'a> {
                     barrier.wait();
 
                     // communicate results back
+                    for (meter_id, samples) in &samples {
+                        for sample in samples {
+                            // .to_string()... kinda wasteful, but it works;
+                            // perhaps better comm. types wanted?
+                            let message = Some((meter_id.to_string(), *sample));
+                            energy_schannel.send(message).unwrap();
+                        }
+                    }
+                    energy_schannel.send(None).unwrap(); // done communicating results
                 }
             })
             .map_err(|e| Error::Meter(e))
