@@ -83,10 +83,6 @@ impl Evaluation {
             Criterion::Energy(criterion) => {
                 match criterion {
                     EnergyCriterion::Consumption(meter_id) => {
-                        // let sample_rate_us = self.test.get_energy_sampling_rate()
-                        //     .as_micros();
-                        // let frac = sample_rate_us as f64 / Duration::from_secs(1).as_micros() as f64;
-
                         // Should exist in map because criterion stated it should be tracked.
                         let samples = self.energy_metrics.get(meter_id)
                             .unwrap();
