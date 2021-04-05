@@ -209,11 +209,6 @@ impl Test {
         &self.criteria
     }
 
-    /// Get the energy sampling rate.
-    pub fn get_energy_sampling_rate(&self) -> Duration {
-        self.energy_sampling_rate
-    }
-
     /// Drive test outputs (inputs to the device).
     pub fn execute(&self, t0: Instant, pins: &mut DeviceInputs) -> Result<Execution> {
         let timeline = self.actions.iter()
@@ -334,6 +329,8 @@ impl Test {
     }
 
     /// Perform energy metering.
+    ///
+    /// The `out` parameter should be the same `out` passed to [`Test::prep_meter`].
     pub fn meter(&self, meters: &HashMap<String, Box<dyn EnergyMetering>>, out: &mut HashMap<String, Vec<f32>>) {
         let start = Instant::now();
         let runtime = self.get_max_runtime();

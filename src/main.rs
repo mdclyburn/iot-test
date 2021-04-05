@@ -1,3 +1,5 @@
+//! IoT testing tool
+
 mod comm;
 mod device;
 mod facility;
