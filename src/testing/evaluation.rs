@@ -112,6 +112,28 @@ impl Evaluation {
                         let avg: f32 = samples.iter().sum::<f32>() / samples.len() as f32;
                         (Status::Complete, Some(format!("{:.2}mJ/s average", avg)))
                     },
+
+                    EnergyCriterion::Max(meter_id) => {
+                        let samples = self.energy_metrics.get(meter_id).unwrap();
+                        let max = samples.iter()
+                            .copied()
+                            .fold(0f32, |curr, n| if n > curr { n } else { curr });
+
+                        (Status::Complete, Some(format!("{:.2}mJ/s max", max)))
+                    },
+
+                    EnergyCriterion::Min(meter_id) => {
+                        let samples = self.energy_metrics.get(meter_id).unwrap();
+                        let min = if samples.len() > 0 {
+                            samples.iter()
+                                .copied()
+                                .fold(f32::MAX, |curr, n| if n < curr { n } else { curr })
+                        } else {
+                            0f32
+                        };
+
+                        (Status::Complete, Some(format!("{:.2}mJ/s min", min)))
+                    },
                 }
             }
         }

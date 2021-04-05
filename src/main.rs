@@ -43,7 +43,9 @@ fn main() {
           Operation { time: 500, pin_no: 23, input: Signal::Digital(false) }],
         &[Criterion::GPIO(GPIOCriterion::Any(13)),
           Criterion::Energy(EnergyCriterion::Consumption("system".to_string())),
-          Criterion::Energy(EnergyCriterion::Average("system".to_string()))]);
+          Criterion::Energy(EnergyCriterion::Average("system".to_string())),
+          Criterion::Energy(EnergyCriterion::Max("system".to_string())),
+          Criterion::Energy(EnergyCriterion::Min("system".to_string()))]);
     let tests = [test];
 
     print!("{}\n\n", tests[0]);

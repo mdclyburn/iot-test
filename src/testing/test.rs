@@ -126,6 +126,10 @@ pub enum EnergyCriterion {
     Consumption(String),
     /// Track average energy consumption rate through the named meter.
     Average(String),
+    /// Track the maximum energy consumption rate through the named meter.
+    Max(String),
+    /// Track the minimum energy consumption rate through the named meter.
+    Min(String),
 }
 
 impl Display for EnergyCriterion {
@@ -133,6 +137,8 @@ impl Display for EnergyCriterion {
         match self {
             EnergyCriterion::Consumption(ref meter) => write!(f, "total consumption of '{}'", meter),
             EnergyCriterion::Average(ref meter) => write!(f, "average consumption rate of '{}'", meter),
+            EnergyCriterion::Max(ref meter) => write!(f, "max consumption of '{}'", meter),
+            EnergyCriterion::Min(ref meter) => write!(f, "min consumption of '{}'", meter),
         }
     }
 }
@@ -310,6 +316,8 @@ impl Test {
                 let meter_id = match energy_criterion {
                     EnergyCriterion::Consumption(id) => id,
                     EnergyCriterion::Average(id) => id,
+                    EnergyCriterion::Max(id) => id,
+                    EnergyCriterion::Min(id) => id,
                 };
 
                 if !meters.contains_key(meter_id) {
