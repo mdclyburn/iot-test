@@ -129,7 +129,7 @@ pub enum EnergyCriterion {
 impl Display for EnergyCriterion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            EnergyCriterion::Consumption(ref meter) => write!(f, "track total consumption with meter '{}'", meter),
+            EnergyCriterion::Consumption(ref meter) => write!(f, "total consumption of '{}'", meter),
         }
     }
 }
