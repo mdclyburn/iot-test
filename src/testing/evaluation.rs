@@ -57,10 +57,12 @@ impl Evaluation {
         }
     }
 
+    /// Returns the execution result used in the evaluation.
     pub fn get_exec_result(&self) -> &Result<Execution> {
         &self.exec_result
     }
 
+    /// Overall outcome of the evaluation.
     pub fn outcome(&self) -> Status {
         if self.exec_result.is_err() {
             Status::Error
@@ -69,6 +71,7 @@ impl Evaluation {
         }
     }
 
+    // Come up with an evaluation for the given criterion.
     fn evaluate(&self, criterion: &Criterion) -> (Status, Option<String>) {
         match criterion {
             Criterion::GPIO(criterion) => {
