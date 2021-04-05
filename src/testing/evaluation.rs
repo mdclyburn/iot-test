@@ -80,20 +80,38 @@ impl Evaluation {
             Criterion::Energy(criterion) => {
                 match criterion {
                     EnergyCriterion::Consumption(meter_id) => {
-                        let sample_rate_us = self.test.get_energy_sampling_rate()
-                            .as_micros();
-                        let frac = sample_rate_us as f32 / Duration::from_secs(1).as_micros() as f32;
-                        // Should exist in map because criterion stated it should be tracked.
-                        let samples = self.energy_metrics.get(meter_id).unwrap();
+                        // let sample_rate_us = self.test.get_energy_sampling_rate()
+                        //     .as_micros();
+                        // let frac = sample_rate_us as f64 / Duration::from_secs(1).as_micros() as f64;
 
-                        let mut total = 0f32;
-                        for sample in samples {
+                        // Should exist in map because criterion stated it should be tracked.
+                        let samples = self.energy_metrics.get(meter_id)
+                            .unwrap();
+
+                        let actual_length = self.exec_result
+                            .as_ref()
+                            // Evaluation results are only relevant when the exec_result is Ok(...).
+                            .expect("Attempted to evaluate criterion when execution result failed")
+                            .duration();
+                        let sample_count = samples.len();
+                        let sampling_rate = actual_length / sample_count as u32;
+                        let sample_weight = sampling_rate.as_micros() as f64 / Duration::from_secs(1).as_micros() as f64;
+
+                        let mut total = 0f64;
+                        for sample in samples.iter().copied() {
                             // mJ/s * fraction of the second the sample accounts for
-                            total += sample * frac
+                            total += sample as f64 * sample_weight;
                         }
 
                         (Status::Complete, Some(format!("{:.2}mJ consumed", total)))
-                    }
+                    },
+
+                    EnergyCriterion::Average(meter_id) => {
+                        let samples = self.energy_metrics.get(meter_id).unwrap();
+                        // ASSUMPTION: timer intervals represented by all samples are equal.
+                        let avg: f32 = samples.iter().sum::<f32>() / samples.len() as f32;
+                        (Status::Complete, Some(format!("{:.2}mJ/s average", avg)))
+                    },
                 }
             }
         }
@@ -105,7 +123,7 @@ impl Display for Evaluation {
         write!(f, "{}\t", self.test.get_id())?;
         match self.outcome() {
             Status::Error => write!(f, "Error ({})", self.get_exec_result().as_ref().unwrap_err()),
-            outcome => write!(f, "{} (in {:?})", outcome, self.get_exec_result().as_ref().unwrap().get_duration()),
+            outcome => write!(f, "{} (in {:?})", outcome, self.get_exec_result().as_ref().unwrap().duration()),
         }?;
         write!(f, "\n")?;
 
@@ -132,7 +150,7 @@ impl Display for Evaluation {
                 let (status, opt_message) = self.evaluate(criterion);
                 write!(f, "  - {} ({})\n", criterion, status)?;
                 if let Some(ref message) = opt_message {
-                    write!(f, "    Message: {}", message)?;
+                    write!(f, "    Message: {}\n", message)?;
                 }
             }
         }
