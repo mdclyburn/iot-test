@@ -17,9 +17,13 @@ use super::{Criterion,
 #[allow(dead_code)]
 #[derive(Copy, Clone, Debug)]
 pub enum Status {
+    /// Execution finished without error.
     Complete,
+    /// Execution completed and all criteria are satisfied.
     Pass,
+    /// Execution completed, but one or more criteria are violated.
     Fail,
+    /// Execution did not complete successfully.
     Error,
 }
 
