@@ -146,4 +146,8 @@ impl EnergyMetering for INA219 {
     fn power(&self) -> f32 {
         self.power().unwrap()
     }
+
+    fn cooldown_duration(&self) -> Duration {
+        Duration::from_micros(532)
+    }
 }
