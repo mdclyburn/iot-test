@@ -18,10 +18,8 @@ pub enum Error {
     GPIO(gpio::Error),
     /// Executor-observer thread communication error
     Comm(mpsc::RecvError),
-    /// Observer thread spawning error
-    Observer(std::io::Error),
-    /// Metering thread spawning error
-    Meter(std::io::Error),
+    /// Error from spawning testbed threads.
+    Threading(std::io::Error),
     /// Energy meter does not exist.
     NoSuchMeter(String),
 }
@@ -32,8 +30,7 @@ impl error::Error for Error {
             Error::IO(ref e) => Some(e),
             Error::GPIO(ref e) => Some(e),
             Error::Comm(ref e) => Some(e),
-            Error::Observer(ref e) => Some(e),
-            Error::Meter(ref e) => Some(e),
+            Error::Threading(ref e) => Some(e),
             _ => None,
         }
     }
@@ -63,8 +60,7 @@ impl Display for Error {
             Error::IO(ref e) => write!(f, "I/O error: {}", e),
             Error::GPIO(ref e) => write!(f, "GPIO error while testing: {}", e),
             Error::Comm(ref e) => write!(f, "Thread communication error: {}", e),
-            Error::Observer(ref e) => write!(f, "Could not start observer thread: {}", e),
-            Error::Meter(ref e) => write!(f, "Could not start metering thread: {}", e),
+            Error::Threading(ref e) => write!(f, "Thread spawning error: {}", e),
             Error::NoSuchMeter(ref id) => write!(f, "The meter '{}' does not exist", id),
         }
     }

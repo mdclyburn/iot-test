@@ -172,7 +172,7 @@ impl<'a> Testbed<'a> {
 
                 println!("observer: exiting");
             })
-            .map_err(|e| Error::Observer(e))
+            .map_err(|e| Error::Threading(e))
     }
 
     fn launch_metering(
@@ -231,7 +231,7 @@ impl<'a> Testbed<'a> {
                     energy_schannel.send(None).unwrap(); // done communicating results
                 }
             })
-            .map_err(|e| Error::Meter(e))
+            .map_err(|e| Error::Threading(e))
     }
 }
 
