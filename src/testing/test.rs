@@ -5,7 +5,6 @@ use std::collections::{BinaryHeap, HashMap};
 use std::fmt;
 use std::fmt::Display;
 use std::iter::IntoIterator;
-use std::thread;
 use std::time::{Duration, Instant};
 
 use rppal::gpio::{Gpio, Level, Trigger};
@@ -183,7 +182,6 @@ pub struct Test {
     id: String,
     actions: BinaryHeap<Reverse<Operation>>,
     criteria: Vec<Criterion>,
-    energy_sampling_rate: Duration,
 }
 
 impl Test {
@@ -195,7 +193,6 @@ impl Test {
             id: id.to_string(),
             actions: ops.into_iter().map(|x| Reverse(*x)).collect(),
             criteria: criteria.into_iter().cloned().collect(),
-            energy_sampling_rate: Duration::from_millis(10), // TODO: make this adjustable.
         }
     }
 
@@ -295,12 +292,9 @@ impl Test {
         // only care about meters defined in the criteria
         out.clear();
 
-        let mut max_sample_count = 0;
-        while max_sample_count * self.energy_sampling_rate < self.get_max_runtime() {
-            max_sample_count += 1;
-        }
-        // we take a sample at t = 0
-        max_sample_count += 1;
+        let approx_loop_micros = 545;
+        let max_sample_count = (self.get_max_runtime().as_micros() /
+                                approx_loop_micros as u128) + 1;
 
         let mut has_energy_criteria = false;
         // pre-allocate space in sample output vectors
@@ -348,8 +342,6 @@ impl Test {
             for (id, buf) in &mut *out {
                 let meter = meters.get(id).unwrap();
                 buf.push(meter.power());
-
-                thread::sleep(self.energy_sampling_rate);
             }
         }
     }

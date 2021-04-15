@@ -97,6 +97,7 @@ impl Evaluation {
                             .expect("Attempted to evaluate criterion when execution result failed")
                             .duration();
                         let sample_count = samples.len();
+                        // Approximate the sampling rate from the number of samples taken.
                         let sampling_rate = actual_length / sample_count as u32;
                         let sample_weight = sampling_rate.as_micros() as f64 / Duration::from_secs(1).as_micros() as f64;
 
