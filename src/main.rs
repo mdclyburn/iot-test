@@ -37,7 +37,7 @@ fn main() {
     let testbed = Testbed::new(
         &mapping,
         energy_meters);
-    print!("{}\n\n", testbed);
+    print!("{}\n", testbed);
 
     let test = Test::new(
         "example-blink-test",

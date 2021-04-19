@@ -91,20 +91,21 @@ impl Evaluation {
                         let samples = self.energy_metrics.get(meter_id)
                             .unwrap();
 
-                        let actual_length = self.exec_result
+                        let execution_duration = self.exec_result
                             .as_ref()
                             // Evaluation results are only relevant when the exec_result is Ok(...).
                             .expect("Attempted to evaluate criterion when execution result failed")
                             .duration();
                         let sample_count = samples.len();
-                        // Approximate the sampling rate from the number of samples taken.
-                        let sampling_rate = actual_length / sample_count as u32;
-                        let sample_weight = sampling_rate.as_micros() as f64 / Duration::from_secs(1).as_micros() as f64;
+                        // Approximate the time slice of each sample from the number of samples taken.
+                        let sample_time_repr: Duration = execution_duration / sample_count as u32;
+                        let rate_to_total_factor: f64 = sample_time_repr.as_micros() as f64
+                            / Duration::from_secs(1).as_micros() as f64;
 
                         let mut total = 0f64;
                         for sample in samples.iter().copied() {
                             // mJ/s * fraction of the second the sample accounts for
-                            total += sample as f64 * sample_weight;
+                            total += sample as f64 * rate_to_total_factor;
                         }
 
                         (Status::Complete, Some(format!("{:.2}mJ consumed", total)))
