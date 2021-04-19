@@ -12,6 +12,7 @@ pub use testbed::Testbed;
 pub use test::{
     Criterion,
     EnergyCriterion,
+    EnergyStat,
     GPIOCriterion,
     Operation,
     Test,

@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use super::{Criterion,
             GPIOCriterion,
-            EnergyCriterion,
+            EnergyStat,
             Execution,
             Response,
             Result,
@@ -85,10 +85,10 @@ impl Evaluation {
             },
 
             Criterion::Energy(criterion) => {
-                match criterion {
-                    EnergyCriterion::Consumption(meter_id) => {
+                match criterion.get_stat() {
+                    EnergyStat::Total => {
                         // Should exist in map because criterion stated it should be tracked.
-                        let samples = self.energy_metrics.get(meter_id)
+                        let samples = self.energy_metrics.get(criterion.get_meter())
                             .unwrap();
 
                         let execution_duration = self.exec_result
@@ -108,27 +108,58 @@ impl Evaluation {
                             total += sample as f64 * rate_to_total_factor;
                         }
 
-                        (Status::Complete, Some(format!("{:.2}mJ consumed", total)))
+                        let status = if let Some(violated) = criterion.violated(total as f32) {
+                            if violated {
+                                Status::Fail
+                            } else {
+                                Status::Pass
+                            }
+                        } else {
+                            Status::Complete
+                        };
+
+                        (status, Some(format!("{:.2}mJ consumed", total)))
                     },
 
-                    EnergyCriterion::Average(meter_id) => {
-                        let samples = self.energy_metrics.get(meter_id).unwrap();
+                    EnergyStat::Average => {
+                        let samples = self.energy_metrics.get(criterion.get_meter()).unwrap();
                         // ASSUMPTION: timer intervals represented by all samples are equal.
                         let avg: f32 = samples.iter().sum::<f32>() / samples.len() as f32;
-                        (Status::Complete, Some(format!("{:.2}mJ/s average", avg)))
+
+                        let status = if let Some(violated) = criterion.violated(avg as f32) {
+                            if violated {
+                                Status::Fail
+                            } else {
+                                Status::Pass
+                            }
+                        } else {
+                            Status::Complete
+                        };
+
+                        (status, Some(format!("{:.2}mJ/s average", avg)))
                     },
 
-                    EnergyCriterion::Max(meter_id) => {
-                        let samples = self.energy_metrics.get(meter_id).unwrap();
+                    EnergyStat::Max => {
+                        let samples = self.energy_metrics.get(criterion.get_meter()).unwrap();
                         let max = samples.iter()
                             .copied()
                             .fold(0f32, |curr, n| if n > curr { n } else { curr });
 
-                        (Status::Complete, Some(format!("{:.2}mJ/s max", max)))
+                        let status = if let Some(violated) = criterion.violated(max as f32) {
+                            if violated {
+                                Status::Fail
+                            } else {
+                                Status::Pass
+                            }
+                        } else {
+                            Status::Complete
+                        };
+
+                        (status, Some(format!("{:.2}mJ/s max", max)))
                     },
 
-                    EnergyCriterion::Min(meter_id) => {
-                        let samples = self.energy_metrics.get(meter_id).unwrap();
+                    EnergyStat::Min => {
+                        let samples = self.energy_metrics.get(criterion.get_meter()).unwrap();
                         let min = if samples.len() > 0 {
                             samples.iter()
                                 .copied()
@@ -137,7 +168,17 @@ impl Evaluation {
                             0f32
                         };
 
-                        (Status::Complete, Some(format!("{:.2}mJ/s min", min)))
+                        let status = if let Some(violated) = criterion.violated(min as f32) {
+                            if violated {
+                                Status::Fail
+                            } else {
+                                Status::Pass
+                            }
+                        } else {
+                            Status::Complete
+                        };
+
+                        (status, Some(format!("{:.2}mJ/s min", min)))
                     },
                 }
             }

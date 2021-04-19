@@ -118,26 +118,103 @@ impl Display for GPIOCriterion {
     }
 }
 
-#[allow(unused)]
 #[derive(Clone, Debug)]
-pub enum EnergyCriterion {
-    /// Track total energy consumption through the named meter.
-    Consumption(String),
-    /// Track average energy consumption rate through the named meter.
-    Average(String),
-    /// Track the maximum energy consumption rate through the named meter.
-    Max(String),
-    /// Track the minimum energy consumption rate through the named meter.
-    Min(String),
+pub struct EnergyCriterion {
+    meter: String,
+    stat: EnergyStat,
+    min: Option<f32>,
+    max: Option<f32>,
+}
+
+/// Energy-specific criterion of interest.
+impl EnergyCriterion {
+    /// Create a new EnergyCriterion.
+    pub fn new(meter: &str, stat: EnergyStat) -> Self {
+        Self {
+            meter: meter.to_string(),
+            stat,
+            min: None,
+            max: None,
+        }
+    }
+
+    /// Specify a minimum value for the criterion.
+    pub fn with_min(self, min: f32) -> Self {
+        Self {
+            min: Some(min),
+            ..self
+        }
+    }
+
+    /// Specify a maximum value for the energy criterion.
+    pub fn with_max(self, max: f32) -> Self {
+        Self {
+            max: Some(max),
+            ..self
+        }
+    }
+
+    /// Returns the name of the target energy meter.
+    pub fn get_meter(&self) -> &str {
+        &self.meter
+    }
+
+    /// Returns the energy statistic.
+    pub fn get_stat(&self) -> EnergyStat {
+        self.stat
+    }
+
+    /// Returns true if the given value violates the criterion.
+    pub fn violated(&self, value: f32) -> Option<bool> {
+        if self.min.is_none() && self.max.is_none() {
+            None
+        } else {
+            let b = self.min.map(|min| value < min)
+                .unwrap_or(false)
+                ||
+                self.max.map(|max| value > max)
+                .unwrap_or(false);
+
+            Some(b)
+        }
+    }
 }
 
 impl Display for EnergyCriterion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let unit = match self.stat {
+            EnergyStat::Total => "mJ",
+            _ => "mJ/s"
+        };
+
+        write!(f, "'{}' {} ", self.meter, self.stat)?;
+        write!(f, "(min: {},", self.min.map(|x| format!("{:.2}{}", x, unit)).unwrap_or("-".to_string()))?;
+        write!(f, " max: {})", self.max.map(|x| format!("{:.2}{}", x, unit)).unwrap_or("-".to_string()))?;
+
+        Ok(())
+    }
+}
+
+#[allow(unused)]
+#[derive(Clone, Copy, Debug)]
+pub enum EnergyStat {
+    /// Track total energy consumption.
+    Total,
+    /// Track average energy consumption rate.
+    Average,
+    /// Track the maximum energy consumption rate.
+    Max,
+    /// Track the minimum energy consumption rate.
+    Min,
+}
+
+impl Display for EnergyStat {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            EnergyCriterion::Consumption(ref meter) => write!(f, "total consumption of '{}'", meter),
-            EnergyCriterion::Average(ref meter) => write!(f, "average consumption rate of '{}'", meter),
-            EnergyCriterion::Max(ref meter) => write!(f, "max consumption of '{}'", meter),
-            EnergyCriterion::Min(ref meter) => write!(f, "min consumption of '{}'", meter),
+            EnergyStat::Total => write!(f, "total consumption"),
+            EnergyStat::Average => write!(f, "average consumption rate"),
+            EnergyStat::Max => write!(f, "max consumption"),
+            EnergyStat::Min => write!(f, "min consumption"),
         }
     }
 }
@@ -301,18 +378,11 @@ impl Test {
         for criterion in &self.criteria {
             if let Criterion::Energy(ref energy_criterion) = criterion {
                 has_energy_criteria = true;
-                // get the meter referred to in the criterion
-                let meter_id = match energy_criterion {
-                    EnergyCriterion::Consumption(id) => id,
-                    EnergyCriterion::Average(id) => id,
-                    EnergyCriterion::Max(id) => id,
-                    EnergyCriterion::Min(id) => id,
-                };
-
+                let meter_id = energy_criterion.get_meter();
                 if !meters.contains_key(meter_id) {
                     return Err(Error::NoSuchMeter(meter_id.to_string()));
                 } else {
-                    out.entry(meter_id.clone())
+                    out.entry(meter_id.to_string())
                         .or_insert(Vec::new())
                         .reserve_exact(max_sample_count as usize);
                 }
