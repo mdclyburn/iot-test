@@ -237,6 +237,17 @@ impl<'a> Testbed<'a> {
 
 impl<'a> Display for Testbed<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Testbed\n{}", self.pin_mapping)
+        write!(f, "Testbed\n{}", self.pin_mapping)?;
+
+        write!(f, "\nEnergy meters:\n")?;
+        if let Ok(meters) = self.energy_meters.lock() {
+            for meter_id in meters.keys() {
+                write!(f, " - '{}'\n", meter_id)?;
+            }
+        } else {
+            write!(f, " (unavailable)\n")?;
+        }
+
+        Ok(())
     }
 }
