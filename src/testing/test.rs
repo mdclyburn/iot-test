@@ -259,6 +259,7 @@ pub struct Test {
     id: String,
     actions: BinaryHeap<Reverse<Operation>>,
     criteria: Vec<Criterion>,
+    tail_duration: Option<Duration>,
 }
 
 impl Test {
@@ -270,6 +271,7 @@ impl Test {
             id: id.to_string(),
             actions: ops.into_iter().map(|x| Reverse(*x)).collect(),
             criteria: criteria.into_iter().cloned().collect(),
+            tail_duration: Some(Duration::from_millis(5)),
         }
     }
 
@@ -328,6 +330,9 @@ impl Test {
     }
 
     /// Record test inputs (outputs from the device).
+    ///
+    /// Watches for responses from the device under test for a slightly longer duration than the duration of the test.
+    /// This is done to catch any straggling responses from the device.
     pub fn observe(&self, t0: Instant, pins: &DeviceOutputs, out: &mut Vec<Response>) -> Result<()> {
         let gpio = Gpio::new()?;
         let t_end = t0 + self.get_max_runtime();
@@ -420,11 +425,15 @@ impl Test {
     ///
     /// TODO: make this dependent on actions' timing, criteria timing, and another tail duration(?).
     fn get_max_runtime(&self) -> Duration {
-        let ms = self.actions.iter()
+        let duration_ms = self.actions.iter()
             .map(|Reverse(action)| action.time)
             .last()
             .unwrap_or(0);
-        Duration::from_millis(ms)
+        let tail_ms = self.tail_duration
+            .unwrap_or(Duration::from_millis(0))
+            .as_millis();
+
+        Duration::from_millis(duration_ms + tail_ms as u64)
     }
 }
 
