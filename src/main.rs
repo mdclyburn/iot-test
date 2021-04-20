@@ -5,6 +5,7 @@ mod device;
 mod facility;
 mod hw;
 mod io;
+mod sw;
 mod testing;
 
 use crate::comm::{Direction, Class as SignalClass, Signal};
