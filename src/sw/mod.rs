@@ -2,6 +2,7 @@
  */
 
 pub mod error;
+pub mod tock;
 
 use std::path::Path;
 
