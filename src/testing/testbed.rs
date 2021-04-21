@@ -23,17 +23,16 @@ type Result<T> = std::result::Result<T, Error>;
 
 /// Test suite executor
 #[derive(Debug)]
-pub struct Testbed<'a> {
-    // TODO: reference? why?
-    pin_mapping: &'a Mapping,
+pub struct Testbed {
+    pin_mapping: Mapping,
     energy_meters: Arc<Mutex<HashMap<String, Box<dyn EnergyMetering>>>>,
 }
 
-impl<'a> Testbed<'a> {
+impl Testbed {
     /// Create a new `Testbed`.
-    pub fn new<'b, T>(pin_mapping: &'a Mapping, energy_meters: T) -> Testbed<'a>
+    pub fn new<'a, T>(pin_mapping: Mapping, energy_meters: T) -> Testbed
     where
-        T: IntoIterator<Item = (&'b str, Box<dyn EnergyMetering>)>
+        T: IntoIterator<Item = (&'a str, Box<dyn EnergyMetering>)>
     {
         let energy_meters = energy_meters.into_iter()
             .map(|(id, meter)| (id.to_string(), meter))
@@ -55,7 +54,7 @@ impl<'a> Testbed<'a> {
      *    testbed.execute(&[test], &mut results);
      * ```
      */
-    pub fn execute<T>(&self, tests: T) -> Result<Vec<Evaluation>> where
+    pub fn execute<'a, T>(&self, tests: T) -> Result<Vec<Evaluation>> where
         T: IntoIterator<Item = &'a Test>
     {
         let mut test_results = Vec::new();
@@ -235,7 +234,7 @@ impl<'a> Testbed<'a> {
     }
 }
 
-impl<'a> Display for Testbed<'a> {
+impl Display for Testbed {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Testbed\n{}", self.pin_mapping)?;
 
