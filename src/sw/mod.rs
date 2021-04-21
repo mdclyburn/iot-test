@@ -6,7 +6,7 @@ pub mod error;
 pub mod tock;
 
 use std::fmt;
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 use std::path::Path;
 
 use error::Error;
@@ -28,7 +28,7 @@ impl Display for Platform {
 }
 
 /// A platform that supports loading software.
-pub trait Loadable {
+pub trait Loadable: Debug {
     /// Load software from the given path.
     fn load(&self, path: &Path) -> Result<()>;
 

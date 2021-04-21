@@ -15,6 +15,7 @@ use std::time::Instant;
 
 use crate::facility::EnergyMetering;
 use crate::io::Mapping;
+use crate::sw::{Loadable, Platform};
 use crate::sw::application::ApplicationSet;
 use crate::testing::test::Response;
 
@@ -27,16 +28,19 @@ type Result<T> = std::result::Result<T, Error>;
 pub struct Testbed {
     pin_mapping: Mapping,
     energy_meters: Arc<Mutex<HashMap<String, Box<dyn EnergyMetering>>>>,
+    platform_config: HashMap<Platform, Box<dyn Loadable>>,
     applications: Option<ApplicationSet>
 }
 
 impl Testbed {
     /// Create a new `Testbed`.
-    pub fn new<'a, T>(pin_mapping: Mapping,
-                      energy_meters: T,
-                      applications: Option<ApplicationSet>) -> Testbed
+    pub fn new<'a, T, U>(pin_mapping: Mapping,
+                         energy_meters: T,
+                         platform_config: U,
+                         applications: Option<ApplicationSet>) -> Testbed
     where
-        T: IntoIterator<Item = (&'a str, Box<dyn EnergyMetering>)>
+        T: IntoIterator<Item = (&'a str, Box<dyn EnergyMetering>)>,
+        U: IntoIterator<Item = (Platform, Box<dyn Loadable>)>,
     {
         let energy_meters = energy_meters.into_iter()
             .map(|(id, meter)| (id.to_string(), meter))
@@ -45,6 +49,8 @@ impl Testbed {
         Testbed {
             pin_mapping,
             energy_meters: Arc::new(Mutex::new(energy_meters)),
+            platform_config: platform_config.into_iter()
+                .collect(),
             applications,
         }
     }
@@ -78,6 +84,9 @@ impl Testbed {
                                                  energy_schannel)?;
 
         for test in tests {
+            // load application if necessary
+
+
             *current_test.write().unwrap() = Some(test.clone());
 
             let mut inputs = self.pin_mapping.get_gpio_inputs()?;
@@ -237,6 +246,9 @@ impl Testbed {
             })
             .map_err(|e| Error::Threading(e))
     }
+
+    // fn load_app(&self, test: &Test) -> Result<()> {
+    // }
 }
 
 impl Display for Testbed {

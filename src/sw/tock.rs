@@ -7,6 +7,7 @@ use super::Platform;
 use super::Result;
 
 /// Testbed support for the Tock OS platform.
+#[derive(Clone, Debug)]
 pub struct Tock {
     tockloader_path: PathBuf,
 }

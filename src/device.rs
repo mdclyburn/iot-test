@@ -14,6 +14,7 @@ use std::fmt;
 use std::fmt::Display;
 
 use crate::comm::{Direction, Class as SignalClass};
+use crate::sw::Platform;
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -37,6 +38,7 @@ impl Display for Error {
 /// Properties about a device under test
 #[derive(Clone, Debug)]
 pub struct Device {
+    platform: Option<Platform>,
     io: HashMap<u8, (Direction, SignalClass)>,
 }
 
@@ -55,11 +57,17 @@ impl Device {
     ]);
     ```
     !*/
-    pub fn new<'a, T>(pin_map: T) -> Device where
+    pub fn new<'a, T>(platform: Option<Platform>, pin_map: T) -> Device where
         T: IntoIterator<Item = &'a (u8, (Direction, SignalClass))> {
         Device {
+            platform,
             io: pin_map.into_iter().map(|x| *x).collect(),
         }
+    }
+
+    /// Returns the device's platform.
+    pub fn get_platform(&self) -> Option<Platform> {
+        self.platform
     }
 
     /// Returns true if the device definition defines a pin.

@@ -16,7 +16,8 @@ use crate::facility::EnergyMetering;
 use crate::hw::INA219;
 use crate::io::Mapping;
 use crate::sw::application::{Application, ApplicationSet};
-use crate::sw::Platform;
+use crate::sw::{Loadable, Platform};
+use crate::sw::tock::Tock;
 use crate::testing::{
     Criterion,
     EnergyCriterion,
@@ -29,16 +30,22 @@ use crate::testing::{
 
 fn main() {
     // physical mapping
-    let device = Device::new(&[
-        (13, (Direction::Out, SignalClass::Digital)),
-        (23, (Direction::In, SignalClass::Digital)),
-    ]);
+    let device = Device::new(
+        Some(Platform::Tock),
+        &[(13, (Direction::Out, SignalClass::Digital)),
+          (23, (Direction::In, SignalClass::Digital)),
+        ]);
     let mapping = Mapping::new(&device, &[(17, 23), (27, 13)]).unwrap();
 
     // energy metering
     let ina219 = INA219::new(mapping.get_i2c().unwrap(), 0x40)
         .unwrap();
     let energy_meters: Vec<(&str, Box<dyn EnergyMetering>)> = vec![("system", Box::new(ina219))];
+
+    // platform support
+    let platforms: Vec<(Platform, Box<dyn Loadable>)> = vec![
+        (Platform::Tock, Box::new(Tock::new(Path::new("/home/ubuntu/.local/bin/tockloader")))),
+    ];
 
     // applications
     let app_set = ApplicationSet::new(
@@ -48,11 +55,13 @@ fn main() {
     let testbed = Testbed::new(
         mapping,
         energy_meters,
+        platforms,
         Some(app_set));
     print!("{}\n", testbed);
 
     let test = Test::new(
         "example-blink-test",
+        None,
         &[Operation { time: 0, pin_no: 23, input: Signal::Digital(true) },
           Operation { time: 500, pin_no: 23, input: Signal::Digital(false) }],
         &[Criterion::GPIO(GPIOCriterion::Any(13)),

@@ -259,6 +259,7 @@ Executing a test (via [`Test::execute`]) produces an [`Execution`] that contains
 #[derive(Clone, Debug)]
 pub struct Test {
     id: String,
+    app_id: Option<String>,
     actions: BinaryHeap<Reverse<Operation>>,
     criteria: Vec<Criterion>,
     tail_duration: Option<Duration>,
@@ -266,11 +267,13 @@ pub struct Test {
 
 impl Test {
     /// Define a new test.
-    pub fn new<'a, T, U>(id: &str, ops: T, criteria: U) -> Test where
+    pub fn new<'a, T, U>(id: &str, app_id: Option<&str>, ops: T, criteria: U) -> Test where
         T: IntoIterator<Item = &'a Operation>,
-        U: IntoIterator<Item = &'a Criterion> {
+        U: IntoIterator<Item = &'a Criterion>,
+    {
         Test {
             id: id.to_string(),
+            app_id: app_id.map(|app_id| app_id.to_string()),
             actions: ops.into_iter().map(|x| Reverse(*x)).collect(),
             criteria: criteria.into_iter().cloned().collect(),
             tail_duration: Some(Duration::from_millis(5)),
@@ -280,6 +283,11 @@ impl Test {
     /// Returns the identifier of the test definition.
     pub fn get_id(&self) -> &str {
         &self.id
+    }
+
+    /// Returns the identifier of the application the test exercises.
+    pub fn get_app_id(&self) -> &Option<String> {
+        &self.app_id
     }
 
     /// Returns defined test criteria.
