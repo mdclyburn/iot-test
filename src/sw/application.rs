@@ -39,6 +39,7 @@ impl Application {
     }
 }
 
+#[derive(Debug)]
 pub struct ApplicationSet {
     applications: HashMap<String, Application>,
 }

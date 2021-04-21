@@ -15,6 +15,7 @@ use std::time::Instant;
 
 use crate::facility::EnergyMetering;
 use crate::io::Mapping;
+use crate::sw::application::ApplicationSet;
 use crate::testing::test::Response;
 
 use super::{Error, Evaluation, Test};
@@ -26,11 +27,14 @@ type Result<T> = std::result::Result<T, Error>;
 pub struct Testbed {
     pin_mapping: Mapping,
     energy_meters: Arc<Mutex<HashMap<String, Box<dyn EnergyMetering>>>>,
+    applications: Option<ApplicationSet>
 }
 
 impl Testbed {
     /// Create a new `Testbed`.
-    pub fn new<'a, T>(pin_mapping: Mapping, energy_meters: T) -> Testbed
+    pub fn new<'a, T>(pin_mapping: Mapping,
+                      energy_meters: T,
+                      applications: Option<ApplicationSet>) -> Testbed
     where
         T: IntoIterator<Item = (&'a str, Box<dyn EnergyMetering>)>
     {
@@ -41,6 +45,7 @@ impl Testbed {
         Testbed {
             pin_mapping,
             energy_meters: Arc::new(Mutex::new(energy_meters)),
+            applications,
         }
     }
 

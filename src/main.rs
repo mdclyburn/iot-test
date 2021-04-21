@@ -47,7 +47,8 @@ fn main() {
 
     let testbed = Testbed::new(
         mapping,
-        energy_meters);
+        energy_meters,
+        Some(app_set));
     print!("{}\n", testbed);
 
     let test = Test::new(
@@ -55,8 +56,8 @@ fn main() {
         &[Operation { time: 0, pin_no: 23, input: Signal::Digital(true) },
           Operation { time: 500, pin_no: 23, input: Signal::Digital(false) }],
         &[Criterion::GPIO(GPIOCriterion::Any(13)),
-          Criterion::Energy(EnergyCriterion::new("system", EnergyStat::Total)
-                            )]);
+          Criterion::Energy(EnergyCriterion::new("system", EnergyStat::Total))
+        ]);
     let tests = [test];
 
     print!("{}\n\n", tests[0]);
