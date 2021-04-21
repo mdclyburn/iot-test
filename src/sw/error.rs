@@ -9,7 +9,7 @@ pub enum Error {
     // [`std::io`] error.
     IO(std::io::Error),
     /// Problem while working with external tools.
-    Load(Output),
+    Tool(Output),
     /// Catch-all for other errors.
     Other(String),
 }
@@ -27,7 +27,7 @@ impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Error::IO(ref e) => write!(f, "I/O error: {}", e),
-            Error::Load(ref output) => write!(f, "could not load software (status: {})", output.status),
+            Error::Tool(ref output) => write!(f, "could not load software (status: {})", output.status),
             Error::Other(ref msg) => write!(f, "unexpected error: {}", msg),
         }
     }

@@ -32,12 +32,23 @@ impl Loadable for Tock {
         if output.status.success() {
             Ok(())
         } else {
-            Err(Error::Load(output))
+            Err(Error::Tool(output))
         }
     }
 
     fn unload(&self) -> Result<()> {
-        Ok(())
+        let tockloader_path_str = self.tockloader_path.to_str()
+            .ok_or(Error::Other(format!("cannot convert '{}' to Unicode", self.tockloader_path.display())))?;
+
+        let output = Command::new(tockloader_path_str)
+            .args(&["uninstall"])
+            .output()?;
+
+        if output.status.success() {
+            Ok(())
+        } else {
+            Err(Error::Tool(output))
+        }
     }
 
     fn platform(&self) -> Platform {
