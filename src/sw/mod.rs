@@ -1,9 +1,12 @@
 /*! Software integration with devices under test.
  */
 
+pub mod application;
 pub mod error;
 pub mod tock;
 
+use std::fmt;
+use std::fmt::Display;
 use std::path::Path;
 
 use error::Error;
@@ -11,8 +14,17 @@ use error::Error;
 type Result<T> = std::result::Result<T, Error>;
 
 /// Embedded systems software platform.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Platform {
     Tock,
+}
+
+impl Display for Platform {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Platform::Tock => write!(f, "Tock OS"),
+        }
+    }
 }
 
 /// A platform that supports loading software.

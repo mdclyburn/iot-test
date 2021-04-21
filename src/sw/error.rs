@@ -4,14 +4,18 @@ use std::fmt;
 use std::fmt::Display;
 use std::process::Output;
 
+use super::Platform;
+
 #[derive(Debug)]
 pub enum Error {
-    // [`std::io`] error.
+    /// A [`std::io`] error.
     IO(std::io::Error),
     /// Problem while working with external tools.
     Tool(Output),
     /// Catch-all for other errors.
     Other(String),
+    /// Application not defined for platform.
+    UndefinedApp(String, Platform),
 }
 
 impl error::Error for Error {
@@ -29,6 +33,7 @@ impl Display for Error {
             Error::IO(ref e) => write!(f, "I/O error: {}", e),
             Error::Tool(ref output) => write!(f, "could not load software (status: {})", output.status),
             Error::Other(ref msg) => write!(f, "unexpected error: {}", msg),
+            Error::UndefinedApp(ref name, platform) => write!(f, "no '{}' app defined for {}", name, platform),
         }
     }
 }
