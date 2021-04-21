@@ -1,3 +1,5 @@
+//! Extensions to the capabilities of the testbed.
+
 use std::fmt::Debug;
 use std::time::Duration;
 

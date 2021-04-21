@@ -139,6 +139,7 @@ impl EnergyCriterion {
     }
 
     /// Specify a minimum value for the criterion.
+    #[allow(unused)]
     pub fn with_min(self, min: f32) -> Self {
         Self {
             min: Some(min),
@@ -147,6 +148,7 @@ impl EnergyCriterion {
     }
 
     /// Specify a maximum value for the energy criterion.
+    #[allow(unused)]
     pub fn with_max(self, max: f32) -> Self {
         Self {
             max: Some(max),
