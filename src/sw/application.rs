@@ -6,23 +6,29 @@ use super::Platform;
 use super::Result;
 
 /// Collection of the same (or similar) applications for different platforms.
-pub struct ApplicationSet {
+#[derive(Clone, Debug)]
+pub struct Application {
     id: String,
     app_set: HashMap<Platform, PathBuf>,
 }
 
-impl ApplicationSet {
-    /// Create a new Application set.
-    pub fn new<'a, T>(id: &str, files: T) -> ApplicationSet
+impl Application {
+    /// Create a new Application.
+    pub fn new<'a, T>(id: &str, files: T) -> Application
     where
-        T: IntoIterator<Item = (Platform, &'a Path)>
+        T: IntoIterator<Item = &'a (Platform, &'a Path)>
     {
-        ApplicationSet {
+        Application {
             id: id.to_string(),
             app_set: files.into_iter()
-                .map(|(platform, path)| (platform, path.to_path_buf()))
+                .map(|(platform, path)| (*platform, path.to_path_buf()))
                 .collect(),
         }
+    }
+
+    /// Returns the shorthand identifier for the application.
+    pub fn get_id(&self) -> &str {
+        &self.id
     }
 
     /// Get the path to the application for the given platform.
@@ -30,5 +36,24 @@ impl ApplicationSet {
         self.app_set.get(&platform)
             .map(|p| p.as_path())
             .ok_or(Error::UndefinedApp(self.id.clone(), platform))
+    }
+}
+
+pub struct ApplicationSet {
+    applications: HashMap<String, Application>,
+}
+
+impl ApplicationSet {
+    /// Create a new application set.
+    pub fn new<'a, T>(apps: T) -> ApplicationSet
+    where
+        T: IntoIterator<Item = &'a Application>
+    {
+        ApplicationSet {
+            applications: apps.into_iter()
+                .cloned()
+                .map(|app| (app.get_id().to_string(), app))
+                .collect(),
+        }
     }
 }

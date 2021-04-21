@@ -1,5 +1,7 @@
 //! IoT testing tool
 
+use std::path::Path;
+
 mod comm;
 mod device;
 mod facility;
@@ -13,6 +15,8 @@ use crate::device::Device;
 use crate::facility::EnergyMetering;
 use crate::hw::INA219;
 use crate::io::Mapping;
+use crate::sw::application::{Application, ApplicationSet};
+use crate::sw::Platform;
 use crate::testing::{
     Criterion,
     EnergyCriterion,
@@ -36,8 +40,13 @@ fn main() {
         .unwrap();
     let energy_meters: Vec<(&str, Box<dyn EnergyMetering>)> = vec![("system", Box::new(ina219))];
 
+    // applications
+    let app_set = ApplicationSet::new(
+        &[Application::new("blink", &[(Platform::Tock, Path::new("/home/ubuntu/work/apps/tock/blink.tab"))])]
+    );
+
     let testbed = Testbed::new(
-        &mapping,
+        mapping,
         energy_meters);
     print!("{}\n", testbed);
 
