@@ -28,7 +28,7 @@ type Result<T> = std::result::Result<T, Error>;
 pub struct Testbed {
     pin_mapping: Mapping,
     energy_meters: Arc<Mutex<HashMap<String, Box<dyn EnergyMetering>>>>,
-    platform_config: HashMap<Platform, Box<dyn Loadable>>,
+    platform_configs: HashMap<Platform, Box<dyn Loadable>>,
     applications: Option<ApplicationSet>
 }
 
@@ -36,11 +36,11 @@ impl Testbed {
     /// Create a new `Testbed`.
     pub fn new<'a, T, U>(pin_mapping: Mapping,
                          energy_meters: T,
-                         platform_config: U,
+                         platform_configs: U,
                          applications: Option<ApplicationSet>) -> Testbed
     where
         T: IntoIterator<Item = (&'a str, Box<dyn EnergyMetering>)>,
-        U: IntoIterator<Item = (Platform, Box<dyn Loadable>)>,
+        U: IntoIterator<Item = Box<dyn Loadable>>,
     {
         let energy_meters = energy_meters.into_iter()
             .map(|(id, meter)| (id.to_string(), meter))
@@ -49,7 +49,8 @@ impl Testbed {
         Testbed {
             pin_mapping,
             energy_meters: Arc::new(Mutex::new(energy_meters)),
-            platform_config: platform_config.into_iter()
+            platform_configs: platform_configs.into_iter()
+                .map(|config| (config.platform(), config))
                 .collect(),
             applications,
         }
