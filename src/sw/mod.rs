@@ -44,6 +44,9 @@ pub trait Loadable: Debug {
     /// Remove software from the device.
     fn unload(&mut self, app_id: &str) -> Result<()>;
 
+    /// Returns an iterator over the platform's loaded software.
+    fn loaded_software<'a>(&'a self) -> Box<dyn Iterator<Item = &'a String> + 'a>;
+
     /// Returns the device's platform.
     fn platform(&self) -> Platform;
 }

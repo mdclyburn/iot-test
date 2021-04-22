@@ -65,6 +65,10 @@ impl Loadable for Tock {
         }
     }
 
+    fn loaded_software<'a>(&'a self) -> Box<dyn Iterator<Item = &'a String> + 'a> {
+        Box::new(self.loaded_apps.iter())
+    }
+
     fn platform(&self) -> Platform {
         Platform::Tock
     }
