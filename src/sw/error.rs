@@ -14,8 +14,10 @@ pub enum Error {
     Tool(Output),
     /// Catch-all for other errors.
     Other(String),
+    /// Application not defined.
+    Undefined(String),
     /// Application not defined for platform.
-    UndefinedApp(String, Platform),
+    Unsupported(String, Platform),
 }
 
 impl error::Error for Error {
@@ -33,7 +35,8 @@ impl Display for Error {
             Error::IO(ref e) => write!(f, "I/O error: {}", e),
             Error::Tool(ref output) => write!(f, "could not load software (status: {})", output.status),
             Error::Other(ref msg) => write!(f, "unexpected error: {}", msg),
-            Error::UndefinedApp(ref name, platform) => write!(f, "no '{}' app defined for {}", name, platform),
+            Error::Undefined(ref name) => write!(f, "no '{}' app defined", name),
+            Error::Unsupported(ref name, platform) => write!(f, "no '{}' app defined for {}", name, platform),
         }
     }
 }

@@ -5,6 +5,7 @@ pub mod application;
 pub mod error;
 pub mod tock;
 
+use std::convert::From;
 use std::fmt;
 use std::fmt::{Debug, Display};
 use std::path::Path;
@@ -23,6 +24,14 @@ impl Display for Platform {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Platform::Tock => write!(f, "Tock OS"),
+        }
+    }
+}
+
+impl From<Platform> for String {
+    fn from(platform: Platform) -> String {
+        match platform {
+            Platform::Tock => "Tock OS".to_string(),
         }
     }
 }

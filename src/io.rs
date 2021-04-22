@@ -118,6 +118,11 @@ impl Mapping {
         })
     }
 
+    /// Returns the device the mapping is for.
+    pub fn get_device(&self) -> &Device {
+        &self.device
+    }
+
     /** Returns GPIO pins that are inputs _to the device_ (i.e., outputs from the testbed).
 
     This function returns Ok([`DeviceInputs`]) only when *all* pins are available.

@@ -248,8 +248,19 @@ impl Testbed {
             .map_err(|e| Error::Threading(e))
     }
 
-    // fn load_app(&self, test: &Test) -> Result<()> {
-    // }
+    fn load_app(&self, app_id: &str) -> Result<()> {
+        let platform = self.pin_mapping.get_device()
+            .get_platform()
+            .ok_or(Error::DevicePlatform)?;
+        let config = self.platform_configs.get(&platform)
+            .ok_or(Error::NoPlatformConfig(String::from(platform)))?;
+        let application = self.applications.as_ref()
+            .ok_or(Error::NoApplications)?
+            .get(app_id)?;
+
+        config.load(application.get_for(platform)?)
+            .map_err(|e| Error::Software(e))
+    }
 }
 
 impl Display for Testbed {

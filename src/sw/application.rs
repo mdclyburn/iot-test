@@ -35,7 +35,7 @@ impl Application {
     pub fn get_for(&self, platform: Platform) -> Result<&Path> {
         self.app_set.get(&platform)
             .map(|p| p.as_path())
-            .ok_or(Error::UndefinedApp(self.id.clone(), platform))
+            .ok_or(Error::Unsupported(self.id.clone(), platform))
     }
 }
 
@@ -56,5 +56,11 @@ impl ApplicationSet {
                 .map(|app| (app.get_id().to_string(), app))
                 .collect(),
         }
+    }
+
+    /// Returns the named application.
+    pub fn get(&self, app_id: &str) -> Result<&Application> {
+        self.applications.get(app_id)
+            .ok_or(Error::Undefined(app_id.to_string()))
     }
 }
