@@ -104,6 +104,7 @@ impl Display for Criterion {
     }
 }
 
+/// Trackable GPIO activity.
 #[allow(unused)]
 #[derive(Clone, Copy, Debug)]
 pub enum GPIOCriterion {
@@ -118,6 +119,7 @@ impl Display for GPIOCriterion {
     }
 }
 
+/// Energy criterion specification details.
 #[derive(Clone, Debug)]
 pub struct EnergyCriterion {
     meter: String,
@@ -166,7 +168,10 @@ impl EnergyCriterion {
         self.stat
     }
 
-    /// Returns true if the given value violates the criterion.
+    /** Returns true if the given value violates the criterion.
+
+    If there is no part of the criterion can be violated this function will return None.
+     */
     pub fn violated(&self, value: f32) -> Option<bool> {
         if self.min.is_none() && self.max.is_none() {
             None
@@ -197,6 +202,7 @@ impl Display for EnergyCriterion {
     }
 }
 
+/// Trackable energy usage statistics.
 #[allow(unused)]
 #[derive(Clone, Copy, Debug)]
 pub enum EnergyStat {
