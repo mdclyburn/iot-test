@@ -1,3 +1,5 @@
+//! Support for the INA219 sensor.
+
 use std::cell::{RefCell, RefMut};
 use std::sync::Mutex;
 use std::thread;
@@ -7,6 +9,7 @@ use rppal::i2c::I2c;
 
 use crate::facility::EnergyMetering;
 
+/// INA219 register addresses.
 #[allow(unused)]
 mod register {
     pub const CONFIGURATION: u8 = 0x00;
@@ -17,7 +20,7 @@ mod register {
     pub const CALIBRATION: u8   = 0x05;
 }
 
-// 4mV per value when reading bus voltage.
+/// Conversion factor when reading bus voltage (4mV per value).
 const BUS_VOLTAGE_LSB: f32 = 0.004;
 
 /// Driver for the TI INA219 current sensor.
@@ -130,9 +133,11 @@ impl INA219 {
     }
 }
 
-// Calculate the calibration value for the calibration register.
-// max_expected_current is current in amperes.
-// r_shunt is resistance in ohms.
+/** Calculate the calibration value for the calibration register.
+
+- `max_expected_current` is current in amperes.
+- `r_shunt` is resistance in ohms.
+ */
 fn calculate_calibration(max_expected_current: f32, r_shunt: f32) -> u16 {
     let amps_per_bit = max_expected_current / 2f32.powi(15);
     (0.04096f32 / (amps_per_bit * r_shunt)) as u16

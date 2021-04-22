@@ -1,3 +1,5 @@
+//! Error-handling for working with external tooling.
+
 use std::convert::From;
 use std::error;
 use std::fmt;

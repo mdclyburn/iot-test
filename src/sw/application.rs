@@ -1,3 +1,5 @@
+//! Loadable software, modules, or applications for embedded devices.
+
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -5,7 +7,7 @@ use super::Error;
 use super::Platform;
 use super::Result;
 
-/// Collection of the same (or similar) applications for different platforms.
+/// The (functionally) same application for different platforms.
 #[derive(Clone, Debug)]
 pub struct Application {
     id: String,
@@ -39,6 +41,7 @@ impl Application {
     }
 }
 
+/// Collection of applications that can be loaded onto devices under test.
 #[derive(Debug)]
 pub struct ApplicationSet {
     applications: HashMap<String, Application>,

@@ -1,4 +1,4 @@
-//! Configuring tests and executing tests
+//! Configure and execute tests.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -87,6 +87,7 @@ impl Testbed {
 
         for test in tests {
             // load application if necessary
+            // only supporting one application at a time for now...
             if let Some(app_id) = test.get_app_id() {
                 println!("executor: loading app '{}' for test", app_id);
                 let load_result = self.load_app(app_id);

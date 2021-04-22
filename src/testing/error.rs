@@ -1,4 +1,4 @@
-//! Testing errors
+//! Testing errors.
 
 use std::error;
 use std::fmt;

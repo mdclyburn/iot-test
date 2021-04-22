@@ -108,6 +108,7 @@ impl Display for Criterion {
 #[allow(unused)]
 #[derive(Clone, Copy, Debug)]
 pub enum GPIOCriterion {
+    /// Any and all activity on a GPIO pin.
     Any(u8),
 }
 

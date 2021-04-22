@@ -1,4 +1,4 @@
-//! Evaluate test executions
+//! Insights into test executions.
 
 use std::collections::HashMap;
 use std::fmt;
