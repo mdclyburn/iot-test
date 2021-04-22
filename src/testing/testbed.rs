@@ -86,7 +86,17 @@ impl Testbed {
 
         for test in tests {
             // load application if necessary
-
+            if let Some(app_id) = test.get_app_id() {
+                println!("executor: loading app '{}' for test", app_id);
+                let load_result = self.load_app(app_id);
+                if let Some(err) = load_result.err() {
+                    println!("executor: failed to load app: {}", err);
+                    test_results.push(Evaluation::new(&test, Err(err), Vec::new(), HashMap::new()));
+                    continue;
+                } else {
+                    println!("executor: loaded app '{}'", app_id);
+                }
+            }
 
             *current_test.write().unwrap() = Some(test.clone());
 

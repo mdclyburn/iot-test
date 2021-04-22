@@ -44,7 +44,7 @@ fn main() {
 
     // platform support
     let platforms: Vec<Box<dyn Loadable>> = vec![
-        Box::new(Tock::new(Path::new("/home/ubuntu/.local/bin/tockloader"))),
+        Box::new(Tock::new(Path::new("/usr/local/bin/tockloader"))),
     ];
 
     // applications
@@ -61,7 +61,7 @@ fn main() {
 
     let test = Test::new(
         "example-blink-test",
-        None,
+        Some("blink"),
         &[Operation { time: 0, pin_no: 23, input: Signal::Digital(true) },
           Operation { time: 500, pin_no: 23, input: Signal::Digital(false) }],
         &[Criterion::GPIO(GPIOCriterion::Any(13)),
