@@ -74,10 +74,10 @@ impl Testbed {
         let barrier = Arc::new(Barrier::new(3));
         let current_test: Arc<RwLock<Option<Test>>> = Arc::new(RwLock::new(None));
 
-        let (test_result_schannel, rchannel) = mpsc::sync_channel(0);
+        let (observer_schannel, observer_rchannel) = mpsc::sync_channel(0);
         let watch_thread = self.launch_observer(Arc::clone(&current_test),
                                                 Arc::clone(&barrier),
-                                                test_result_schannel)?;
+                                                observer_schannel)?;
 
         let (energy_schannel, energy_rchannel) = mpsc::sync_channel(0);
         let energy_thread = self.launch_metering(Arc::clone(&current_test),
@@ -91,7 +91,8 @@ impl Testbed {
                 let load_result = self.load_app(app_id);
                 if let Some(err) = load_result.err() {
                     println!("executor: failed to load app: {}", err);
-                    test_results.push(Evaluation::new(&test, Err(err), Vec::new(), HashMap::new()));
+                    let eval = Evaluation::new(&test, Err(err), Vec::new(), HashMap::new());
+                    test_results.push(eval);
                     continue;
                 } else {
                     println!("executor: loaded app '{}'", app_id);
@@ -117,7 +118,7 @@ impl Testbed {
 
             // get GPIO responses
             let mut responses = Vec::new();
-            while let Some(response) = rchannel.recv()? {
+            while let Some(response) = observer_rchannel.recv()? {
                 responses.push(response);
             }
 
@@ -262,13 +263,13 @@ impl Testbed {
         let platform = self.pin_mapping.get_device()
             .get_platform()
             .ok_or(Error::DevicePlatform)?;
-        let config = self.platform_configs.get(&platform)
+        let platform_helper = self.platform_configs.get(&platform)
             .ok_or(Error::NoPlatformConfig(String::from(platform)))?;
         let application = self.applications.as_ref()
             .ok_or(Error::NoApplications)?
             .get(app_id)?;
 
-        config.load(application.get_for(platform)?)
+        platform_helper.load(application.get_for(platform)?)
             .map_err(|e| Error::Software(e))
     }
 }
