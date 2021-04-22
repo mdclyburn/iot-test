@@ -1,5 +1,6 @@
 //! Configuring tests and executing tests
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Display;
@@ -28,7 +29,7 @@ type Result<T> = std::result::Result<T, Error>;
 pub struct Testbed {
     pin_mapping: Mapping,
     energy_meters: Arc<Mutex<HashMap<String, Box<dyn EnergyMetering>>>>,
-    platform_configs: HashMap<Platform, Box<dyn Loadable>>,
+    platform_configs: HashMap<Platform, RefCell<Box<dyn Loadable>>>,
     applications: Option<ApplicationSet>
 }
 
@@ -50,7 +51,7 @@ impl Testbed {
             pin_mapping,
             energy_meters: Arc::new(Mutex::new(energy_meters)),
             platform_configs: platform_configs.into_iter()
-                .map(|config| (config.platform(), config))
+                .map(|config| (config.platform(), RefCell::new(config)))
                 .collect(),
             applications,
         }
@@ -263,13 +264,14 @@ impl Testbed {
         let platform = self.pin_mapping.get_device()
             .get_platform()
             .ok_or(Error::DevicePlatform)?;
-        let platform_helper = self.platform_configs.get(&platform)
-            .ok_or(Error::NoPlatformConfig(String::from(platform)))?;
+        let mut platform_helper = self.platform_configs.get(&platform)
+            .ok_or(Error::NoPlatformConfig(String::from(platform)))?
+            .borrow_mut();
         let application = self.applications.as_ref()
             .ok_or(Error::NoApplications)?
             .get(app_id)?;
 
-        platform_helper.load(application.get_for(platform)?)
+        platform_helper.load(application)
             .map_err(|e| Error::Software(e))
     }
 }

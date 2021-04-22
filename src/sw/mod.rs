@@ -8,8 +8,8 @@ pub mod platform;
 use std::convert::From;
 use std::fmt;
 use std::fmt::{Debug, Display};
-use std::path::Path;
 
+use application::Application;
 use error::Error;
 
 type Result<T> = std::result::Result<T, Error>;
@@ -36,13 +36,13 @@ impl From<Platform> for String {
     }
 }
 
-/// A platform that supports loading software.
+/// A platform that supports loading software modules, apps, etc.
 pub trait Loadable: Debug {
-    /// Load software from the given path.
-    fn load(&self, path: &Path) -> Result<()>;
+    /// Load software onto the device.
+    fn load(&mut self, app: &Application) -> Result<()>;
 
     /// Remove software from the device.
-    fn unload(&self) -> Result<()>;
+    fn unload(&mut self, app_id: &str) -> Result<()>;
 
     /// Returns the device's platform.
     fn platform(&self) -> Platform;

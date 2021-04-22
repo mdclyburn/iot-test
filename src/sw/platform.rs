@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -5,25 +6,29 @@ use super::Error;
 use super::Loadable;
 use super::Platform;
 use super::Result;
+use super::application::Application;
 
 /// Testbed support for the Tock OS platform.
 #[derive(Clone, Debug)]
 pub struct Tock {
     tockloader_path: PathBuf,
+    loaded_apps: HashSet<String>,
 }
 
 impl Tock {
     pub fn new(tockloader_path: &Path) -> Tock {
         Tock {
             tockloader_path: tockloader_path.to_path_buf(),
+            loaded_apps: HashSet::new(),
         }
     }
 }
 
 impl Loadable for Tock {
-    fn load(&self, path: &Path) -> Result<()> {
+    fn load(&mut self, app: &Application) -> Result<()> {
         let tockloader_path_str = self.tockloader_path.to_str()
             .ok_or(Error::Other(format!("cannot convert '{}' to Unicode", self.tockloader_path.display())))?;
+        let path = app.get_for(self.platform())?;
         let app_path_str = path.to_str()
             .ok_or(Error::Other(format!("cannot convert '{}' to Unicode", path.display())))?;
 
@@ -32,24 +37,31 @@ impl Loadable for Tock {
             .output()?;
 
         if output.status.success() {
+            self.loaded_apps.insert(app.get_id().to_string());
             Ok(())
         } else {
             Err(Error::Tool(output))
         }
     }
 
-    fn unload(&self) -> Result<()> {
-        let tockloader_path_str = self.tockloader_path.to_str()
-            .ok_or(Error::Other(format!("cannot convert '{}' to Unicode", self.tockloader_path.display())))?;
-
-        let output = Command::new(tockloader_path_str)
-            .args(&["uninstall"])
-            .output()?;
-
-        if output.status.success() {
+    fn unload(&mut self, app_id: &str) -> Result<()> {
+        // No need to remove what's not there.
+        if !self.loaded_apps.remove(app_id) {
             Ok(())
         } else {
-            Err(Error::Tool(output))
+            let tockloader_path_str = self.tockloader_path.to_str()
+                .ok_or(Error::Other(format!("cannot convert '{}' to Unicode", self.tockloader_path.display())))?;
+
+            let output = Command::new(tockloader_path_str)
+                .args(&["uninstall"])
+                .output()?;
+
+            if output.status.success() {
+                Ok(())
+            } else {
+                // Question: what state is the device in if we fail?
+                Err(Error::Tool(output))
+            }
         }
     }
 
