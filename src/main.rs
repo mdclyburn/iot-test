@@ -17,7 +17,7 @@ use crate::hw::INA219;
 use crate::io::Mapping;
 use crate::sw::application::{Application, ApplicationSet};
 use crate::sw::{Loadable, Platform};
-use crate::sw::tock::Tock;
+use crate::sw::platform::Tock;
 use crate::testing::{
     Criterion,
     EnergyCriterion,

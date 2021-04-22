@@ -3,7 +3,7 @@
 
 pub mod application;
 pub mod error;
-pub mod tock;
+pub mod platform;
 
 use std::convert::From;
 use std::fmt;
