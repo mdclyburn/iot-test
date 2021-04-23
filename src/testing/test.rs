@@ -1,7 +1,7 @@
 //! Defining and executing tests
 
 use std::cmp::{Ord, Ordering, PartialOrd, Reverse};
-use std::collections::{BinaryHeap, HashMap};
+use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::fmt;
 use std::fmt::Display;
 use std::iter::IntoIterator;
@@ -266,7 +266,7 @@ Executing a test (via [`Test::execute`]) produces an [`Execution`] that contains
 #[derive(Clone, Debug)]
 pub struct Test {
     id: String,
-    app_id: Option<String>,
+    app_ids: HashSet<String>,
     actions: BinaryHeap<Reverse<Operation>>,
     criteria: Vec<Criterion>,
     tail_duration: Option<Duration>,
@@ -274,13 +274,14 @@ pub struct Test {
 
 impl Test {
     /// Define a new test.
-    pub fn new<'a, T, U>(id: &str, app_id: Option<&str>, ops: T, criteria: U) -> Test where
-        T: IntoIterator<Item = &'a Operation>,
-        U: IntoIterator<Item = &'a Criterion>,
+    pub fn new<'a, T, U, V>(id: &str, app_id: T, ops: U, criteria: V) -> Test where
+        T: IntoIterator<Item = &'a str>,
+        U: IntoIterator<Item = &'a Operation>,
+        V: IntoIterator<Item = &'a Criterion>,
     {
         Test {
             id: id.to_string(),
-            app_id: app_id.map(|app_id| app_id.to_string()),
+            app_ids: app_id.into_iter().map(|id| id.to_string()).collect(),
             actions: ops.into_iter().map(|x| Reverse(*x)).collect(),
             criteria: criteria.into_iter().cloned().collect(),
             tail_duration: Some(Duration::from_millis(5)),
@@ -292,9 +293,9 @@ impl Test {
         &self.id
     }
 
-    /// Returns the identifier of the application the test exercises.
-    pub fn get_app_id(&self) -> &Option<String> {
-        &self.app_id
+    /// Returns the identifiers of the applications the test exercises.
+    pub fn get_app_ids(&self) -> &HashSet<String> {
+        &self.app_ids
     }
 
     /// Returns defined test criteria.

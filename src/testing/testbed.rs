@@ -1,7 +1,7 @@
 //! Configure and execute tests.
 
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::fmt::Display;
 use std::sync::mpsc;
@@ -86,19 +86,15 @@ impl Testbed {
                                                  energy_schannel)?;
 
         for test in tests {
-            // load application if necessary
-            // only supporting one application at a time for now...
-            if let Some(app_id) = test.get_app_id() {
-                println!("executor: loading app '{}' for test", app_id);
-                let load_result = self.load_app(app_id);
-                if let Some(err) = load_result.err() {
-                    println!("executor: failed to load app: {}", err);
-                    let eval = Evaluation::new(&test, Err(err), Vec::new(), HashMap::new());
-                    test_results.push(eval);
-                    continue;
-                } else {
-                    println!("executor: loaded app '{}'", app_id);
-                }
+            if let Err(load_err) = self.load_apps(&test) {
+                println!("executor: error loading/removing application(s)");
+                let eval = Evaluation::new(
+                    test,
+                    Err(load_err),
+                    Vec::new(),
+                    HashMap::new());
+                test_results.push(eval);
+                continue;
             }
 
             *current_test.write().unwrap() = Some(test.clone());
@@ -261,19 +257,34 @@ impl Testbed {
             .map_err(|e| Error::Threading(e))
     }
 
-    fn load_app(&self, app_id: &str) -> Result<()> {
+    /// Load specified applications onto the device.
+    fn load_apps(&self, test: &Test) -> Result<()> {
         let platform = self.pin_mapping.get_device()
             .get_platform()
             .ok_or(Error::DevicePlatform)?;
         let mut platform_helper = self.platform_configs.get(&platform)
             .ok_or(Error::NoPlatformConfig(String::from(platform)))?
             .borrow_mut();
-        let application = self.applications.as_ref()
-            .ok_or(Error::NoApplications)?
-            .get(app_id)?;
+        let app_set = self.applications.as_ref()
+            .ok_or(Error::NoApplications)?;
 
-        platform_helper.load(application)
-            .map_err(|e| Error::Software(e))
+        let currently_loaded: HashSet<_> = platform_helper.loaded_software()
+            .map(|x| x.clone())
+            .collect();
+        for app_id in &currently_loaded {
+            if !test.get_app_ids().contains(app_id) {
+                platform_helper.unload(app_id)?;
+            }
+        }
+
+        for app_id in test.get_app_ids() {
+            if !currently_loaded.contains(app_id) {
+                platform_helper.load(app_set.get(app_id)?)
+                    .map_err(|e| Error::Software(e))?;
+            }
+        }
+
+        Ok(())
     }
 }
 

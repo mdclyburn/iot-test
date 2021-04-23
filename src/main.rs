@@ -61,7 +61,7 @@ fn main() {
 
     let test = Test::new(
         "example-blink-test",
-        Some("blink"),
+        (&["blink"]).into_iter().map(|x| *x),
         &[Operation { time: 0, pin_no: 23, input: Signal::Digital(true) },
           Operation { time: 500, pin_no: 23, input: Signal::Digital(false) }],
         &[Criterion::GPIO(GPIOCriterion::Any(13)),
