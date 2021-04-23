@@ -136,8 +136,15 @@ impl Testbed {
         println!("executor: final wait");
         barrier.wait();
 
-        watch_thread.join().unwrap(); // need to go to testbed error
-        energy_thread.join().unwrap(); // uh... you need to handle these
+        // Not too concerned with joining these without error
+        // since testing is complete at this point. It shouldn't
+        // result in a crash either.
+        watch_thread.join().unwrap_or_else(|_e| {
+            println!("executor: failed to join with observer thread");
+        });
+        energy_thread.join().unwrap_or_else(|_e| {
+            println!("executor: failed to join with metering thread");
+        });
 
         Ok(test_results)
     }
