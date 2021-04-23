@@ -59,15 +59,23 @@ fn main() {
         Some(app_set));
     print!("{}\n", testbed);
 
-    let test = Test::new(
-        "example-blink-test",
-        (&["blink"]).into_iter().map(|x| *x),
-        &[Operation { time: 0, pin_no: 23, input: Signal::Digital(true) },
-          Operation { time: 500, pin_no: 23, input: Signal::Digital(false) }],
-        &[Criterion::GPIO(GPIOCriterion::Any(13)),
-          Criterion::Energy(EnergyCriterion::new("system", EnergyStat::Total))
-        ]);
-    let tests = [test];
+    let tests = [
+        Test::new(
+            "example-blink-test",
+            (&["blink"]).into_iter().map(|x| *x),
+            &[Operation { time: 0, pin_no: 23, input: Signal::Digital(true) },
+              Operation { time: 500, pin_no: 23, input: Signal::Digital(false) }],
+            &[Criterion::GPIO(GPIOCriterion::Any(13)),
+              Criterion::Energy(EnergyCriterion::new("system", EnergyStat::Total))
+            ]),
+
+        Test::new(
+            "no-app-test",
+            (&[]).into_iter().map(|x| *x),
+            &[Operation { time: 0, pin_no: 23, input: Signal::Digital(false) },
+              Operation { time: 500, pin_no: 23, input: Signal::Digital(false) }],
+            &[Criterion::Energy(EnergyCriterion::new("system", EnergyStat::Average))]),
+    ];
 
     print!("{}\n\n", tests[0]);
 

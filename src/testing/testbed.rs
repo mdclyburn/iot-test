@@ -268,17 +268,20 @@ impl Testbed {
         let app_set = self.applications.as_ref()
             .ok_or(Error::NoApplications)?;
 
+        println!("executor: loading/unloading {} software", platform);
         let currently_loaded: HashSet<_> = platform_helper.loaded_software()
             .map(|x| x.clone())
             .collect();
         for app_id in &currently_loaded {
             if !test.get_app_ids().contains(app_id) {
+                println!("executor: removing '{}'", app_id);
                 platform_helper.unload(app_id)?;
             }
         }
 
         for app_id in test.get_app_ids() {
             if !currently_loaded.contains(app_id) {
+                println!("executor: loading '{}'", app_id);
                 platform_helper.load(app_set.get(app_id)?)
                     .map_err(|e| Error::Software(e))?;
             }
