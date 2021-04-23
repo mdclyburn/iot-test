@@ -35,7 +35,7 @@ impl Display for Error {
     }
 }
 
-/// Properties about a device under test
+/// Properties of a device under test.
 #[derive(Clone, Debug)]
 pub struct Device {
     platform: Option<Platform>,
@@ -43,7 +43,7 @@ pub struct Device {
 }
 
 impl Device {
-    /*! Define a new device
+    /** Define a new device.
 
     A device under test has a defined set of inputs and outputs.
     Each I/O has a signal type that it emits or accepts.
@@ -56,7 +56,7 @@ impl Device {
        (3, (Direction::Out, SignalClass::Digital)),
     ]);
     ```
-    !*/
+    */
     pub fn new<'a, T>(platform: Option<Platform>, pin_map: T) -> Device where
         T: IntoIterator<Item = &'a (u8, (Direction, SignalClass))> {
         Device {
