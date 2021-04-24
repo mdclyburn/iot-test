@@ -318,7 +318,6 @@ impl Test {
                     .set_low(),
                 input => panic!("Unhandled input type: {:?}", input),
             };
-            println!("{:?}", op.input);
         }
 
         Ok(Execution::new(t0, Instant::now()))
