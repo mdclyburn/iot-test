@@ -73,11 +73,14 @@ fn main() {
             "no-app-test",
             (&[]).into_iter().map(|x| *x),
             &[Operation { time: 0, pin_no: 23, input: Signal::Digital(false) },
-              Operation { time: 500, pin_no: 23, input: Signal::Digital(false) }],
-            &[Criterion::Energy(EnergyCriterion::new("system", EnergyStat::Average))]),
+              Operation { time: 200, pin_no: 23, input: Signal::Digital(false) }],
+            &[Criterion::Energy(EnergyCriterion::new("system", EnergyStat::Average)
+                                .with_min(10.0))]),
     ];
 
-    print!("{}\n\n", tests[0]);
+    for test in &tests {
+        print!("{}\n\n", test);
+    }
 
     let res = testbed.execute(&tests);
     if let Ok(results) = res {
