@@ -123,6 +123,11 @@ impl Mapping {
         &self.device
     }
 
+    /// Returns the host-target pin mapping.
+    pub fn get_mapping(&self) -> &HashMap<u8, u8> {
+        &self.numbering
+    }
+
     /** Returns GPIO pins that are inputs _to the device_ (i.e., outputs from the testbed).
 
     This function returns Ok([`DeviceInputs`]) only when *all* pins are available.

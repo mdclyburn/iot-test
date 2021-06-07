@@ -117,6 +117,7 @@ impl Testbed {
             // get GPIO responses
             let mut responses = Vec::new();
             while let Some(response) = observer_rchannel.recv()? {
+                let response = response.remapped(self.pin_mapping.get_mapping());
                 responses.push(response);
             }
 

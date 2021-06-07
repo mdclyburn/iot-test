@@ -32,10 +32,23 @@ fn main() {
     // physical mapping
     let device = Device::new(
         Some(Platform::Tock),
-        &[(13, (Direction::Out, SignalClass::Digital)),
-          (23, (Direction::In, SignalClass::Digital)),
+        &[(13, (Direction::Out, SignalClass::Digital)), // D0
+          (14, (Direction::Out, SignalClass::Digital)), // D1
+          (19, (Direction::Out, SignalClass::Digital)), // D6
+          (20, (Direction::Out, SignalClass::Digital)), // D7
+          (23, (Direction::In, SignalClass::Digital)),  // reset
         ]);
-    let mapping = Mapping::new(&device, &[(17, 23), (27, 13)]).unwrap();
+    let mapping = Mapping::new(
+        &device,
+        &[(17, 23), // reset
+
+          // GPIO tracing
+          (14, 13),
+          (15, 14),
+          (18, 19),
+          (23, 20),
+        ]
+    ).unwrap();
 
     // energy metering
     let ina219 = INA219::new(mapping.get_i2c().unwrap(), 0x40)
@@ -60,22 +73,32 @@ fn main() {
     print!("{}\n", testbed);
 
     let tests = [
-        Test::new(
-            "example-blink-test",
-            (&["blink"]).into_iter().map(|x| *x),
-            &[Operation { time: 0, pin_no: 23, input: Signal::Digital(true) },
-              Operation { time: 500, pin_no: 23, input: Signal::Digital(false) }],
-            &[Criterion::GPIO(GPIOCriterion::Any(13)),
-              Criterion::Energy(EnergyCriterion::new("system", EnergyStat::Total))
-            ]),
+        // Test::new(
+        //     "example-blink-test",
+        //     (&["blink"]).into_iter().map(|x| *x),
+        //     &[Operation { time: 0, pin_no: 23, input: Signal::Digital(true) },
+        //       Operation { time: 500, pin_no: 23, input: Signal::Digital(false) }],
+        //     &[Criterion::GPIO(GPIOCriterion::Any(13)),
+        //       Criterion::Energy(EnergyCriterion::new("system", EnergyStat::Total))
+        //     ]),
+
+        // Test::new(
+        //     "no-app-test",
+        //     (&[]).into_iter().map(|x| *x),
+        //     &[Operation { time: 0, pin_no: 23, input: Signal::Digital(false) },
+        //       Operation { time: 200, pin_no: 23, input: Signal::Digital(false) }],
+        //     &[Criterion::Energy(EnergyCriterion::new("system", EnergyStat::Average)
+        //                         .with_min(10.0))]),
 
         Test::new(
-            "no-app-test",
+            "trace-capture-alpha",
             (&[]).into_iter().map(|x| *x),
             &[Operation { time: 0, pin_no: 23, input: Signal::Digital(false) },
-              Operation { time: 200, pin_no: 23, input: Signal::Digital(false) }],
-            &[Criterion::Energy(EnergyCriterion::new("system", EnergyStat::Average)
-                                .with_min(10.0))]),
+              Operation { time: 2000, pin_no: 23, input: Signal::Digital(true) }],
+            &[Criterion::GPIO(GPIOCriterion::Any(13)),
+              Criterion::GPIO(GPIOCriterion::Any(14)),
+              Criterion::GPIO(GPIOCriterion::Any(19)),
+              Criterion::GPIO(GPIOCriterion::Any(20))])
     ];
 
     for test in &tests {

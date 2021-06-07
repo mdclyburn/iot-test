@@ -197,7 +197,7 @@ impl Display for Evaluation {
 
         if let Ok(ref execution) = self.exec_result {
             if self.device_responses.len() > 0 {
-                write!(f, "  IO responses:")?;
+                write!(f, "  IO responses:\n")?;
                 for response in &self.device_responses {
                     write!(f, "    @{:?}\t{}\n", response.get_offset(*execution.get_start()), response)?
                 }

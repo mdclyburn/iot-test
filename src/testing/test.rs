@@ -74,6 +74,16 @@ impl Response {
     pub fn get_offset(&self, t0: Instant) -> Duration {
         self.time - t0
     }
+
+    pub fn remapped(&self, host_target_map: &HashMap<u8, u8>) -> Response {
+        let target_pin = host_target_map.get(&self.pin_no)
+            .expect("Cannot remap device response because pin mapping does not exist.");
+
+        Response {
+            pin_no: *target_pin,
+            .. *self
+        }
+    }
 }
 
 impl Display for Response {
