@@ -56,8 +56,9 @@ fn main() {
     let energy_meters: Vec<(&str, Box<dyn EnergyMetering>)> = vec![("system", Box::new(ina219))];
 
     // platform support
+    let tock_support = Tock::new(Path::new("/usr/local/bin/tockloader"), Path::new("/home/ubuntu/work/tock"));
     let platforms: Vec<Box<dyn PlatformSupport>> = vec![
-        Box::new(Tock::new(Path::new("/usr/local/bin/tockloader"))),
+        Box::new(tock_support),
     ];
 
     // applications

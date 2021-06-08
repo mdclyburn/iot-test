@@ -11,6 +11,7 @@ use std::fmt;
 use std::fmt::{Debug, Display};
 
 use application::Application;
+use instrument::Spec;
 use error::Error;
 
 type Result<T> = std::result::Result<T, Error>;
@@ -52,7 +53,7 @@ pub trait PlatformSupport: Debug {
     fn loaded_software<'a>(&'a self) -> Box<dyn Iterator<Item = &'a String> + 'a>;
 
     /// Apply reconfigured platform software to the target.
-    fn reconfigure(&self, trace_points: &Vec<String>) -> Result<()> {
+    fn reconfigure(&self, trace_points: &Vec<String>) -> Result<Spec> {
         let _ = trace_points;
         Err(Error::Unsupported)
     }

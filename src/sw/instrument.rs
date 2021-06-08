@@ -24,7 +24,7 @@ impl Spec {
     {
         let name_value: HashMap<String, u8> = trace_points.into_iter()
             .map(|s| s.to_string())
-            .zip(1..)
+            .zip(1..) // assign values to each trace point
             .collect();
         let value_name = name_value.iter()
             .map(|(n, v)| (*v, n.clone()))
