@@ -29,8 +29,6 @@ pub enum Error {
     NoPlatformConfig(String),
     /// No applications provided when tests require one.
     NoApplications,
-    /// No such application defined.
-    NoApplication(String),
     /// Error originating from interacting with software ([`sw::error::Error`]).
     Software(sw::error::Error),
 }
@@ -83,7 +81,6 @@ impl Display for Error {
             Error::DevicePlatform => write!(f, "device does does not specify a platform and it is necessary"),
             Error::NoPlatformConfig(ref name) => write!(f, "config for '{}' required but missing", name),
             Error::NoApplications => write!(f, "no applications defined but at least one expected"),
-            Error::NoApplication(ref name) => write!(f, "no such application '{}' defined", name),
             Error::Software(ref e) => write!(f, "software interaction error: {}", e),
         }
     }
