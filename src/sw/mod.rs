@@ -37,7 +37,7 @@ impl From<Platform> for String {
 }
 
 /// A platform that supports loading software modules, apps, etc.
-pub trait Loadable: Debug {
+pub trait PlatformSupport: Debug {
     /// Load software onto the device.
     fn load(&mut self, app: &Application) -> Result<()>;
 

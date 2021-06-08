@@ -16,7 +16,7 @@ use std::time::Instant;
 
 use crate::facility::EnergyMetering;
 use crate::io::Mapping;
-use crate::sw::{Loadable, Platform};
+use crate::sw::{PlatformSupport, Platform};
 use crate::sw::application::ApplicationSet;
 use crate::testing::test::Response;
 
@@ -29,7 +29,7 @@ type Result<T> = std::result::Result<T, Error>;
 pub struct Testbed {
     pin_mapping: Mapping,
     energy_meters: Arc<Mutex<HashMap<String, Box<dyn EnergyMetering>>>>,
-    platform_configs: HashMap<Platform, RefCell<Box<dyn Loadable>>>,
+    platform_support: HashMap<Platform, RefCell<Box<dyn PlatformSupport>>>,
     applications: Option<ApplicationSet>
 }
 
@@ -37,11 +37,11 @@ impl Testbed {
     /// Create a new `Testbed`.
     pub fn new<'a, T, U>(pin_mapping: Mapping,
                          energy_meters: T,
-                         platform_configs: U,
+                         platform_support: U,
                          applications: Option<ApplicationSet>) -> Testbed
     where
         T: IntoIterator<Item = (&'a str, Box<dyn EnergyMetering>)>,
-        U: IntoIterator<Item = Box<dyn Loadable>>,
+        U: IntoIterator<Item = Box<dyn PlatformSupport>>,
     {
         let energy_meters = energy_meters.into_iter()
             .map(|(id, meter)| (id.to_string(), meter))
@@ -50,7 +50,7 @@ impl Testbed {
         Testbed {
             pin_mapping,
             energy_meters: Arc::new(Mutex::new(energy_meters)),
-            platform_configs: platform_configs.into_iter()
+            platform_support: platform_support.into_iter()
                 .map(|config| (config.platform(), RefCell::new(config)))
                 .collect(),
             applications,
@@ -270,7 +270,7 @@ impl Testbed {
         let platform = self.pin_mapping.get_device()
             .get_platform()
             .ok_or(Error::DevicePlatform)?;
-        let mut platform_helper = self.platform_configs.get(&platform)
+        let mut platform_helper = self.platform_support.get(&platform)
             .ok_or(Error::NoPlatformConfig(String::from(platform)))?
             .borrow_mut();
         let app_set = self.applications.as_ref()

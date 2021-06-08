@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use super::Error;
-use super::Loadable;
+use super::PlatformSupport;
 use super::Platform;
 use super::Result;
 use super::application::Application;
@@ -47,7 +47,7 @@ impl Tock {
     }
 }
 
-impl Loadable for Tock {
+impl PlatformSupport for Tock {
     fn load(&mut self, app: &Application) -> Result<()> {
         let tockloader_path_str = self.tockloader_path.to_str()
             .ok_or(Error::Other(format!("cannot convert '{}' to Unicode", self.tockloader_path.display())))?;

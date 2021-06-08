@@ -16,7 +16,7 @@ use crate::facility::EnergyMetering;
 use crate::hw::INA219;
 use crate::io::Mapping;
 use crate::sw::application::{Application, ApplicationSet};
-use crate::sw::{Loadable, Platform};
+use crate::sw::{PlatformSupport, Platform};
 use crate::sw::platform::Tock;
 use crate::testing::{
     Criterion,
@@ -56,7 +56,7 @@ fn main() {
     let energy_meters: Vec<(&str, Box<dyn EnergyMetering>)> = vec![("system", Box::new(ina219))];
 
     // platform support
-    let platforms: Vec<Box<dyn Loadable>> = vec![
+    let platforms: Vec<Box<dyn PlatformSupport>> = vec![
         Box::new(Tock::new(Path::new("/usr/local/bin/tockloader"))),
     ];
 
