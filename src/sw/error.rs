@@ -8,6 +8,7 @@ use std::process::Output;
 
 use super::Platform;
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum Error {
     /// A [`std::io`] error.
@@ -20,6 +21,8 @@ pub enum Error {
     App(String),
     /// Application not defined for platform.
     AppForPlatform(String, Platform),
+    /// Unsupported operation.
+    Unsupported,
 }
 
 impl error::Error for Error {
@@ -39,6 +42,7 @@ impl Display for Error {
             Error::Other(ref msg) => write!(f, "unexpected error: {}", msg),
             Error::App(ref name) => write!(f, "no '{}' app defined", name),
             Error::AppForPlatform(ref name, platform) => write!(f, "no '{}' app defined for {}", name, platform),
+            Error::Unsupported => write!(f, "requested operation is implemented for the platform"),
         }
     }
 }

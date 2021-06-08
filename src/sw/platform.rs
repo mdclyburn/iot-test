@@ -10,27 +10,6 @@ use super::Platform;
 use super::Result;
 use super::application::Application;
 
-pub struct Configuration {
-    trace_points: Vec<String>,
-}
-
-impl Configuration {
-    pub fn new<'a, T>(trace_points: T) -> Configuration
-    where
-        T: IntoIterator<Item = &'a str>
-    {
-        Configuration {
-            trace_points: trace_points.into_iter()
-                .map(|s| s.to_string())
-                .collect()
-        }
-    }
-
-    pub fn get_trace_points(&self) -> &Vec<String> {
-        &self.trace_points
-    }
-}
-
 /// Testbed support for the Tock OS platform.
 #[derive(Clone, Debug)]
 pub struct Tock {
@@ -48,6 +27,10 @@ impl Tock {
 }
 
 impl PlatformSupport for Tock {
+    fn platform(&self) -> Platform {
+        Platform::Tock
+    }
+
     fn load(&mut self, app: &Application) -> Result<()> {
         let tockloader_path_str = self.tockloader_path.to_str()
             .ok_or(Error::Other(format!("cannot convert '{}' to Unicode", self.tockloader_path.display())))?;
@@ -92,7 +75,7 @@ impl PlatformSupport for Tock {
         Box::new(self.loaded_apps.iter())
     }
 
-    fn platform(&self) -> Platform {
-        Platform::Tock
+    fn reconfigure(&self, trace_points: &Vec<String>) -> Result<()> {
+        Err(Error::Unsupported)
     }
 }

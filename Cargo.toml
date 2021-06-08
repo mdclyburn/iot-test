@@ -5,4 +5,5 @@ authors = ["Marshall Clyburn"]
 edition = "2018"
 
 [dependencies]
+json = "^0.12"
 rppal = "^0.11"

@@ -3,6 +3,7 @@
 
 pub mod application;
 pub mod error;
+pub mod instrument;
 pub mod platform;
 
 use std::convert::From;
@@ -38,15 +39,21 @@ impl From<Platform> for String {
 
 /// A platform that supports loading software modules, apps, etc.
 pub trait PlatformSupport: Debug {
+    /// Returns the target's platform.
+    fn platform(&self) -> Platform;
+
     /// Load software onto the device.
     fn load(&mut self, app: &Application) -> Result<()>;
 
-    /// Remove software from the device.
+    /// Remove software from the target.
     fn unload(&mut self, app_id: &str) -> Result<()>;
 
     /// Returns an iterator over the platform's loaded software.
     fn loaded_software<'a>(&'a self) -> Box<dyn Iterator<Item = &'a String> + 'a>;
 
-    /// Returns the device's platform.
-    fn platform(&self) -> Platform;
+    /// Apply reconfigured platform software to the target.
+    fn reconfigure(&self, trace_points: &Vec<String>) -> Result<()> {
+        let _ = trace_points;
+        Err(Error::Unsupported)
+    }
 }
