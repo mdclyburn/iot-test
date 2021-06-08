@@ -10,6 +10,27 @@ use super::Platform;
 use super::Result;
 use super::application::Application;
 
+pub struct Configuration {
+    trace_points: Vec<String>,
+}
+
+impl Configuration {
+    pub fn new<'a, T>(trace_points: T) -> Configuration
+    where
+        T: IntoIterator<Item = &'a str>
+    {
+        Configuration {
+            trace_points: trace_points.into_iter()
+                .map(|s| s.to_string())
+                .collect()
+        }
+    }
+
+    pub fn get_trace_points(&self) -> &Vec<String> {
+        &self.trace_points
+    }
+}
+
 /// Testbed support for the Tock OS platform.
 #[derive(Clone, Debug)]
 pub struct Tock {
