@@ -95,7 +95,8 @@ fn main() {
 
         Test::new(
             "trace-capture-alpha",
-            (&[]).into_iter().map(|x| *x),
+            (&[""]).into_iter().map(|x| *x),
+            (&[""]).into_iter().map(|x| *x),
             &[Operation { time: 0, pin_no: 23, input: Signal::Digital(false) },
               Operation { time: 2000, pin_no: 23, input: Signal::Digital(true) }],
             &[Criterion::GPIO(GPIOCriterion::Any(13)),

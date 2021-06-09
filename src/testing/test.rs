@@ -277,6 +277,7 @@ Executing a test (via [`Test::execute`]) produces an [`Execution`] that contains
 pub struct Test {
     id: String,
     app_ids: HashSet<String>,
+    trace_points: Vec<String>,
     actions: BinaryHeap<Reverse<Operation>>,
     criteria: Vec<Criterion>,
     tail_duration: Option<Duration>,
@@ -284,14 +285,21 @@ pub struct Test {
 
 impl Test {
     /// Define a new test.
-    pub fn new<'a, T, U, V>(id: &str, app_id: T, ops: U, criteria: V) -> Test where
+    pub fn new<'a, T, U, V, W>(id: &str,
+                               app_id: T,
+                               trace_points: U,
+                               ops: V,
+                               criteria: W) -> Test
+    where
         T: IntoIterator<Item = &'a str>,
-        U: IntoIterator<Item = &'a Operation>,
-        V: IntoIterator<Item = &'a Criterion>,
+        U: IntoIterator<Item = &'a str>,
+        V: IntoIterator<Item = &'a Operation>,
+        W: IntoIterator<Item = &'a Criterion>,
     {
         Test {
             id: id.to_string(),
             app_ids: app_id.into_iter().map(|id| id.to_string()).collect(),
+            trace_points: trace_points.into_iter().map(|tp| tp.to_string()).collect(),
             actions: ops.into_iter().map(|x| Reverse(*x)).collect(),
             criteria: criteria.into_iter().cloned().collect(),
             tail_duration: Some(Duration::from_millis(5)),
