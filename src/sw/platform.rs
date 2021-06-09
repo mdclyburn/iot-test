@@ -137,7 +137,11 @@ impl PlatformSupport for Tock {
 
     fn reconfigure(&self, trace_points: &Vec<String>) -> Result<Spec> {
         let spec = Spec::new(trace_points.iter().map(|s| s.as_ref()));
-        self.build_instrumented(&spec)?;
+        if trace_points.is_empty() {
+            self.build()?;
+        } else {
+            self.build_instrumented(&spec)?;
+        }
 
         self.program()?;
 

@@ -12,6 +12,7 @@ use rppal::gpio::{Gpio, Level, Trigger};
 use crate::comm::Signal;
 use crate::facility::EnergyMetering;
 use crate::io::{DeviceInputs, DeviceOutputs};
+use crate::sw::Platform;
 
 use super::Error;
 
@@ -276,8 +277,9 @@ Executing a test (via [`Test::execute`]) produces an [`Execution`] that contains
 #[derive(Clone, Debug)]
 pub struct Test {
     id: String,
+    platform: Platform,
     app_ids: HashSet<String>,
-    trace_points: Vec<String>,
+    trace_points: HashSet<String>,
     actions: BinaryHeap<Reverse<Operation>>,
     criteria: Vec<Criterion>,
     tail_duration: Option<Duration>,
@@ -298,6 +300,7 @@ impl Test {
     {
         Test {
             id: id.to_string(),
+            platform: Platform::Tock, // TODO: support different platforms
             app_ids: app_id.into_iter().map(|id| id.to_string()).collect(),
             trace_points: trace_points.into_iter().map(|tp| tp.to_string()).collect(),
             actions: ops.into_iter().map(|x| Reverse(*x)).collect(),
@@ -311,9 +314,19 @@ impl Test {
         &self.id
     }
 
+    /// Returns the platform the test is for.
+    pub fn get_platform(&self) -> Platform {
+        self.platform
+    }
+
     /// Returns the identifiers of the applications the test exercises.
     pub fn get_app_ids(&self) -> &HashSet<String> {
         &self.app_ids
+    }
+
+    /// Returns the trace points the test requires.
+    pub fn get_trace_points(&self) -> &HashSet<String> {
+        &self.trace_points
     }
 
     /// Returns defined test criteria.
