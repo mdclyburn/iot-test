@@ -12,6 +12,7 @@ use json::JsonValue;
 
 const SPEC_VERSION: u32 = 1;
 
+/// Information about a platform build.
 pub struct Spec {
     name_value: HashMap<String, u8>,
     value_name: HashMap<u8, String>,
