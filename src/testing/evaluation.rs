@@ -181,7 +181,9 @@ impl Evaluation {
                         (status, Some(format!("{:.2}mJ/s min", min)))
                     },
                 }
-            }
+            },
+
+            Criterion::Trace(_trace_criterion) => (Status::Complete, None),
         }
     }
 }
