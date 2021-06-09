@@ -1,6 +1,5 @@
 //! Configure and execute tests.
 
-use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::fmt::Display;
@@ -29,8 +28,8 @@ type Result<T> = std::result::Result<T, Error>;
 pub struct Testbed {
     pin_mapping: Mapping,
     target_platform: Platform,
+    platform_support: Box<dyn PlatformSupport>,
     energy_meters: Arc<Mutex<HashMap<String, Box<dyn EnergyMetering>>>>,
-    platform_support: HashMap<Platform, RefCell<Box<dyn PlatformSupport>>>,
     applications: Option<ApplicationSet>
 }
 
@@ -38,26 +37,30 @@ impl Testbed {
     /// Create a new `Testbed`.
     pub fn new<'a, T, U>(pin_mapping: Mapping,
                          target_platform: Platform,
-                         energy_meters: T,
-                         platform_support: U,
-                         applications: Option<ApplicationSet>) -> Testbed
+                         platform_support: T,
+                         energy_meters: U,
+                         applications: Option<ApplicationSet>) -> Result<Testbed>
     where
-        T: IntoIterator<Item = (&'a str, Box<dyn EnergyMetering>)>,
-        U: IntoIterator<Item = Box<dyn PlatformSupport>>,
+        T: IntoIterator<Item = Box<dyn PlatformSupport>>,
+        U: IntoIterator<Item = (&'a str, Box<dyn EnergyMetering>)>,
     {
         let energy_meters = energy_meters.into_iter()
             .map(|(id, meter)| (id.to_string(), meter))
             .collect();
 
-        Testbed {
+        let platform_support = platform_support.into_iter()
+            .find(|p| p.platform() == target_platform)
+            .ok_or(Error::Init(format!("Configuration for platform '{}' was not provided.", target_platform)))?;
+
+        let testbed = Testbed {
             pin_mapping,
             target_platform,
+            platform_support,
             energy_meters: Arc::new(Mutex::new(energy_meters)),
-            platform_support: platform_support.into_iter()
-                .map(|config| (config.platform(), RefCell::new(config)))
-                .collect(),
             applications,
-        }
+        };
+
+        Ok(testbed)
     }
 
     /** Run tests.
@@ -101,11 +104,7 @@ impl Testbed {
                 let trace_points: Vec<String> = trace_points.iter()
                     .map(|x| x.clone())
                     .collect();
-                let platform_support = self.platform_support
-                    .get(&test.get_platform())
-                    .expect("Platform specified in test not supported.")
-                    .borrow();
-                let res = platform_support.reconfigure(&trace_points);
+                let res = self.platform_support.reconfigure(&trace_points);
                 if let Err(reconfig_err) = res {
                     let eval = Evaluation::new(
                         test,
@@ -299,27 +298,22 @@ impl Testbed {
 
     /// Load specified applications onto the device.
     fn load_apps(&self, test: &Test) -> Result<()> {
-        let mut platform_support = self.platform_support.get(&self.target_platform)
-            .ok_or(Error::NoPlatformConfig(String::from(self.target_platform)))?
-            .borrow_mut();
         let app_set = self.applications.as_ref()
             .ok_or(Error::NoApplications)?;
 
         println!("executor: loading/unloading {} software", self.target_platform);
-        let currently_loaded: HashSet<_> = platform_support.loaded_software()
-            .map(|x| x.clone())
-            .collect();
+        let currently_loaded = self.platform_support.loaded_software();
         for app_id in &currently_loaded {
             if !test.get_app_ids().contains(app_id) {
                 println!("executor: removing '{}'", app_id);
-                platform_support.unload(app_id)?;
+                self.platform_support.unload(app_id)?;
             }
         }
 
         for app_id in test.get_app_ids() {
             if !currently_loaded.contains(app_id) {
                 println!("executor: loading '{}'", app_id);
-                platform_support.load(app_set.get(app_id)?)
+                self.platform_support.load(app_set.get(app_id)?)
                     .map_err(|e| Error::Software(e))?;
             }
         }

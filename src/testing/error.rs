@@ -13,11 +13,13 @@ use crate::sw;
 /// Test-related error.
 #[derive(Debug)]
 pub enum Error {
-    /// Testbed to device I/O error
+    /// Testbed initialization error.
+    Init(String),
+    /// Testbed to device I/O error.
     IO(io::Error),
-    /// GPIO-related error
+    /// GPIO-related error.
     GPIO(gpio::Error),
-    /// Executor-observer thread communication error
+    /// Executor-observer thread communication error.
     Comm(mpsc::RecvError),
     /// Error from spawning testbed threads.
     Threading(std::io::Error),
@@ -71,6 +73,7 @@ impl From<sw::error::Error> for Error {
 impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Error::Init(ref s) => write!(f, "Testbed initialization error: {}", s),
             Error::IO(ref e) => write!(f, "I/O error: {}", e),
             Error::GPIO(ref e) => write!(f, "GPIO error while testing: {}", e),
             Error::Comm(ref e) => write!(f, "thread communication error: {}", e),

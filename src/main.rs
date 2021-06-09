@@ -70,9 +70,9 @@ fn main() {
     let testbed = Testbed::new(
         mapping,
         Platform::Tock,
-        energy_meters,
         platforms,
-        Some(app_set));
+        energy_meters,
+        Some(app_set)).unwrap();
     print!("{}\n", testbed);
 
     let tests = [

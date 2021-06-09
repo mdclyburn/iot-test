@@ -6,6 +6,7 @@ pub mod error;
 pub mod instrument;
 pub mod platform;
 
+use std::collections::HashSet;
 use std::convert::From;
 use std::fmt;
 use std::fmt::{Debug, Display};
@@ -44,13 +45,13 @@ pub trait PlatformSupport: Debug {
     fn platform(&self) -> Platform;
 
     /// Load software onto the device.
-    fn load(&mut self, app: &Application) -> Result<()>;
+    fn load(&self, app: &Application) -> Result<()>;
 
     /// Remove software from the target.
-    fn unload(&mut self, app_id: &str) -> Result<()>;
+    fn unload(&self, app_id: &str) -> Result<()>;
 
     /// Returns an iterator over the platform's loaded software.
-    fn loaded_software<'a>(&'a self) -> Box<dyn Iterator<Item = &'a String> + 'a>;
+    fn loaded_software(&self) -> HashSet<String>;
 
     /// Apply reconfigured platform software to the target.
     fn reconfigure(&self, trace_points: &Vec<String>) -> Result<Spec> {

@@ -289,7 +289,6 @@ Executing a test (via [`Test::execute`]) produces an [`Execution`] that contains
 #[derive(Clone, Debug)]
 pub struct Test {
     id: String,
-    platform: Platform,
     app_ids: HashSet<String>,
     trace_points: HashSet<String>,
     actions: BinaryHeap<Reverse<Operation>>,
@@ -312,7 +311,6 @@ impl Test {
     {
         Test {
             id: id.to_string(),
-            platform: Platform::Tock, // TODO: support different platforms
             app_ids: app_id.into_iter().map(|id| id.to_string()).collect(),
             trace_points: trace_points.into_iter().map(|tp| tp.to_string()).collect(),
             actions: ops.into_iter().map(|x| Reverse(*x)).collect(),
@@ -324,11 +322,6 @@ impl Test {
     /// Returns the identifier of the test definition.
     pub fn get_id(&self) -> &str {
         &self.id
-    }
-
-    /// Returns the platform the test is for.
-    pub fn get_platform(&self) -> Platform {
-        self.platform
     }
 
     /// Returns the identifiers of the applications the test exercises.

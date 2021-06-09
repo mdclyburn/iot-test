@@ -1,5 +1,6 @@
 //! Multi-platform support interfaces.
 
+use std::cell::RefCell;
 use std::collections::HashSet;
 use std::env;
 use std::path::{Path, PathBuf};
@@ -16,7 +17,10 @@ use super::Result;
 #[derive(Clone, Debug)]
 pub struct Tock {
     tockloader_path: PathBuf,
-    loaded_apps: HashSet<String>,
+    // The use of this type (and the RefCell) to wrap this type is in lieu of
+    // doing something more robust such as querying the device itself for its
+    // software.
+    loaded_apps: RefCell<HashSet<String>>,
     source_path: PathBuf,
 }
 
@@ -25,7 +29,7 @@ impl Tock {
     pub fn new(tockloader_path: &Path, source_path: &Path) -> Tock {
         Tock {
             tockloader_path: tockloader_path.to_path_buf(),
-            loaded_apps: HashSet::new(),
+            loaded_apps: RefCell::new(HashSet::new()),
             source_path: source_path.to_path_buf(),
         }
     }
@@ -90,7 +94,7 @@ impl PlatformSupport for Tock {
         Platform::Tock
     }
 
-    fn load(&mut self, app: &Application) -> Result<()> {
+    fn load(&self, app: &Application) -> Result<()> {
         let tockloader_path_str = self.tockloader_path.to_str()
             .ok_or(Error::Other(format!("cannot convert '{}' to Unicode", self.tockloader_path.display())))?;
         let path = app.get_for(self.platform())?;
@@ -102,16 +106,19 @@ impl PlatformSupport for Tock {
             .output()?;
 
         if output.status.success() {
-            self.loaded_apps.insert(app.get_id().to_string());
+            self.loaded_apps.borrow_mut()
+                .insert(app.get_id().to_string());
             Ok(())
         } else {
             Err(Error::Tool(output))
         }
     }
 
-    fn unload(&mut self, app_id: &str) -> Result<()> {
+    fn unload(&self, app_id: &str) -> Result<()> {
         // No need to remove what's not there.
-        if !self.loaded_apps.remove(app_id) {
+        let was_present =  self.loaded_apps.borrow_mut()
+            .remove(app_id);
+        if !was_present {
             Ok(())
         } else {
             let tockloader_path_str = self.tockloader_path.to_str()
@@ -130,8 +137,10 @@ impl PlatformSupport for Tock {
         }
     }
 
-    fn loaded_software<'a>(&'a self) -> Box<dyn Iterator<Item = &'a String> + 'a> {
-        Box::new(self.loaded_apps.iter())
+    fn loaded_software(&self) -> HashSet<String> {
+        self.loaded_apps.borrow().iter()
+            .cloned()
+            .collect()
     }
 
     fn reconfigure(&self, trace_points: &Vec<String>) -> Result<Spec> {
