@@ -56,12 +56,11 @@ impl Tock {
         let make_work_dir = self.source_path.clone()
             .join("boards/hail");
 
-        let env_vars = vec![
-            ("TRACE_SPEC_PATH".to_string(),
-             spec_path.to_str().unwrap().to_string()),
-            ("TRACE_VERBOSE".to_string(),
-             "1".to_string())
-        ];
+        let env_vars = env::vars()
+            .chain(vec![("TRACE_SPEC_PATH".to_string(),
+                         spec_path.to_str().unwrap().to_string()),
+                        ("TRACE_VERBOSE".to_string(),
+                         "1".to_string())]);
 
         println!("Building instrumented Tock OS in '{}'.", make_work_dir.display());
         Command::new("/usr/bin/make") // assuming make is in /usr/bin
@@ -78,6 +77,7 @@ impl Tock {
 
         println!("Programming target with Tock OS from '{}'.", make_work_dir.display());
         Command::new("/usr/bin/make") // assuming make is in /usr/bin
+            .envs(env::vars())
             .args(&["-C", make_work_dir.to_str().unwrap(),
                     "program"])
             .output()
