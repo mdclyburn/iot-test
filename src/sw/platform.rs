@@ -62,7 +62,7 @@ impl Tock {
              "1".to_string())
         ];
 
-        println!("Building Tock OS in '{}'.", make_work_dir.display());
+        println!("Building instrumented Tock OS in '{}'.", make_work_dir.display());
         Command::new("/usr/bin/make") // assuming make is in /usr/bin
             .envs(env_vars)
             .args(&["-C", make_work_dir.to_str().unwrap()])
