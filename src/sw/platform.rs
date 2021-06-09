@@ -52,9 +52,10 @@ impl Tock {
     /// Build Tock OS.
     #[allow(dead_code)]
     fn build(&self) -> Result<Output> {
+        let mut command = self.make_command();
 
-        println!("Building Tock OS.");
-        self.make_command()
+        println!("Building Tock OS with [[ {:?} ]].", command);
+        command
             .output()
             .map_err(|io_err| Error::IO(io_err))
     }
@@ -66,22 +67,22 @@ impl Tock {
         let spec_path = Path::new("/var/tmp/__autogen_trace.json");
         spec.write(spec_path)?;
 
-        println!("Building instrumented Tock OS.");
-        self.make_command()
-            .envs(vec![("TRACE_SPEC_PATH".to_string(), spec_path.to_str().unwrap().to_string()),
-                       ("TRACE_VERBOSE".to_string(), "1".to_string())])
+        let mut command = self.make_command();
+        command.envs(vec![("TRACE_SPEC_PATH".to_string(), spec_path.to_str().unwrap().to_string()),
+                          ("TRACE_VERBOSE".to_string(), "1".to_string())]);
+
+        println!("Building instrumented Tock OS with [[ {:?} ]].", command);
+        command
             .output()
             .map_err(|io_err| Error::IO(io_err))
     }
 
     fn program(&self) -> Result<Output> {
-        // NOTICE: forcing use of the Hail board configuration.
-        let make_work_dir = self.source_path.clone()
-            .join("boards/hail");
+        let mut command = self.make_command();
+        command.args(&["program"]);
 
-        println!("Programming target with Tock OS from '{}'.", make_work_dir.display());
-        self.make_command()
-            .args(&["program"])
+        println!("Programming target with Tock OS with [[ {:?} ]].", command);
+        command
             .output()
             .map_err(|io_err| Error::IO(io_err))
     }

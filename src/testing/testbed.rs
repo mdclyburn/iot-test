@@ -93,13 +93,12 @@ impl Testbed {
                                                  energy_schannel)?;
 
         for test in tests {
-            println!("Running: '{}'", test.get_id());
+            println!("executor: running '{}'", test.get_id());
 
             // Reconfigure target if necessary.
             // Just always configuring when there are trace points
             // instead of doing anything idempotent.
             let trace_points = test.get_trace_points();
-            println!("Test defines no trace points.");
             {
                 let trace_points: Vec<String> = trace_points.iter()
                     .map(|x| x.clone())
