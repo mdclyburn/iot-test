@@ -21,6 +21,7 @@ pub struct Tock {
     // doing something more robust such as querying the device itself for its
     // software.
     loaded_apps: RefCell<HashSet<String>>,
+    enabled_trace_points: RefCell<HashSet<String>>,
     source_path: PathBuf,
 }
 
@@ -30,6 +31,7 @@ impl Tock {
         Tock {
             tockloader_path: tockloader_path.to_path_buf(),
             loaded_apps: RefCell::new(HashSet::new()),
+            enabled_trace_points: RefCell::new(HashSet::new()),
             source_path: source_path.to_path_buf(),
         }
     }
@@ -47,6 +49,17 @@ impl Tock {
             .envs(env::vars());
 
         command
+    }
+
+    /// Issue a `make clean`.
+    fn clean(&self) -> Result<Output> {
+        let mut command = self.make_command();
+        command.args(&["clean"]);
+
+        println!("Cleaning Tock OS build with [[ {:?} ]].", command);
+        command
+            .output()
+            .map_err(|io_err| Error::IO(io_err))
     }
 
     /// Build Tock OS.
@@ -143,23 +156,33 @@ impl PlatformSupport for Tock {
     }
 
     fn reconfigure(&self, trace_points: &Vec<String>) -> Result<Spec> {
-        let spec = Spec::new(trace_points.iter().map(|s| s.as_ref()));
-        let output = if trace_points.is_empty() {
-            self.build()?
-        } else {
-            self.build_instrumented(&spec)?
-        };
+        // Do not rebuild if the desired points are already enabled.
+        let trace_points: HashSet<String> = trace_points.into_iter()
+            .cloned()
+            .collect();
+        let already_enabled = self.enabled_trace_points.borrow()
+            .is_superset(&trace_points);
+        if !already_enabled {
+            println!("Triggering rebuild of Tock. Need new trace points enabled.");
+            // self.clean()?;
 
-        if !output.status.success() {
+            let spec = Spec::new(trace_points.iter().map(|s| s.as_ref()));
+            let output = self.build_instrumented(&spec)?;
             let stdout = String::from_utf8(output.stdout.clone())
                 .unwrap_or("<<Could not process stdout output.>>".to_string());
             let stderr = String::from_utf8(output.stderr.clone())
                 .unwrap_or("<<Could not process stderr output.>>".to_string());
-            println!("Build failed.\nSTDOUT:\n{}\n\nSTDERR:\n{}", stdout, stderr);
-            Err(Error::Tool(output))
+            println!(">>>>>>>>>>>>>>>> STDOUT:\n{}\n\n>>>>>>>>>>>>> STDERR:\n{}", stdout, stderr);
+
+            if !output.status.success() {
+                Err(Error::Tool(output))
+            } else {
+                self.program()?;
+                Ok(spec)
+            }
         } else {
-            self.program()?;
-            Ok(spec)
+            println!("Using currently deployed build of Tock.");
+            Ok(Spec::new(self.enabled_trace_points.borrow().iter().map(|s| s.as_ref())))
         }
     }
 }
