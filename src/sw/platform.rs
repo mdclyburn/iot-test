@@ -1,8 +1,9 @@
 //! Multi-platform support interfaces.
 
 use std::collections::HashSet;
+use std::env;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Output};
 
 use super::application::Application;
 use super::error::Error;
@@ -31,7 +32,7 @@ impl Tock {
 
     /// Build Tock OS.
     #[allow(dead_code)]
-    fn build(&self) -> Result<()> {
+    fn build(&self) -> Result<Output> {
         // NOTICE: forcing use of the Hail board configuration.
         let make_work_dir = self.source_path.clone()
             .join("boards/hail");
@@ -39,14 +40,14 @@ impl Tock {
         println!("Building Tock OS in '{}'.", make_work_dir.display());
         Command::new("/usr/bin/make") // assuming make is in /usr/bin
             .args(&["-C", make_work_dir.to_str().unwrap()])
-            .status()
-            .map(|_status| ())
+            .envs(env::vars())
+            .output()
             .map_err(|io_err| Error::IO(io_err))
     }
 
 
     /// Build Tock OS according to a spec.
-    fn build_instrumented(&self, spec: &Spec) -> Result<()> {
+    fn build_instrumented(&self, spec: &Spec) -> Result<Output> {
         // TODO: centralize and 'uniquify' this path.
         let spec_path = Path::new("/var/tmp/__autogen_trace.json");
         spec.write(spec_path)?;
@@ -66,12 +67,11 @@ impl Tock {
         Command::new("/usr/bin/make") // assuming make is in /usr/bin
             .envs(env_vars)
             .args(&["-C", make_work_dir.to_str().unwrap()])
-            .status()
-            .map(|_status| ())
+            .output()
             .map_err(|io_err| Error::IO(io_err))
     }
 
-    fn program(&self) -> Result<()> {
+    fn program(&self) -> Result<Output> {
         // NOTICE: forcing use of the Hail board configuration.
         let make_work_dir = self.source_path.clone()
             .join("boards/hail");
@@ -80,8 +80,7 @@ impl Tock {
         Command::new("/usr/bin/make") // assuming make is in /usr/bin
             .args(&["-C", make_work_dir.to_str().unwrap(),
                     "program"])
-            .status()
-            .map(|_status| ())
+            .output()
             .map_err(|io_err| Error::IO(io_err))
     }
 }
@@ -137,14 +136,22 @@ impl PlatformSupport for Tock {
 
     fn reconfigure(&self, trace_points: &Vec<String>) -> Result<Spec> {
         let spec = Spec::new(trace_points.iter().map(|s| s.as_ref()));
-        if trace_points.is_empty() {
-            self.build()?;
+        let output = if trace_points.is_empty() {
+            self.build()?
         } else {
-            self.build_instrumented(&spec)?;
+            self.build_instrumented(&spec)?
+        };
+
+        if !output.status.success() {
+            let stdout = String::from_utf8(output.stdout.clone())
+                .unwrap_or("<<Could not process stdout output.>>".to_string());
+            let stderr = String::from_utf8(output.stderr.clone())
+                .unwrap_or("<<Could not process stderr output.>>".to_string());
+            println!("Build failed.\nSTDOUT:\n{}\n\nSTDERR:\n{}", stdout, stderr);
+            Err(Error::Tool(output))
+        } else {
+            self.program()?;
+            Ok(spec)
         }
-
-        self.program()?;
-
-        Ok(spec)
     }
 }
