@@ -34,17 +34,27 @@ impl Tock {
         }
     }
 
-    /// Build Tock OS.
-    #[allow(dead_code)]
-    fn build(&self) -> Result<Output> {
+    /// Retrieve a `make` command.
+    fn make_command(&self) -> Command {
         // NOTICE: forcing use of the Hail board configuration.
         let make_work_dir = self.source_path.clone()
             .join("boards/hail");
 
-        println!("Building Tock OS in '{}'.", make_work_dir.display());
-        Command::new("/usr/bin/make") // assuming make is in /usr/bin
+        // Assuming make is in /usr/bin.
+        let mut command = Command::new("/usr/bin/make");
+        command
             .args(&["-C", make_work_dir.to_str().unwrap()])
-            .envs(env::vars())
+            .envs(env::vars());
+
+        command
+    }
+
+    /// Build Tock OS.
+    #[allow(dead_code)]
+    fn build(&self) -> Result<Output> {
+
+        println!("Building Tock OS.");
+        self.make_command()
             .output()
             .map_err(|io_err| Error::IO(io_err))
     }
@@ -56,20 +66,10 @@ impl Tock {
         let spec_path = Path::new("/var/tmp/__autogen_trace.json");
         spec.write(spec_path)?;
 
-        // NOTICE: forcing use of the Hail board configuration.
-        let make_work_dir = self.source_path.clone()
-            .join("boards/hail");
-
-        let env_vars = env::vars()
-            .chain(vec![("TRACE_SPEC_PATH".to_string(),
-                         spec_path.to_str().unwrap().to_string()),
-                        ("TRACE_VERBOSE".to_string(),
-                         "1".to_string())]);
-
-        println!("Building instrumented Tock OS in '{}'.", make_work_dir.display());
-        Command::new("/usr/bin/make") // assuming make is in /usr/bin
-            .envs(env_vars)
-            .args(&["-C", make_work_dir.to_str().unwrap()])
+        println!("Building instrumented Tock OS.");
+        self.make_command()
+            .envs(vec![("TRACE_SPEC_PATH".to_string(), spec_path.to_str().unwrap().to_string()),
+                       ("TRACE_VERBOSE".to_string(), "1".to_string())])
             .output()
             .map_err(|io_err| Error::IO(io_err))
     }
@@ -80,10 +80,8 @@ impl Tock {
             .join("boards/hail");
 
         println!("Programming target with Tock OS from '{}'.", make_work_dir.display());
-        Command::new("/usr/bin/make") // assuming make is in /usr/bin
-            .envs(env::vars())
-            .args(&["-C", make_work_dir.to_str().unwrap(),
-                    "program"])
+        self.make_command()
+            .args(&["program"])
             .output()
             .map_err(|io_err| Error::IO(io_err))
     }

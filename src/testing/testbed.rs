@@ -1,6 +1,6 @@
 //! Configure and execute tests.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Display;
 use std::sync::mpsc;
