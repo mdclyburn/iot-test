@@ -28,6 +28,7 @@ type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug)]
 pub struct Testbed {
     pin_mapping: Mapping,
+    target_platform: Platform,
     energy_meters: Arc<Mutex<HashMap<String, Box<dyn EnergyMetering>>>>,
     platform_support: HashMap<Platform, RefCell<Box<dyn PlatformSupport>>>,
     applications: Option<ApplicationSet>
@@ -36,6 +37,7 @@ pub struct Testbed {
 impl Testbed {
     /// Create a new `Testbed`.
     pub fn new<'a, T, U>(pin_mapping: Mapping,
+                         target_platform: Platform,
                          energy_meters: T,
                          platform_support: U,
                          applications: Option<ApplicationSet>) -> Testbed
@@ -49,6 +51,7 @@ impl Testbed {
 
         Testbed {
             pin_mapping,
+            target_platform,
             energy_meters: Arc::new(Mutex::new(energy_meters)),
             platform_support: platform_support.into_iter()
                 .map(|config| (config.platform(), RefCell::new(config)))
@@ -67,7 +70,8 @@ impl Testbed {
      *    testbed.execute(&[test], &mut results);
      * ```
      */
-    pub fn execute<'a, T>(&self, tests: T) -> Result<Vec<Evaluation>> where
+    pub fn execute<'a, T>(&self, tests: T) -> Result<Vec<Evaluation>>
+    where
         T: IntoIterator<Item = &'a Test>
     {
         let mut test_results = Vec::new();
@@ -86,7 +90,7 @@ impl Testbed {
                                                  energy_schannel)?;
 
         for test in tests {
-            println!("Current test: '{}'", test.get_id());
+            println!("Running: '{}'", test.get_id());
 
             // Reconfigure target if necessary.
             // Just always configuring when there are trace points
@@ -295,30 +299,27 @@ impl Testbed {
 
     /// Load specified applications onto the device.
     fn load_apps(&self, test: &Test) -> Result<()> {
-        let platform = self.pin_mapping.get_device()
-            .get_platform()
-            .ok_or(Error::DevicePlatform)?;
-        let mut platform_helper = self.platform_support.get(&platform)
-            .ok_or(Error::NoPlatformConfig(String::from(platform)))?
+        let mut platform_support = self.platform_support.get(&self.target_platform)
+            .ok_or(Error::NoPlatformConfig(String::from(self.target_platform)))?
             .borrow_mut();
         let app_set = self.applications.as_ref()
             .ok_or(Error::NoApplications)?;
 
-        println!("executor: loading/unloading {} software", platform);
-        let currently_loaded: HashSet<_> = platform_helper.loaded_software()
+        println!("executor: loading/unloading {} software", self.target_platform);
+        let currently_loaded: HashSet<_> = platform_support.loaded_software()
             .map(|x| x.clone())
             .collect();
         for app_id in &currently_loaded {
             if !test.get_app_ids().contains(app_id) {
                 println!("executor: removing '{}'", app_id);
-                platform_helper.unload(app_id)?;
+                platform_support.unload(app_id)?;
             }
         }
 
         for app_id in test.get_app_ids() {
             if !currently_loaded.contains(app_id) {
                 println!("executor: loading '{}'", app_id);
-                platform_helper.load(app_set.get(app_id)?)
+                platform_support.load(app_set.get(app_id)?)
                     .map_err(|e| Error::Software(e))?;
             }
         }

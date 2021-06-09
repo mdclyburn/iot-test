@@ -31,7 +31,6 @@ use crate::testing::{
 fn main() {
     // physical mapping
     let device = Device::new(
-        Some(Platform::Tock),
         &[(13, (Direction::Out, SignalClass::Digital)), // D0
           (14, (Direction::Out, SignalClass::Digital)), // D1
           (19, (Direction::Out, SignalClass::Digital)), // D6
@@ -70,6 +69,7 @@ fn main() {
 
     let testbed = Testbed::new(
         mapping,
+        Platform::Tock,
         energy_meters,
         platforms,
         Some(app_set));

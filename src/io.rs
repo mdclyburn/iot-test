@@ -118,11 +118,6 @@ impl Mapping {
         })
     }
 
-    /// Returns the device the mapping is for.
-    pub fn get_device(&self) -> &Device {
-        &self.device
-    }
-
     /// Returns the host-target pin mapping.
     pub fn get_mapping(&self) -> &HashMap<u8, u8> {
         &self.numbering

@@ -23,8 +23,6 @@ pub enum Error {
     Threading(std::io::Error),
     /// Energy meter does not exist.
     NoSuchMeter(String),
-    /// Device does not specify a platform when tests require one.
-    DevicePlatform,
     /// Platform configuration not provided.
     NoPlatformConfig(String),
     /// No applications provided when tests require one.
@@ -78,7 +76,6 @@ impl Display for Error {
             Error::Comm(ref e) => write!(f, "thread communication error: {}", e),
             Error::Threading(ref e) => write!(f, "thread spawning error: {}", e),
             Error::NoSuchMeter(ref id) => write!(f, "the meter '{}' does not exist", id),
-            Error::DevicePlatform => write!(f, "device does does not specify a platform and it is necessary"),
             Error::NoPlatformConfig(ref name) => write!(f, "config for '{}' required but missing", name),
             Error::NoApplications => write!(f, "no applications defined but at least one expected"),
             Error::Software(ref e) => write!(f, "software interaction error: {}", e),
