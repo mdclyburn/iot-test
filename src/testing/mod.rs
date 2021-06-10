@@ -1,23 +1,13 @@
 /*! Defining and executing tests and evaluating their results.
  */
 
-mod error;
-mod evaluation;
-mod test;
-mod testbed;
+pub mod criteria;
+pub mod error;
+pub mod evaluation;
+pub mod test;
+pub mod testbed;
 
-pub use error::Error;
-pub use evaluation::Evaluation;
-pub use testbed::Testbed;
-pub use test::{
-    Criterion,
-    EnergyCriterion,
-    EnergyStat,
-    GPIOCriterion,
-    Operation,
-    Test,
-    Execution,
-    Response,
-};
+
+use error::Error;
 
 type Result<T> = std::result::Result<T, Error>;

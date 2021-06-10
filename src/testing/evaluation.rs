@@ -5,13 +5,17 @@ use std::fmt;
 use std::fmt::Display;
 use std::time::Duration;
 
-use super::{Criterion,
-            GPIOCriterion,
-            EnergyStat,
-            Execution,
-            Response,
-            Result,
-            Test};
+use super::Result;
+use super::test::{
+    Execution,
+    Response,
+    Test
+};
+use super::criteria::{
+    Criterion,
+    GPIOCriterion,
+    EnergyStat,
+};
 
 /// Summary of an `Evaluation`.
 #[allow(dead_code)]

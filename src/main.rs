@@ -18,14 +18,16 @@ use crate::io::Mapping;
 use crate::sw::application::{Application, ApplicationSet};
 use crate::sw::{PlatformSupport, Platform};
 use crate::sw::platform::Tock;
-use crate::testing::{
+use crate::testing::testbed::Testbed;
+use crate::testing::criteria::{
     Criterion,
+    GPIOCriterion,
     EnergyCriterion,
     EnergyStat,
-    GPIOCriterion,
-    Test,
-    Testbed,
+};
+use crate::testing::test::{
     Operation,
+    Test,
 };
 
 fn main() {

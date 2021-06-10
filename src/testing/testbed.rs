@@ -19,7 +19,9 @@ use crate::sw::{PlatformSupport, Platform};
 use crate::sw::application::ApplicationSet;
 use crate::testing::test::Response;
 
-use super::{Error, Evaluation, Test};
+use super::Error;
+use super::evaluation::Evaluation;
+use super::test::Test;
 
 type Result<T> = std::result::Result<T, Error>;
 
