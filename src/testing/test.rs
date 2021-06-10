@@ -242,8 +242,67 @@ impl Display for EnergyStat {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct Trace {
+    id: u8,
+    extra: Option<u8>,
+    time: Option<Duration>,
+    time_tolerance: Option<Duration>,
+}
+
+impl Trace {
+    pub fn new(id: u8) -> Trace {
+        Trace {
+            id,
+            extra: None,
+            time: None,
+            time_tolerance: None,
+        }
+    }
+
+    pub fn get_id(&self) -> u8 {
+        self.id
+    }
+
+    pub fn get_extra_data(&self) -> Option<u8> {
+        self.extra
+    }
+
+    pub fn get_time(&self) -> Option<Duration> {
+        self.time
+    }
+
+    pub fn with_extra_data(self, extra: u8) -> Self {
+        Self {
+            extra: Some(extra),
+            ..self
+        }
+    }
+
+    pub fn with_timing(self, time: Duration, tolerance: Option<Duration>) -> Self {
+        Self {
+            time: Some(time),
+            time_tolerance: tolerance,
+            ..self
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
-pub struct TraceCriterion {  }
+pub struct TraceCriterion {
+    occurrences: Vec<Trace>,
+}
+
+impl TraceCriterion {
+    pub fn new<T>(traces: T) -> TraceCriterion
+    where
+        T: IntoIterator<Item = Trace>
+    {
+        TraceCriterion {
+            occurrences: traces.into_iter().collect(),
+        }
+    }
+}
 
 impl Display for TraceCriterion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
