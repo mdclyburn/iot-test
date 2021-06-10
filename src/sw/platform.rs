@@ -36,6 +36,35 @@ impl Tock {
         }
     }
 
+    /// Touch files containing the listed trace points to get `make` to rebuild them.
+    fn touch_source<'a, T>(&self, trace_points: T) -> Result<()>
+    where
+        T: IntoIterator<Item = &'a String>
+    {
+        let kernel_path = self.source_path.clone().join("kernel/src");
+        let capsules_path = self.source_path.clone().join("capsules/src");
+        for trace_point_name in trace_points {
+            // Find file with the trace point.
+            let grep_output = Command::new("/usr/bin/grep")
+                .args(&["-l",
+                        "-r",
+                        &trace_point_name,
+                        kernel_path.to_str().unwrap(),
+                        capsules_path.to_str().unwrap()])
+                .output()
+                .map(|output| String::from_utf8(output.stdout).unwrap().trim().to_string())?;
+
+            for path in grep_output.lines() {
+                println!("Touching '{}'.", path);
+                Command::new("/usr/bin/touch")
+                    .args(&[path])
+                    .output()?;
+            }
+        }
+
+        Ok(())
+    }
+
     /// Retrieve a `make` command.
     fn make_command(&self) -> Command {
         // NOTICE: forcing use of the Hail board configuration.
@@ -164,7 +193,7 @@ impl PlatformSupport for Tock {
             .is_superset(&trace_points);
         if !already_enabled {
             println!("Triggering rebuild of Tock. Need new trace points enabled.");
-            // self.clean()?;
+            self.touch_source(&trace_points)?;
 
             let spec = Spec::new(trace_points.iter().map(|s| s.as_ref()));
             let output = self.build_instrumented(&spec)?;
