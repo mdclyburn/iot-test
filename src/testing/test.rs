@@ -236,11 +236,14 @@ impl Test {
             })
             .is_some();
         if contains_trace_criterion {
+            println!("observer: configuring trace pins");
             for pin_no in trace_pins {
                 pins.get_pin_mut(*pin_no)?
                     .set_interrupt(Trigger::RisingEdge)?;
             }
-            pins.get_pin_mut(trace_pins[trace_pins.len()-1])?
+            let last_pin = trace_pins[trace_pins.len()-1];
+            println!("Configuring last trace pin {}.", last_pin);
+            pins.get_pin_mut(last_pin)?
                 .set_interrupt(Trigger::Both)?;
         }
 
