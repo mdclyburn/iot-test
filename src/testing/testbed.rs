@@ -145,11 +145,11 @@ impl Testbed {
             barrier.wait();
 
             // get GPIO responses
-            let (trace_responses, other_responses) = {
-                let mut all_responses = Vec::new();
+            let (trace_gpio, other_gpio) = {
+                let mut responses = Vec::new();
                 while let Some(response) = observer_rchannel.recv()? {
                     let response = response.remapped(self.pin_mapping.get_mapping());
-                    all_responses.push(response);
+                    responses.push(response);
                 }
 
                 // Filter for trace responses.
@@ -158,20 +158,13 @@ impl Testbed {
                     .copied()
                     .zip(0..) // bit significance
                     .collect();
-                let trace_responses: Vec<Response> = all_responses.iter()
-                    .filter(|r| trace_pins.contains_key(&r.get_pin()))
-                    .copied()
-                    .collect();
-                for r in &trace_responses {
+                let (traces, all_other) = responses.into_iter()
+                    .partition(|r| trace_pins.contains_key(&r.get_pin()));
+                for r in &traces {
                     println!("TRACE RESPONSE: {}", r);
                 }
 
-                // Filter for all other responses.
-                let other_responses = all_responses.into_iter()
-                    .filter(|r| !trace_pins.contains_key(&r.get_pin()))
-                    .collect();
-
-                (trace_responses, other_responses)
+                (traces, all_other)
             };
 
             // get energy data
@@ -182,7 +175,7 @@ impl Testbed {
                     .push(sample);
             }
 
-            test_results.push(Evaluation::new(test, exec_result, other_responses, energy_data));
+            test_results.push(Evaluation::new(test, exec_result, other_gpio, energy_data));
             println!("executor: test finished.");
         }
 
