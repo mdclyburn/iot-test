@@ -74,12 +74,13 @@ impl Response {
     /** Obtain the amount of time between a fixed point and the occurence of this Response.
 
     This is typically used to get the point in time during a test a response occured.
-
-    # Panics
-    This function performs arithmetic with [`Instant`]s which will panic if `t0` is after the time this Response occured.
      */
     pub fn get_offset(&self, t0: Instant) -> Duration {
-        self.time - t0
+        if self.time > t0 {
+            self.time - t0
+        } else {
+            0
+        }
     }
 
     pub fn remapped(&self, host_target_map: &HashMap<u8, u8>) -> Response {
