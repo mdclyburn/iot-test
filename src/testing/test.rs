@@ -79,7 +79,7 @@ impl Response {
         if self.time > t0 {
             self.time - t0
         } else {
-            0
+            Duration::from_millis(0)
         }
     }
 
@@ -209,7 +209,10 @@ impl Test {
     }
 
     /// Set up to record test inputs.
-    pub fn prep_observe(&self, pins: &mut DeviceOutputs, trace_pins: &Vec<u8>) -> Result<()> {
+    pub fn prep_observe(&self,
+                        pins: &mut DeviceOutputs,
+                        trace_pins: &Vec<u8>) -> Result<()>
+    {
         let gpio_criteria = self.criteria.iter()
             .filter_map(|criterion| {
                 if let Criterion::GPIO(gpio_crit) = criterion {
@@ -236,13 +239,13 @@ impl Test {
             })
             .is_some();
         if contains_trace_criterion {
-            println!("observer: configuring trace pins");
             for pin_no in trace_pins {
+                println!("observer: configuring trace pin {}", pin_no);
                 pins.get_pin_mut(*pin_no)?
                     .set_interrupt(Trigger::RisingEdge)?;
             }
             let last_pin = trace_pins[trace_pins.len()-1];
-            println!("Configuring last trace pin {}.", last_pin);
+            println!("observer: configuring last trace pin {}", last_pin);
             pins.get_pin_mut(last_pin)?
                 .set_interrupt(Trigger::Both)?;
         }
