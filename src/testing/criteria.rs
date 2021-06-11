@@ -1,10 +1,12 @@
+//! Evaluation specification criteria.
+
 use std::fmt;
 use std::fmt::Display;
 use std::time::Duration;
 
 /** Defined response to look for from the device under test.
 
-Criterion are used by [`Test`]s to determine how to inspect the output from a device under test.
+Criterion are used by [`super::test::Test`]s to determine how to inspect the output from a device under test.
  */
 #[allow(unused)]
 #[derive(Clone, Debug)]
