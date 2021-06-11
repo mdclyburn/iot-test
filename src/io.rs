@@ -174,6 +174,11 @@ impl Mapping {
         Ok(DeviceOutputs::new(outputs))
     }
 
+    /** Return the numbering of the _device_ pins that output traces.
+
+    The order of the pin numbers returned is in the order in which they were specified to [`Mapping::new`].
+    That is, from least significant (2^0) to the most significant.
+     */
     pub fn get_trace_pin_nos(&self) -> &Vec<u8> {
         &self.trace_pins
     }

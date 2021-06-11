@@ -46,16 +46,16 @@ impl Display for GPIOCriterion {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct Trace {
+pub struct TraceCondition {
     id: u8,
     extra: Option<u8>,
     time: Option<Duration>,
     time_tolerance: Option<Duration>,
 }
 
-impl Trace {
-    pub fn new(id: u8) -> Trace {
-        Trace {
+impl TraceCondition {
+    pub fn new(id: u8) -> TraceCondition {
+        TraceCondition {
             id,
             extra: None,
             time: None,
@@ -93,16 +93,18 @@ impl Trace {
 
 #[derive(Clone, Debug)]
 pub struct TraceCriterion {
-    occurrences: Vec<Trace>,
+    occurrences: Vec<TraceCondition>,
 }
 
 impl TraceCriterion {
-    pub fn new<T>(traces: T) -> TraceCriterion
+    pub fn new<'a, T>(traces: T) -> TraceCriterion
     where
-        T: IntoIterator<Item = Trace>
+        T: IntoIterator<Item = &'a TraceCondition>
     {
         TraceCriterion {
-            occurrences: traces.into_iter().collect(),
+            occurrences: traces.into_iter()
+                .copied()
+                .collect(),
         }
     }
 }

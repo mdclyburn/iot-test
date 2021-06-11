@@ -24,6 +24,8 @@ use crate::testing::criteria::{
     GPIOCriterion,
     EnergyCriterion,
     EnergyStat,
+    TraceCondition,
+    TraceCriterion,
 };
 use crate::testing::test::{
     Operation,
@@ -102,10 +104,7 @@ fn main() {
             (&["capsule/led/command/on"]).into_iter().copied(),
             &[Operation { time: 0, pin_no: 23, input: Signal::Digital(false) },
               Operation { time: 2000, pin_no: 23, input: Signal::Digital(true) }],
-            &[Criterion::GPIO(GPIOCriterion::Any(13)),
-              Criterion::GPIO(GPIOCriterion::Any(14)),
-              Criterion::GPIO(GPIOCriterion::Any(19)),
-              Criterion::GPIO(GPIOCriterion::Any(20))])
+            &[Criterion::Trace(TraceCriterion::new(&[TraceCondition::new(1)]))])
     ];
 
     for test in &tests {

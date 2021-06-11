@@ -38,13 +38,13 @@ impl Spec {
     }
 
     #[allow(dead_code)]
-    pub fn value_of(&self, trace_point_name: &str) -> Option<u8> {
-        self.name_value.get(trace_point_name)
+    pub fn trace_point_value(&self, name: &str) -> Option<u8> {
+        self.name_value.get(name)
             .map(|val| *val)
     }
 
     #[allow(dead_code)]
-    pub fn name_of(&self, value: u8) -> Option<&String> {
+    pub fn trace_point_name(&self, value: u8) -> Option<&String> {
         self.value_name.get(&value)
     }
 

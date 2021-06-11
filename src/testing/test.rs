@@ -83,6 +83,14 @@ impl Response {
         }
     }
 
+    pub fn get_pin(&self) -> u8 {
+        self.pin_no
+    }
+
+    pub fn get_output(&self) -> Signal {
+        self.output
+    }
+
     pub fn remapped(&self, host_target_map: &HashMap<u8, u8>) -> Response {
         let target_pin = host_target_map.get(&self.pin_no)
             .expect("Cannot remap device response because pin mapping does not exist.");
@@ -97,6 +105,29 @@ impl Response {
 impl Display for Response {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "response on P{:02} {}", self.pin_no, self.output)
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct Trace {
+    id: u8,
+    extra: u8,
+    time: Instant,
+}
+
+impl Trace {
+    pub fn new(id: u8, extra: u8, time: Instant) -> Trace {
+        Trace {
+            id,
+            extra,
+            time,
+        }
+    }
+}
+
+impl Display for Trace {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "tracepoint {}, data: {}", self.id, self.extra)
     }
 }
 
@@ -257,7 +288,11 @@ impl Test {
     ///
     /// Watches for responses from the device under test for a slightly longer duration than the duration of the test.
     /// This is done to catch any straggling responses from the device.
-    pub fn observe(&self, t0: Instant, pins: &DeviceOutputs, out: &mut Vec<Response>) -> Result<()> {
+    pub fn observe(&self,
+                   t0: Instant,
+                   pins: &DeviceOutputs,
+                   out: &mut Vec<Response>) -> Result<()>
+    {
         let gpio = Gpio::new()?;
         let t_end = t0 + self.get_max_runtime();
         let mut t = Instant::now();
