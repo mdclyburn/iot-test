@@ -158,10 +158,10 @@ impl Testbed {
                     .copied()
                     .zip(0..) // bit significance
                     .collect();
-                let (traces, all_other) = responses.into_iter()
+                let (traces, all_other): (Vec<Response>, _) = responses.into_iter()
                     .partition(|r| trace_pins.contains_key(&r.get_pin()));
                 for r in &traces {
-                    println!("TRACE RESPONSE: {}", r);
+                    println!("TRACE RESPONSE: {} - {:?}", r, r.get_offset(*exec_result.as_ref().unwrap().get_start()));
                 }
 
                 (traces, all_other)

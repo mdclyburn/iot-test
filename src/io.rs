@@ -226,7 +226,7 @@ pub struct Pins<T> {
 }
 
 impl<T> Pins<T> {
-    /// Create a new collectio of pins.
+    /// Create a new collection of pins.
     fn new<U>(pins: U) -> Pins<T> where
         U: IntoIterator<Item = (u8, T)>
     {
