@@ -89,6 +89,7 @@ Creating a mapping with [`Mapping::new`] ensures a valid testbed-device configur
 pub struct Mapping {
     device: Device,
     numbering: HashMap<u8, u8>,
+    trace_pins: Vec<u8>,
 }
 
 impl Mapping {
@@ -101,20 +102,30 @@ impl Mapping {
     let mapping = Mapping::new(&device, &[(17, 23), (2, 13)]);
     ```
      */
-    pub fn new<'a, T>(device: &Device, host_target_map: T) -> Result<Mapping>
+    pub fn new<'a, T, U>(device: &Device,
+                      host_target_map: T,
+                      trace_pins: U) -> Result<Mapping>
     where
-        T: IntoIterator<Item = &'a (u8, u8)>
+        T: IntoIterator<Item = &'a (u8, u8)>,
+        U: IntoIterator<Item = &'a u8>,
     {
-        let numbering: HashMap<u8, u8> = host_target_map
-            .into_iter()
+        let numbering: HashMap<u8, u8> = host_target_map.into_iter()
             .map(|(h_pin, t_pin)| (*h_pin, *t_pin))
             .collect();
+        let trace_pins: Vec<u8> = trace_pins.into_iter()
+            .copied()
+            .collect();
 
-        device.has_pins(numbering.iter().map(|(_h, t)| *t))?;
+        let used_device_pins = numbering.iter()
+            .map(|(_h, t)| *t)
+            .chain(trace_pins.iter().copied());
+        // device.has_pins(numbering.iter().map(|(_h, t)| *t))?;
+        device.has_pins(used_device_pins)?;
 
         Ok(Mapping {
             device: device.clone(),
             numbering,
+            trace_pins,
         })
     }
 
@@ -161,6 +172,10 @@ impl Mapping {
         }
 
         Ok(DeviceOutputs::new(outputs))
+    }
+
+    pub fn get_trace_pin_nos(&self) -> &Vec<u8> {
+        &self.trace_pins
     }
 
     /** Configures and returns the I2C interface.

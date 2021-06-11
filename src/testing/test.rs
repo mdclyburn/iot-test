@@ -208,7 +208,7 @@ impl Test {
     }
 
     /// Set up to record test inputs.
-    pub fn prep_observe(&self, pins: &mut DeviceOutputs) -> Result<()> {
+    pub fn prep_observe(&self, pins: &mut DeviceOutputs, trace_pins: &Vec<u8>) -> Result<()> {
         let gpio_criteria = self.criteria.iter()
             .filter_map(|criterion| {
                 if let Criterion::GPIO(gpio_crit) = criterion {
@@ -225,6 +225,22 @@ impl Test {
                         .set_interrupt(Trigger::Both)?;
                 },
             };
+        }
+
+        // Configure interrupts on the trace pins differently if specified.
+        let contains_trace_criterion = self.criteria.iter()
+            .find(|c| match c {
+                Criterion::Trace(_) => true,
+                _ => false,
+            })
+            .is_some();
+        if contains_trace_criterion {
+            for pin_no in trace_pins {
+                pins.get_pin_mut(*pin_no)?
+                    .set_interrupt(Trigger::RisingEdge)?;
+            }
+            pins.get_pin_mut(trace_pins[trace_pins.len()-1])?
+                .set_interrupt(Trigger::Both)?;
         }
 
         Ok(())

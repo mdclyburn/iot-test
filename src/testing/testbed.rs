@@ -189,6 +189,7 @@ impl Testbed {
         response_schannel: SyncSender<Option<Response>>,
     ) -> Result<JoinHandle<()>> {
         let mut outputs = self.pin_mapping.get_gpio_outputs()?;
+        let trace_pins = self.pin_mapping.get_trace_pin_nos().clone();
 
         thread::Builder::new()
             .name("test-observer".to_string())
@@ -202,7 +203,7 @@ impl Testbed {
 
                     // set up to watch for responses according to criteria
                     if let Some(ref test) = *test_container.read().unwrap() {
-                        test.prep_observe(&mut outputs)
+                        test.prep_observe(&mut outputs, &trace_pins)
                             .unwrap(); // <-- communicate back?
 
                         // wait for test to begin
