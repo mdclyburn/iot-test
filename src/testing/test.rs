@@ -17,7 +17,6 @@ use rppal::gpio::{
 use crate::comm::Signal;
 use crate::facility::EnergyMetering;
 use crate::io::{DeviceInputs, DeviceOutputs};
-use crate::sw::Platform;
 
 use super::Error;
 use super::criteria::{

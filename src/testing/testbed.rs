@@ -106,12 +106,10 @@ impl Testbed {
                 .collect();
             let res = self.platform_support.reconfigure(&trace_points);
             if let Err(reconfig_err) = res {
-                let eval = Evaluation::new(
+                let eval = Evaluation::failed(
                     test,
-                    Err(Error::Software(reconfig_err)),
-                    Vec::new(),
-                    Vec::new(),
-                    HashMap::new());
+                    None,
+                    Error::Software(reconfig_err));
                 test_results.push(eval);
                 continue;
             }
@@ -120,12 +118,10 @@ impl Testbed {
             // Load application(s) if necessary.
             if let Err(load_err) = self.load_apps(&test) {
                 println!("executor: error loading/removing application(s)");
-                let eval = Evaluation::new(
+                let eval = Evaluation::failed(
                     test,
-                    Err(load_err),
-                    Vec::new(),
-                    Vec::new(),
-                    HashMap::new());
+                    Some(&platform_spec),
+                    load_err);
                 test_results.push(eval);
                 continue;
             }
@@ -178,6 +174,7 @@ impl Testbed {
 
             let evaluation = Evaluation::new(
                 test,
+                &platform_spec,
                 exec_result,
                 other_gpio,
                 traces,

@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use crate::sw::instrument::Spec;
 
-use super::Result;
+use super::{Error, Result};
 use super::criteria::{
     Criterion,
     GPIOCriterion,
@@ -49,6 +49,7 @@ impl Display for Status {
 #[derive(Debug)]
 pub struct Evaluation {
     test: Test,
+    spec: Option<Spec>,
     exec_result: Result<Execution>,
     device_responses: Vec<Response>,
     traces: Vec<Trace>,
@@ -57,6 +58,7 @@ pub struct Evaluation {
 
 impl Evaluation {
     pub fn new(test: &Test,
+               spec: &Spec,
                exec_result: Result<Execution>,
                device_responses: Vec<Response>,
                traces: Vec<Trace>,
@@ -64,10 +66,22 @@ impl Evaluation {
     {
         Evaluation {
             test: test.clone(),
+            spec: Some(spec.clone()),
             exec_result,
             device_responses,
             traces,
             energy_metrics,
+        }
+    }
+
+    pub fn failed(test: &Test, spec: Option<&Spec>, error: Error) -> Evaluation {
+        Evaluation {
+            test: test.clone(),
+            spec: spec.map(|s| s.clone()),
+            exec_result: Err(error),
+            device_responses: Vec::new(),
+            traces: Vec::new(),
+            energy_metrics: HashMap::new(),
         }
     }
 
