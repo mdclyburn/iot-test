@@ -15,8 +15,8 @@ const SPEC_VERSION: u32 = 1;
 /// Information about a platform build.
 #[derive(Clone, Debug)]
 pub struct Spec {
-    name_value: HashMap<String, u8>,
-    value_name: HashMap<u8, String>,
+    name_value: HashMap<String, u16>,
+    value_name: HashMap<u16, String>,
 }
 
 impl Spec {
@@ -24,7 +24,7 @@ impl Spec {
     where
         T: IntoIterator<Item = &'a str>
     {
-        let name_value: HashMap<String, u8> = trace_points.into_iter()
+        let name_value: HashMap<String, u16> = trace_points.into_iter()
             .map(|s| s.to_string())
             .zip(1..) // assign values to each trace point
             .collect();
@@ -39,13 +39,13 @@ impl Spec {
     }
 
     #[allow(dead_code)]
-    pub fn trace_point_value(&self, name: &str) -> Option<u8> {
+    pub fn trace_point_value(&self, name: &str) -> Option<u16> {
         self.name_value.get(name)
             .map(|val| *val)
     }
 
     #[allow(dead_code)]
-    pub fn trace_point_name(&self, value: u8) -> Option<&String> {
+    pub fn trace_point_name(&self, value: u16) -> Option<&String> {
         self.value_name.get(&value)
     }
 

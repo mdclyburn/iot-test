@@ -1,5 +1,7 @@
 use std::collections::HashMap;
-use std::time::Instant;
+use std::fmt;
+use std::fmt::Display;
+use std::time::{Duration, Instant};
 
 use crate::comm::Signal;
 use crate::sw::instrument::Spec;
@@ -35,6 +37,14 @@ impl Trace {
     #[allow(dead_code)]
     pub fn get_time(&self) -> Instant {
         self.time
+    }
+
+    pub fn get_offset(&self, t0: Instant) -> Duration {
+        if t0 < self.time {
+            self.time - t0
+        } else {
+            Duration::from_millis(0)
+        }
     }
 }
 

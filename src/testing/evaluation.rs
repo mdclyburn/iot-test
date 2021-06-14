@@ -236,6 +236,17 @@ impl Display for Evaluation {
                 }
             }
 
+            if self.traces.len() > 0 {
+                write!(f, "  Traces:\n")?;
+                for trace in &self.traces {
+                    write!(f, "    @{:?}", trace.get_offset(*execution.get_start()))?;
+                    write!(f, "\t'{}' (ID: {}, data: {})\n",
+                           self.spec.as_ref().unwrap().trace_point_name(trace.get_id()).unwrap(),
+                           trace.get_id(),
+                           trace.get_extra())?;
+                }
+            }
+
             write!(f, "\n")?;
 
             // Show criteria results.

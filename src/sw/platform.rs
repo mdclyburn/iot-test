@@ -198,19 +198,20 @@ impl PlatformSupport for Tock {
             self.touch_source(&trace_points)?;
 
             let spec = Spec::new(trace_points.iter().map(|s| s.as_ref()));
-            let output = self.build_instrumented(&spec)?;
-            let stdout = String::from_utf8(output.stdout.clone())
-                .unwrap_or("<<Could not process stdout output.>>".to_string());
-            let stderr = String::from_utf8(output.stderr.clone())
-                .unwrap_or("<<Could not process stderr output.>>".to_string());
-            println!(">>>>>>>>>>>>>>>> STDOUT:\n{}\n\n>>>>>>>>>>>>> STDERR:\n{}", stdout, stderr);
+            // let output = self.build_instrumented(&spec)?;
+            // let stdout = String::from_utf8(output.stdout.clone())
+            //     .unwrap_or("<<Could not process stdout output.>>".to_string());
+            // let stderr = String::from_utf8(output.stderr.clone())
+            //     .unwrap_or("<<Could not process stderr output.>>".to_string());
+            // println!(">>>>>>>>>>>>>>>> STDOUT:\n{}\n\n>>>>>>>>>>>>> STDERR:\n{}", stdout, stderr);
 
-            if !output.status.success() {
-                Err(Error::Tool(output))
-            } else {
-                self.program()?;
-                Ok(spec)
-            }
+            // if !output.status.success() {
+            //     Err(Error::Tool(output))
+            // } else {
+            //     self.program()?;
+            //     Ok(spec)
+            // }
+            Ok(spec)
         } else {
             println!("Using currently deployed build of Tock.");
             Ok(Spec::new(self.enabled_trace_points.borrow().iter().map(|s| s.as_ref())))
