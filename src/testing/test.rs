@@ -7,7 +7,12 @@ use std::fmt::Display;
 use std::iter::IntoIterator;
 use std::time::{Duration, Instant};
 
-use rppal::gpio::{Gpio, Level, Trigger};
+use rppal::gpio::{
+    Gpio,
+    InputPin,
+    Level,
+    Trigger,
+};
 
 use crate::comm::Signal;
 use crate::facility::EnergyMetering;
@@ -242,8 +247,10 @@ impl Test {
     /// Set up to record test inputs.
     pub fn prep_observe(&self,
                         pins: &mut DeviceOutputs,
-                        trace_pins: &Vec<u8>) -> Result<()>
+                        trace_pins: &Vec<u8>) -> Result<Vec<u8>>
     {
+        let mut interrupt_pins: Vec<u8> = Vec::new();
+
         let gpio_criteria = self.criteria.iter()
             .filter_map(|criterion| {
                 if let Criterion::GPIO(gpio_crit) = criterion {
@@ -256,8 +263,9 @@ impl Test {
             println!("observer: watching for {}", criterion);
             match criterion {
                 GPIOCriterion::Any(pin_no) => {
-                    pins.get_pin_mut(*pin_no)?
+                    let pin = pins.get_pin_mut(*pin_no)?
                         .set_interrupt(Trigger::Both)?;
+                    interrupt_pins.push(*pin_no);
                 },
             };
         }
@@ -281,7 +289,13 @@ impl Test {
                 .set_interrupt(Trigger::Both)?;
         }
 
-        Ok(())
+        // Always check trace pins first in their provided order.
+        let trace_ins = trace_pins.into_iter().zip(0..);
+        for (&pin_no, pos) in trace_ins {
+            interrupt_pins.insert(pos, pin_no);
+        }
+
+        Ok(interrupt_pins)
     }
 
     /// Record test inputs (outputs from the device).
@@ -290,13 +304,12 @@ impl Test {
     /// This is done to catch any straggling responses from the device.
     pub fn observe(&self,
                    t0: Instant,
-                   pins: &DeviceOutputs,
+                   pins: &Vec<&InputPin>,
                    out: &mut Vec<Response>) -> Result<()>
     {
         let gpio = Gpio::new()?;
         let t_end = t0 + self.get_max_runtime();
         let mut t = Instant::now();
-        let pins = pins.get()?;
 
         while t < t_end {
             let poll = gpio.poll_interrupts(

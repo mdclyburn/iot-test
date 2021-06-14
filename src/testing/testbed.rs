@@ -217,8 +217,11 @@ impl Testbed {
 
                     // set up to watch for responses according to criteria
                     if let Some(ref test) = *test_container.read().unwrap() {
-                        test.prep_observe(&mut outputs, &trace_pins)
+                        let interrupt_pin_nos = test.prep_observe(&mut outputs, &trace_pins)
                             .unwrap(); // <-- communicate back?
+                        let interrupt_pins = interrupt_pin_nos.into_iter()
+                            .map(|pin_no| outputs.get_pin(pin_no).unwrap())
+                            .collect();
 
                         // wait for test to begin
                         println!("observer: ready to begin test");
@@ -226,11 +229,9 @@ impl Testbed {
                         println!("observer: starting watch");
 
                         let t0 = Instant::now();
-                        test.observe(t0, &outputs, &mut responses)
+                        test.observe(t0, &interrupt_pins, &mut responses)
                             .unwrap();
 
-                        // wait for output responses from dut or the end of the test
-                        // can I just wait for the barrier here or will an interrupt stop it?
                         barrier.wait();
 
                         println!("observer: cleaning up interrupts");
