@@ -63,18 +63,22 @@ impl TraceCondition {
         }
     }
 
+    #[allow(dead_code)]
     pub fn get_id(&self) -> u8 {
         self.id
     }
 
+    #[allow(dead_code)]
     pub fn get_extra_data(&self) -> Option<u8> {
         self.extra
     }
 
+    #[allow(dead_code)]
     pub fn get_time(&self) -> Option<Duration> {
         self.time
     }
 
+    #[allow(dead_code)]
     pub fn with_extra_data(self, extra: u8) -> Self {
         Self {
             extra: Some(extra),
@@ -82,6 +86,7 @@ impl TraceCondition {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_timing(self, time: Duration, tolerance: Option<Duration>) -> Self {
         Self {
             time: Some(time),
@@ -127,6 +132,7 @@ pub struct EnergyCriterion {
 /// Energy-specific criterion of interest.
 impl EnergyCriterion {
     /// Create a new EnergyCriterion.
+    #[allow(dead_code)]
     pub fn new(meter: &str, stat: EnergyStat) -> Self {
         Self {
             meter: meter.to_string(),

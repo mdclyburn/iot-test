@@ -22,14 +22,17 @@ impl Trace {
         }
     }
 
+    #[allow(dead_code)]
     pub fn get_id(&self) -> u16 {
         self.id
     }
 
+    #[allow(dead_code)]
     pub fn get_extra(&self) -> u16 {
         self.extra
     }
 
+    #[allow(dead_code)]
     pub fn get_time(&self) -> Instant {
         self.time
     }

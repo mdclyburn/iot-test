@@ -22,8 +22,6 @@ use super::Error;
 use super::criteria::{
     Criterion,
     GPIOCriterion,
-    EnergyCriterion,
-    TraceCriterion,
 };
 
 type Result<T> = std::result::Result<T, Error>;
@@ -125,6 +123,7 @@ pub struct Trace {
 }
 
 impl Trace {
+    #[allow(dead_code)]
     pub fn new(id: u8, extra: u8, time: Instant) -> Trace {
         Trace {
             id,
