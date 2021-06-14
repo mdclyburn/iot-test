@@ -22,6 +22,7 @@ use crate::testing::test::Response;
 use super::Error;
 use super::evaluation::Evaluation;
 use super::test::Test;
+use super::trace;
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -100,20 +101,21 @@ impl Testbed {
             // Reconfigure target if necessary.
             // Just always configuring when there are trace points
             // instead of doing anything idempotent.
-            // let trace_points: Vec<String> = test.get_trace_points().iter()
-            //     .cloned()
-            //     .collect();
-            // let res = self.platform_support.reconfigure(&trace_points);
-            // if let Err(reconfig_err) = res {
-            //     let eval = Evaluation::new(
-            //         test,
-            //         Err(Error::Software(reconfig_err)),
-            //         Vec::new(),
-            //         HashMap::new());
-            //     test_results.push(eval);
-            //     continue;
-            // }
-            // let platform_spec = res.unwrap();
+            let trace_points: Vec<String> = test.get_trace_points().iter()
+                .cloned()
+                .collect();
+            let res = self.platform_support.reconfigure(&trace_points);
+            if let Err(reconfig_err) = res {
+                let eval = Evaluation::new(
+                    test,
+                    Err(Error::Software(reconfig_err)),
+                    Vec::new(),
+                    Vec::new(),
+                    HashMap::new());
+                test_results.push(eval);
+                continue;
+            }
+            let platform_spec = res.unwrap();
 
             // Load application(s) if necessary.
             if let Err(load_err) = self.load_apps(&test) {
@@ -121,6 +123,7 @@ impl Testbed {
                 let eval = Evaluation::new(
                     test,
                     Err(load_err),
+                    Vec::new(),
                     Vec::new(),
                     HashMap::new());
                 test_results.push(eval);
@@ -145,7 +148,7 @@ impl Testbed {
             barrier.wait();
 
             // get GPIO responses
-            let (trace_gpio, other_gpio) = {
+            let (traces, other_gpio) = {
                 let mut responses = Vec::new();
                 while let Some(response) = observer_rchannel.recv()? {
                     let response = response.remapped(self.pin_mapping.get_mapping());
@@ -154,15 +157,13 @@ impl Testbed {
 
                 // Filter for trace responses.
                 // Map pin_no -> significance
-                let trace_pins: HashMap<u8, u8> = self.pin_mapping.get_trace_pin_nos().iter()
+                let trace_pins: HashMap<u8, u16> = self.pin_mapping.get_trace_pin_nos().iter()
                     .copied()
                     .zip(0..) // bit significance
                     .collect();
                 let (traces, all_other): (Vec<Response>, _) = responses.into_iter()
                     .partition(|r| trace_pins.contains_key(&r.get_pin()));
-                for r in &traces {
-                    println!("TRACE RESPONSE: {} - {:?}", r, r.get_offset(*exec_result.as_ref().unwrap().get_start()));
-                }
+                let traces = trace::reconstruct(&traces, &platform_spec, &trace_pins);
 
                 (traces, all_other)
             };
@@ -175,7 +176,13 @@ impl Testbed {
                     .push(sample);
             }
 
-            test_results.push(Evaluation::new(test, exec_result, other_gpio, energy_data));
+            let evaluation = Evaluation::new(
+                test,
+                exec_result,
+                other_gpio,
+                traces,
+                energy_data);
+            test_results.push(evaluation);
             println!("executor: test finished.");
         }
 

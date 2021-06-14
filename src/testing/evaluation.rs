@@ -5,17 +5,20 @@ use std::fmt;
 use std::fmt::Display;
 use std::time::Duration;
 
+use crate::sw::instrument::Spec;
+
 use super::Result;
-use super::test::{
-    Execution,
-    Response,
-    Test
-};
 use super::criteria::{
     Criterion,
     GPIOCriterion,
     EnergyStat,
 };
+use super::test::{
+    Execution,
+    Response,
+    Test
+};
+use super::trace::Trace;
 
 /// Summary of an `Evaluation`.
 #[allow(dead_code)]
@@ -48,6 +51,7 @@ pub struct Evaluation {
     test: Test,
     exec_result: Result<Execution>,
     device_responses: Vec<Response>,
+    traces: Vec<Trace>,
     energy_metrics: HashMap<String, Vec<f32>>,
 }
 
@@ -55,12 +59,14 @@ impl Evaluation {
     pub fn new(test: &Test,
                exec_result: Result<Execution>,
                device_responses: Vec<Response>,
-               energy_metrics: HashMap<String, Vec<f32>>
-    ) -> Evaluation {
+               traces: Vec<Trace>,
+               energy_metrics: HashMap<String, Vec<f32>>) -> Evaluation
+    {
         Evaluation {
             test: test.clone(),
             exec_result,
             device_responses,
+            traces,
             energy_metrics,
         }
     }

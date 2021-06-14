@@ -48,6 +48,17 @@ impl Spec {
         self.value_name.get(&value)
     }
 
+    pub fn id_bit_length(&self) -> u8 {
+        let allocated = self.name_value.len();
+        for pow in 1..16 {
+            if (1u16 << pow) > allocated as u16 {
+                return pow;
+            }
+        }
+
+        panic!("ID bit length too long.");
+    }
+
     #[allow(dead_code)]
     pub fn write(&self, out_path: &Path) -> Result<()> {
         let points: Vec<JsonValue> = self.name_value.iter()

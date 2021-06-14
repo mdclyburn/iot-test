@@ -76,6 +76,11 @@ impl Response {
         }
     }
 
+    /// Returns the Instant the Response was recorded.
+    pub fn get_time(&self) -> Instant {
+        self.time
+    }
+
     /** Obtain the amount of time between a fixed point and the occurence of this Response.
 
     This is typically used to get the point in time during a test a response occured.
@@ -263,7 +268,7 @@ impl Test {
             println!("observer: watching for {}", criterion);
             match criterion {
                 GPIOCriterion::Any(pin_no) => {
-                    let pin = pins.get_pin_mut(*pin_no)?
+                    pins.get_pin_mut(*pin_no)?
                         .set_interrupt(Trigger::Both)?;
                     interrupt_pins.push(*pin_no);
                 },

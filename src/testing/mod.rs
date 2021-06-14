@@ -6,7 +6,7 @@ pub mod error;
 pub mod evaluation;
 pub mod test;
 pub mod testbed;
-
+pub mod trace;
 
 use error::Error;
 
