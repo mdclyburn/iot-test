@@ -250,7 +250,10 @@ impl Display for Evaluation {
                     write!(f, "    {}\t@{:?}\n",
                            trace_point_name,
                            trace.get_offset(*execution.get_start()))?;
-                    // write!(f, "{}\n", trace)?;
+
+                    if spec.trace_point_name(trace.get_id()).is_none() {
+                        write!(f, "{}\n", trace)?;
+                    }
                 }
             }
 
