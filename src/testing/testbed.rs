@@ -215,6 +215,7 @@ impl Testbed {
                 println!("observer: started.");
 
                 let mut responses = Vec::new();
+                responses.reserve(1000);
                 loop {
                     // wait for next test
                     barrier.wait();
