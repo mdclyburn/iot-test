@@ -8,19 +8,19 @@ use crate::sw::instrument::Spec;
 
 use super::test::Response;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct Trace {
     id: u16,
     extra: u16,
-    time: Instant,
+    responses: Vec<Response>,
 }
 
 impl Trace {
-    fn new(id: u16, extra: u16, time: Instant) -> Trace {
+    fn new(id: u16, extra: u16, responses: Vec<Response>) -> Trace {
         Trace {
             id,
             extra,
-            time,
+            responses,
         }
     }
 
@@ -36,15 +36,26 @@ impl Trace {
 
     #[allow(dead_code)]
     pub fn get_time(&self) -> Instant {
-        self.time
+        self.responses[0].get_time()
     }
 
     pub fn get_offset(&self, t0: Instant) -> Duration {
-        if t0 < self.time {
-            self.time - t0
+        if t0 < self.get_time() {
+            self.get_time() - t0
         } else {
             Duration::from_millis(0)
         }
+    }
+}
+
+impl Display for Trace {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Trace - ID: {}, data: {}\nRaw responses:\n", self.id, self.extra)?;
+        for r in &self.responses {
+            write!(f, "  {}\n", r)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -90,7 +101,7 @@ where
         let trace = Trace::new(
             trace_val & id_mask(test_spec.id_bit_length()),
             (trace_val & extra_mask(test_spec.id_bit_length())) >> test_spec.id_bit_length(),
-            trace_responses[0].get_time());
+            trace_responses);
 
         traces.push(trace);
     }

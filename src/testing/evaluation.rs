@@ -221,6 +221,10 @@ impl Display for Evaluation {
         }?;
         write!(f, "\n")?;
 
+        if let Some(ref spec) = self.spec {
+            write!(f, "{}\n", spec)?;
+        }
+
         if let Ok(ref execution) = self.exec_result {
             if self.device_responses.len() > 0 {
                 write!(f, "  IO responses:\n")?;
@@ -239,11 +243,14 @@ impl Display for Evaluation {
             if self.traces.len() > 0 {
                 write!(f, "  Traces:\n")?;
                 for trace in &self.traces {
-                    write!(f, "    @{:?}", trace.get_offset(*execution.get_start()))?;
-                    write!(f, "\t'{}' (ID: {}, data: {})\n",
-                           self.spec.as_ref().unwrap().trace_point_name(trace.get_id()).unwrap(),
-                           trace.get_id(),
-                           trace.get_extra())?;
+                    let spec = self.spec.as_ref().unwrap();
+                    let trace_point_name = spec.trace_point_name(trace.get_id())
+                        .map(|s| s.as_str())
+                        .unwrap_or("UNTRACKED?");
+                    write!(f, "    {}\t@{:?}\n",
+                           trace_point_name,
+                           trace.get_offset(*execution.get_start()))?;
+                    // write!(f, "{}\n", trace)?;
                 }
             }
 

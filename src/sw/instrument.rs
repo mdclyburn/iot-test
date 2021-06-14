@@ -1,6 +1,8 @@
 //! Platform instrumentation support.
 
 use std::collections::HashMap;
+use std::fmt;
+use std::fmt::Display;
 use std::fs::File;
 use std::path::Path;
 
@@ -76,6 +78,17 @@ impl Spec {
 
             use std::io::Write;
             file.flush()?;
+        }
+
+        Ok(())
+    }
+}
+
+impl Display for Spec {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Platform specification:\n")?;
+        for (name, value) in &self.name_value {
+            write!(f, "  {} => {:2}\n", name, value)?;
         }
 
         Ok(())

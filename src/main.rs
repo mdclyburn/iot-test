@@ -101,7 +101,7 @@ fn main() {
         Test::new(
             "trace-capture-alpha",
             (&[]).into_iter().copied(),
-            (&["capsule/led/command/on"]).into_iter().copied(),
+            (&["capsule/led/command/on", "capsule/led/command/off"]).into_iter().copied(),
             &[Operation { time: 0, pin_no: 23, input: Signal::Digital(false) },
               Operation { time: 2000, pin_no: 23, input: Signal::Digital(true) }],
             &[Criterion::Trace(TraceCriterion::new(&[TraceCondition::new(1)]))])
