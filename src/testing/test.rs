@@ -282,14 +282,17 @@ impl Test {
             .is_some();
         if contains_trace_criterion {
             for pin_no in trace_pins {
+                // Last pin triggers on both to signal final trace pin change.
+                let trigger = if pin_no == trace_pins[trace_pins.len()-1] {
+                    Trigger::Both
+                } else {
+                    Trigger::RisingEdge
+                };
+
                 println!("observer: configuring trace pin {}", pin_no);
                 pins.get_pin_mut(*pin_no)?
-                    .set_interrupt(Trigger::RisingEdge)?;
+                    .set_interrupt(trigger)?;
             }
-            let last_pin = trace_pins[trace_pins.len()-1];
-            println!("observer: configuring last trace pin {}", last_pin);
-            pins.get_pin_mut(last_pin)?
-                .set_interrupt(Trigger::Both)?;
         }
 
         // Always check trace pins first in their provided order.
