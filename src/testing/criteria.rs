@@ -194,22 +194,24 @@ impl TraceCriterion {
     {
         if conditions.len() > 0 {
             let condition = conditions[0];
-            println!("Attempting to match trace condition: {}", condition);
             for (event, idx) in events.iter().zip(0..) {
-                println!("  inspecting event #{}: {}", idx, event);
                 // Check the timing of the trace event as that cannot be determined
                 // within the context of the TraceCondition alone, especially if the
                 // timing is relative to other conditions.
                 if condition.satisfied_by(event) {
                     let timing_matches: bool = {
                         if let Some(timing) = condition.get_offset() {
-                            // Time point test the trace condition specifies the trace
-                            // should occur at.
+                            // println!("Checking timing for trace event.");
+                            // Calculate the time point test the trace condition
+                            // specifies the trace should occur at.
                             let t_req = match timing {
                                 Timing::Absolute(d) => t0 + d,
                                 Timing::Relative(d) => tp + d,
                             };
+                            // Difference between the actual event occurrence time and the specification's time point.
                             let since = t_req.max(event.get_time()) - t_req.min(event.get_time());
+                            // println!("  req. offset: {:?}, tolerance: {:?}", since, condition.get_tolerance().unwrap());
+                            // println!("  since time offset: {:?}", since);
                             since < condition.get_tolerance().unwrap()
                         } else {
                             true
@@ -230,11 +232,9 @@ impl TraceCriterion {
             }
 
             // No more events to match. Game over.
-            println!("  could not match any events");
             false
         } else {
             // No more conditions to try to match. We're finished.
-            println!("  finished matching");
             true
         }
     }

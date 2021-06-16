@@ -10,6 +10,8 @@ mod io;
 mod sw;
 mod testing;
 
+use std::time::Duration;
+
 use crate::comm::{Direction, Class as SignalClass, Signal};
 use crate::device::Device;
 use crate::facility::EnergyMetering;
@@ -24,6 +26,7 @@ use crate::testing::criteria::{
     GPIOCriterion,
     EnergyCriterion,
     EnergyStat,
+    Timing,
     TraceCondition,
     TraceCriterion,
 };
@@ -105,8 +108,10 @@ fn main() {
             &[Operation { time: 0, pin_no: 23, input: Signal::Digital(false) },
               Operation { time: 2000, pin_no: 23, input: Signal::Digital(true) }],
             &[Criterion::Trace(TraceCriterion::new(&[TraceCondition::new(1),
-                                                     TraceCondition::new(1),
-                                                     TraceCondition::new(2)]))])
+                                                     TraceCondition::new(1).with_timing(Timing::Relative(Duration::from_millis(250)),
+                                                                                        Duration::from_millis(50))])),
+              Criterion::Trace(TraceCriterion::new(&[TraceCondition::new(1).with_timing(Timing::Absolute(Duration::from_millis(1000)),
+                                                                                        Duration::from_millis(100))]))])
     ];
 
     for test in &tests {
