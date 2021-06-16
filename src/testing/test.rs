@@ -115,30 +115,6 @@ impl Display for Response {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct Trace {
-    id: u8,
-    extra: u8,
-    time: Instant,
-}
-
-impl Trace {
-    #[allow(dead_code)]
-    pub fn new(id: u8, extra: u8, time: Instant) -> Trace {
-        Trace {
-            id,
-            extra,
-            time,
-        }
-    }
-}
-
-impl Display for Trace {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "tracepoint {}, data: {}", self.id, self.extra)
-    }
-}
-
 /// Test execution information
 #[derive(Clone, Debug)]
 pub struct Execution {
