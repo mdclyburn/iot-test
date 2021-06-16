@@ -159,6 +159,11 @@ impl Testbed {
                     .collect();
                 let (traces, all_other): (Vec<Response>, _) = responses.into_iter()
                     .partition(|r| trace_pins.contains_key(&r.get_pin()));
+                for r in &traces {
+                    println!("TRACE RESPONSE: {} - {:?}",
+                             r,
+                             r.get_offset(*exec_result.as_ref().unwrap().get_start()));
+                }
                 let traces = trace::reconstruct(&traces, &platform_spec, &trace_pins);
 
                 (traces, all_other)

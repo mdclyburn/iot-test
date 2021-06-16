@@ -1,8 +1,11 @@
 //! Evaluation specification criteria.
 
+use std::cmp::Ord;
 use std::fmt;
 use std::fmt::Display;
-use std::time::Duration;
+use std::time::{Duration, Instant};
+
+use super::trace::Trace;
 
 /** Defined response to look for from the device under test.
 
@@ -46,40 +49,73 @@ impl Display for GPIOCriterion {
 }
 
 #[derive(Copy, Clone, Debug)]
+pub enum Timing {
+    /// Point in time relative to the start of the test.
+    Absolute(Duration),
+    /// Point in time relative to the previous event.
+    Relative(Duration),
+}
+
+impl Timing {
+    fn get_offset(&self) -> Duration {
+        match self {
+            Timing::Absolute(d) => *d,
+            Timing::Relative(d) => *d,
+        }
+    }
+}
+
+impl Display for Timing {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use Timing::*;
+        let ref_point = match self {
+            Absolute(_) => "start of test",
+            Relative(_) => "previous event",
+        };
+        write!(f, "{:?} from {}", self.get_offset(), ref_point)
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
 pub struct TraceCondition {
-    id: u8,
-    extra: Option<u8>,
-    time: Option<Duration>,
-    time_tolerance: Option<Duration>,
+    id: u16,
+    extra: Option<u16>,
+    timing: Option<(Timing, Duration)>,
 }
 
 impl TraceCondition {
-    pub fn new(id: u8) -> TraceCondition {
+    pub fn new(id: u16) -> TraceCondition {
         TraceCondition {
             id,
             extra: None,
-            time: None,
-            time_tolerance: None,
+            timing: None,
         }
     }
 
     #[allow(dead_code)]
-    pub fn get_id(&self) -> u8 {
+    pub fn get_id(&self) -> u16 {
         self.id
     }
 
     #[allow(dead_code)]
-    pub fn get_extra_data(&self) -> Option<u8> {
+    pub fn get_extra_data(&self) -> Option<u16> {
         self.extra
     }
 
     #[allow(dead_code)]
-    pub fn get_time(&self) -> Option<Duration> {
-        self.time
+    pub fn get_offset(&self) -> Option<Timing> {
+        self.timing.as_ref()
+            .map(|(timing, _tolerance)| *timing)
     }
 
     #[allow(dead_code)]
-    pub fn with_extra_data(self, extra: u8) -> Self {
+    pub fn get_tolerance(&self) -> Option<Duration> {
+        self.timing.as_ref()
+            .map(|(_timing, tolerance)| *tolerance)
+    }
+
+    #[allow(dead_code)]
+    pub fn with_extra_data(self, extra: u16) -> Self {
         Self {
             extra: Some(extra),
             ..self
@@ -87,29 +123,132 @@ impl TraceCondition {
     }
 
     #[allow(dead_code)]
-    pub fn with_timing(self, time: Duration, tolerance: Option<Duration>) -> Self {
+    pub fn with_timing(self, time: Timing, tolerance: Duration) -> Self {
         Self {
-            time: Some(time),
-            time_tolerance: tolerance,
+            timing: Some((time, tolerance)),
             ..self
         }
+    }
+
+    fn satisfied_by(&self, event: &Trace) -> bool {
+        event.get_id() == self.id
+            && self.extra.map_or(true, |extra| event.get_extra() == extra)
+    }
+}
+
+impl Display for TraceCondition {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Trace point with ID {}", self.get_id())?;
+
+        if let Some(extra) = self.get_extra_data() {
+            write!(f, ", extra data {}", extra)?;
+        }
+
+        if let Some(timing) = self.get_offset() {
+            write!(f, ", {} (tol: {:?})", timing, self.get_tolerance().unwrap())?;
+        }
+
+        Ok(())
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct TraceCriterion {
-    occurrences: Vec<TraceCondition>,
+    conditions: Vec<TraceCondition>,
 }
 
 impl TraceCriterion {
-    pub fn new<'a, T>(traces: T) -> TraceCriterion
+    pub fn new<'a, T>(conditions: T) -> TraceCriterion
     where
         T: IntoIterator<Item = &'a TraceCondition>
     {
         TraceCriterion {
-            occurrences: traces.into_iter()
+            conditions: conditions.into_iter()
                 .copied()
                 .collect(),
+        }
+    }
+
+    pub fn violated<'a, T>(&'a self, t0: Instant, traces: T) -> bool
+    where
+        T: IntoIterator<Item = &'a Trace>
+    {
+        /* Two iterators to advance through:
+        - ordering of trace conditions
+        - sequence of trace events captured during the test
+
+        For each trace condition, advance through the trace events to find a matching trace event.
+        Upon finding a matching trace condition, advance to the next trace condition.
+        If a trace condition fails to find a matching trace event, then we back out to the previous condition.
+        The previous trace condition seeks another matching trace event.
+        If a trace condition advances to the last trace event and does not find a match, then the criterion is violated.
+         */
+
+        !TraceCriterion::align(t0,
+                               t0,
+                               self.conditions.as_slice().into_iter().collect(),
+                               traces.into_iter().collect())
+    }
+
+    fn align(t0: Instant,
+             tp: Instant,
+             conditions: Vec<&TraceCondition>,
+             events: Vec<&Trace>) -> bool
+    {
+        if conditions.len() > 0 {
+            let condition = conditions[0];
+            println!("Attempting to match trace condition: {}", condition);
+            for idx in 0..events.len() {
+                let event = events[idx];
+                println!("  checking with event #{}: {}", idx, event);
+                // Check the timing of the trace event as that cannot be determined
+                // within the context of the TraceCondition alone, especially if the
+                // timing is relative to other conditions.
+                if condition.satisfied_by(event) {
+                    let timing_matches: bool = {
+                        if let Some(timing) = condition.get_offset() {
+                            // Time point test the trace condition specifies the trace
+                            // should occur at.
+                            let t_req = match timing {
+                                Timing::Absolute(d) => t0 + d,
+                                Timing::Relative(d) => tp + d,
+                            };
+                            let since = t_req.max(event.get_time()) - t_req.min(event.get_time());
+                            since < condition.get_tolerance().unwrap()
+                        } else {
+                            true
+                        }
+                    };
+                    // If the rest of the events in the condition chain are satisfied, then
+                    // the criterion is satisfied. If not, we continue skimming over events.
+                    if timing_matches {
+                        println!("  timing of event matches");
+                        let rest_conditions = conditions.as_slice().into_iter()
+                            .skip(1)
+                            .copied()
+                            .collect();
+                        let rest_events = events.as_slice().into_iter()
+                            .skip(idx+1)
+                            .copied()
+                            .collect();
+                        let aligns = TraceCriterion::align(t0,
+                                                           event.get_time(),
+                                                           rest_conditions,
+                                                           rest_events);
+                        if aligns {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            // No more events to match. Game over.
+            println!("  could not match any events");
+            false
+        } else {
+            // No more conditions to try to match. We're finished.
+            println!("  finished matching at this level");
+            true
         }
     }
 }

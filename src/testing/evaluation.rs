@@ -207,7 +207,18 @@ impl Evaluation {
                 }
             },
 
-            Criterion::Trace(_trace_criterion) => (Status::Complete, None),
+            Criterion::Trace(trace_criterion) => {
+                let execution_t0 = self.exec_result
+                    .as_ref()
+                    // Evaluation results are only relevant when the exec_result is Ok(...).
+                    .expect("Attempted to evaluate criterion when execution result failed")
+                    .get_start();
+                if trace_criterion.violated(*execution_t0, self.traces.iter()) {
+                    (Status::Fail, None)
+                } else {
+                    (Status::Pass, None)
+                }
+            },
         }
     }
 }

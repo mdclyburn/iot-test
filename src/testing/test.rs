@@ -283,7 +283,7 @@ impl Test {
         if contains_trace_criterion {
             for pin_no in trace_pins {
                 // Last pin triggers on both to signal final trace pin change.
-                let trigger = if pin_no == trace_pins[trace_pins.len()-1] {
+                let trigger = if *pin_no == trace_pins[trace_pins.len()-1] {
                     Trigger::Both
                 } else {
                     Trigger::RisingEdge
