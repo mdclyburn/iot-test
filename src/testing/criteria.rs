@@ -200,6 +200,8 @@ impl TraceCriterion {
 
     /** Attempt to satisfy conditions with the provided [`Trace`]s.
 
+    # Algorithm overview
+
     Advances through:
     - ordering of trace conditions
     - sequence of trace events captured during the test
@@ -265,7 +267,24 @@ impl TraceCriterion {
 
 impl Display for TraceCriterion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "TRACE CRITERION (Display unimplemented)")
+        for condition in &self.conditions {
+            write!(f, "\n   → ID: {}, data: {}{}",
+                   condition.get_id(),
+                   condition.get_extra_data().map(|x| x.to_string()).unwrap_or("none".to_string()),
+                   if let Some(timing) = condition.get_offset() {
+                       format!(" @ {:?}±{:?} from {}",
+                               timing.get_offset(),
+                               condition.get_tolerance().unwrap(),
+                               match timing {
+                                   Timing::Absolute(_) => "test start",
+                                   Timing::Relative(_) => "last event",
+                               })
+                   } else {
+                       "".to_string()
+                   })?;
+        }
+
+        Ok(())
     }
 }
 

@@ -85,13 +85,13 @@ fn main() {
 
     let tests = [
         // Test::new(
-        //     "example-blink-test",
-        //     (&["blink"]).into_iter().map(|x| *x),
-        //     &[Operation { time: 0, pin_no: 23, input: Signal::Digital(true) },
-        //       Operation { time: 500, pin_no: 23, input: Signal::Digital(false) }],
-        //     &[Criterion::GPIO(GPIOCriterion::Any(13)),
-        //       Criterion::Energy(EnergyCriterion::new("system", EnergyStat::Total))
-        //     ]),
+        //     "radio-packet-tx",
+        //     (&["radio_send_app"]).into_iter().map(|x| *x),
+        //     (&[]).into_iter().copied(),
+        //     &[Operation::reset_device(),
+        //       Operation::idle_testbed(Duration::from_millis(5000))],
+        //     &[Criterion::Energy(EnergyCriterion::new("system-total", EnergyStat::Total)
+        //                         .with_max(350.0))]),
 
         // Test::new(
         //     "no-app-test",
@@ -102,16 +102,16 @@ fn main() {
         //                         .with_min(10.0))]),
 
         Test::new(
-            "trace-capture-alpha",
+            "blink-trace-alpha",
             (&[]).into_iter().copied(),
             (&["capsule/led/command/on", "capsule/led/command/off"]).into_iter().copied(),
             &[Operation { time: 0, pin_no: 23, input: Signal::Digital(false) },
-              Operation { time: 2000, pin_no: 23, input: Signal::Digital(true) }],
-            &[Criterion::Trace(TraceCriterion::new(&[TraceCondition::new(1),
-                                                     TraceCondition::new(1).with_timing(Timing::Relative(Duration::from_millis(250)),
-                                                                                        Duration::from_millis(50))])),
-              Criterion::Trace(TraceCriterion::new(&[TraceCondition::new(1).with_timing(Timing::Absolute(Duration::from_millis(1000)),
-                                                                                        Duration::from_millis(100))]))])
+              Operation { time: 3000, pin_no: 23, input: Signal::Digital(true) }],
+            &[Criterion::Trace(TraceCriterion::new(&[TraceCondition::new(2),
+                                                     TraceCondition::new(1).with_timing(Timing::Relative(Duration::from_millis(2)),
+                                                                                        Duration::from_micros(500)),
+                                                     TraceCondition::new(2).with_timing(Timing::Relative(Duration::from_millis(2)),
+                                                                                        Duration::from_micros(500))]))])
     ];
 
     for test in &tests {
