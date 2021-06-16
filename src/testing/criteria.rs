@@ -48,6 +48,7 @@ impl Display for GPIOCriterion {
     }
 }
 
+/// Timing requirement.
 #[derive(Copy, Clone, Debug)]
 pub enum Timing {
     /// Point in time relative to the start of the test.
@@ -57,6 +58,7 @@ pub enum Timing {
 }
 
 impl Timing {
+    /// Returns the contained offset of the Timing.
     fn get_offset(&self) -> Duration {
         match self {
             Timing::Absolute(d) => *d,
@@ -76,6 +78,7 @@ impl Display for Timing {
     }
 }
 
+/// Component condition of a [`TraceCriterion`].
 #[derive(Copy, Clone, Debug)]
 pub struct TraceCondition {
     id: u16,
@@ -84,6 +87,7 @@ pub struct TraceCondition {
 }
 
 impl TraceCondition {
+    /// Create a new tracing requirement.
     pub fn new(id: u16) -> TraceCondition {
         TraceCondition {
             id,
@@ -92,28 +96,35 @@ impl TraceCondition {
         }
     }
 
+    /// Returns the ID that would satisfy the trace condition.
     #[allow(dead_code)]
     pub fn get_id(&self) -> u16 {
         self.id
     }
 
+    /// Returns the extra data that would satisfy the trace condition.
     #[allow(dead_code)]
     pub fn get_extra_data(&self) -> Option<u16> {
         self.extra
     }
 
+    /// If provided, returns the necessary time offset to satisfy the trace condition.
     #[allow(dead_code)]
     pub fn get_offset(&self) -> Option<Timing> {
         self.timing.as_ref()
             .map(|(timing, _tolerance)| *timing)
     }
 
+    /// If provided, returns the timing tolerance to satisfy the trace condition.
     #[allow(dead_code)]
     pub fn get_tolerance(&self) -> Option<Duration> {
         self.timing.as_ref()
             .map(|(_timing, tolerance)| *tolerance)
     }
 
+    /// Construct a trace condition with the specified extra data.
+    ///
+    /// This is a convenience function for test that may later be removed.
     #[allow(dead_code)]
     pub fn with_extra_data(self, extra: u16) -> Self {
         Self {
@@ -122,6 +133,9 @@ impl TraceCondition {
         }
     }
 
+    /// Construct a trace condition with the specified timing.
+    ///
+    /// This is a convenience function for test that may later be removed.
     #[allow(dead_code)]
     pub fn with_timing(self, time: Timing, tolerance: Duration) -> Self {
         Self {
@@ -130,6 +144,10 @@ impl TraceCondition {
         }
     }
 
+    /// Returns true if the provided trace's ID and extra data satisfy the condition.
+    ///
+    /// Because the required timing of the condition is dependent on whether the timing is relative to the
+    /// previous Trace or absolute (relative to the beginning of the test), this function does not check timing.
     fn satisfied_by(&self, event: &Trace) -> bool {
         event.get_id() == self.id
             && self.extra.map_or(true, |extra| event.get_extra() == extra)
@@ -152,12 +170,14 @@ impl Display for TraceCondition {
     }
 }
 
+/// Trace criterion specification details.
 #[derive(Clone, Debug)]
 pub struct TraceCriterion {
     conditions: Vec<TraceCondition>,
 }
 
 impl TraceCriterion {
+    /// Create a new trace criterion.
     pub fn new<'a, T>(conditions: T) -> TraceCriterion
     where
         T: IntoIterator<Item = &'a TraceCondition>
@@ -169,24 +189,27 @@ impl TraceCriterion {
         }
     }
 
+    /// Returns true if the criterion is not satisfied by the provided [`Trace`]s.
     pub fn violated(&self, t0: Instant, traces: &[Trace]) -> bool {
-        /* Two iterators to advance through:
-        - ordering of trace conditions
-        - sequence of trace events captured during the test
-
-        For each trace condition, advance through the trace events to find a matching trace event.
-        Upon finding a matching trace condition, advance to the next trace condition.
-        If a trace condition fails to find a matching trace event, then we back out to the previous condition.
-        The previous trace condition seeks another matching trace event.
-        If a trace condition advances to the last trace event and does not find a match, then the criterion is violated.
-         */
-
         !TraceCriterion::align(t0,
                                t0,
                                self.conditions.as_slice(),
                                traces)
     }
 
+
+    /** Attempt to satisfy conditions with the provided [`Trace`]s.
+
+    Advances through:
+    - ordering of trace conditions
+    - sequence of trace events captured during the test
+
+    For each trace condition, advances through the trace events to find a matching trace event.
+    Upon finding a matching trace condition, the function advances to the next trace condition.
+    If a trace condition fails to find a matching trace event, then we back out to the previous trace condition.
+    The previous trace condition seeks another matching trace event.
+    If a trace condition advances to the last trace event and does not find a match, then the function returns false.
+     */
     fn align(t0: Instant,
              tp: Instant,
              conditions: &[TraceCondition],
