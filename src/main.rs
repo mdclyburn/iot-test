@@ -113,6 +113,7 @@ fn main() {
         print!("{}\n\n", test);
     }
 
+                            println!("  timing of event matches");
     let res = testbed.execute(&tests);
     if let Ok(results) = res {
         for r in results {

@@ -169,10 +169,7 @@ impl TraceCriterion {
         }
     }
 
-    pub fn violated<'a, T>(&'a self, t0: Instant, traces: T) -> bool
-    where
-        T: IntoIterator<Item = &'a Trace>
-    {
+    pub fn violated(&self, t0: Instant, traces: &[Trace]) -> bool {
         /* Two iterators to advance through:
         - ordering of trace conditions
         - sequence of trace events captured during the test
@@ -186,21 +183,20 @@ impl TraceCriterion {
 
         !TraceCriterion::align(t0,
                                t0,
-                               self.conditions.as_slice().into_iter().collect(),
-                               traces.into_iter().collect())
+                               self.conditions.as_slice(),
+                               traces)
     }
 
     fn align(t0: Instant,
              tp: Instant,
-             conditions: Vec<&TraceCondition>,
-             events: Vec<&Trace>) -> bool
+             conditions: &[TraceCondition],
+             events: &[Trace]) -> bool
     {
         if conditions.len() > 0 {
             let condition = conditions[0];
             println!("Attempting to match trace condition: {}", condition);
-            for idx in 0..events.len() {
-                let event = events[idx];
-                println!("  checking with event #{}: {}", idx, event);
+            for (event, idx) in events.iter().zip(0..) {
+                println!("  inspecting event #{}: {}", idx, event);
                 // Check the timing of the trace event as that cannot be determined
                 // within the context of the TraceCondition alone, especially if the
                 // timing is relative to other conditions.
@@ -222,19 +218,10 @@ impl TraceCriterion {
                     // If the rest of the events in the condition chain are satisfied, then
                     // the criterion is satisfied. If not, we continue skimming over events.
                     if timing_matches {
-                        println!("  timing of event matches");
-                        let rest_conditions = conditions.as_slice().into_iter()
-                            .skip(1)
-                            .copied()
-                            .collect();
-                        let rest_events = events.as_slice().into_iter()
-                            .skip(idx+1)
-                            .copied()
-                            .collect();
                         let aligns = TraceCriterion::align(t0,
                                                            event.get_time(),
-                                                           rest_conditions,
-                                                           rest_events);
+                                                           &conditions[1..],
+                                                           &events[idx+1..]);
                         if aligns {
                             return true;
                         }
@@ -247,7 +234,7 @@ impl TraceCriterion {
             false
         } else {
             // No more conditions to try to match. We're finished.
-            println!("  finished matching at this level");
+            println!("  finished matching");
             true
         }
     }

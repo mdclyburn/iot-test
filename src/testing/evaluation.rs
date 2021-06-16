@@ -213,7 +213,7 @@ impl Evaluation {
                     // Evaluation results are only relevant when the exec_result is Ok(...).
                     .expect("Attempted to evaluate criterion when execution result failed")
                     .get_start();
-                if trace_criterion.violated(*execution_t0, self.traces.iter()) {
+                if trace_criterion.violated(*execution_t0, self.traces.as_slice()) {
                     (Status::Fail, None)
                 } else {
                     (Status::Pass, None)
