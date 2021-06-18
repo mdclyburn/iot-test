@@ -191,10 +191,11 @@ impl TraceCriterion {
 
     /// Returns true if the criterion is not satisfied by the provided [`Trace`]s.
     pub fn violated(&self, t0: Instant, traces: &[Trace]) -> bool {
-        !TraceCriterion::align(t0,
-                               t0,
-                               self.conditions.as_slice(),
-                               traces)
+        let r = TraceCriterion::align(t0,
+                                      t0,
+                                      self.conditions.as_slice(),
+                                      traces);
+        !r.is_some()
     }
 
 
@@ -212,11 +213,13 @@ impl TraceCriterion {
     The previous trace condition seeks another matching trace event.
     If a trace condition advances to the last trace event and does not find a match, then the function returns false.
      */
-    fn align(t0: Instant,
+    fn align<'a>(t0: Instant,
              tp: Instant,
              conditions: &[TraceCondition],
-             events: &[Trace]) -> bool
+             events: &'a [Trace]) -> Option<Vec<&'a Trace>>
     {
+        let mut matches = Vec::new();
+
         if conditions.len() > 0 {
             let condition = conditions[0];
             for (event, idx) in events.iter().zip(0..) {
@@ -245,22 +248,24 @@ impl TraceCriterion {
                     // If the rest of the events in the condition chain are satisfied, then
                     // the criterion is satisfied. If not, we continue skimming over events.
                     if timing_matches {
-                        let aligns = TraceCriterion::align(t0,
-                                                           event.get_time(),
-                                                           &conditions[1..],
-                                                           &events[idx+1..]);
-                        if aligns {
-                            return true;
+                        let rest = TraceCriterion::align(t0,
+                                                         event.get_time(),
+                                                         &conditions[1..],
+                                                         &events[idx+1..]);
+                        if let Some(rest) = rest {
+                            matches.push(event);
+                            matches.extend(rest.into_iter());
+                            return Some(matches);
                         }
                     }
                 }
             }
 
             // No more events to match. Game over.
-            false
+            None
         } else {
             // No more conditions to try to match. We're finished.
-            true
+            Some(Vec::new())
         }
     }
 }
