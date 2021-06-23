@@ -1,4 +1,4 @@
-//! Evaluation specification criteria.
+//! Create and manipulate conditions to evaluate test executions against.
 
 use std::cmp::Ord;
 use std::fmt;
@@ -189,13 +189,12 @@ impl TraceCriterion {
         }
     }
 
-    /// Returns true if the criterion is not satisfied by the provided [`Trace`]s.
-    pub fn violated(&self, t0: Instant, traces: &[Trace]) -> bool {
-        let r = TraceCriterion::align(t0,
-                                      t0,
-                                      self.conditions.as_slice(),
-                                      traces);
-        !r.is_some()
+    /// Returns the [`Trace`]s satisfying the criterion.
+    pub fn align<'a>(&self, t0: Instant, traces: &'a [Trace]) -> Option<Vec<&'a Trace>> {
+        TraceCriterion::rec_align(t0,
+                                  t0,
+                                  self.conditions.as_slice(),
+                                  traces)
     }
 
 
@@ -213,10 +212,10 @@ impl TraceCriterion {
     The previous trace condition seeks another matching trace event.
     If a trace condition advances to the last trace event and does not find a match, then the function returns false.
      */
-    fn align<'a>(t0: Instant,
-             tp: Instant,
-             conditions: &[TraceCondition],
-             events: &'a [Trace]) -> Option<Vec<&'a Trace>>
+    fn rec_align<'a>(t0: Instant,
+                     tp: Instant,
+                     conditions: &[TraceCondition],
+                     events: &'a [Trace]) -> Option<Vec<&'a Trace>>
     {
         let mut matches = Vec::new();
 
@@ -248,10 +247,10 @@ impl TraceCriterion {
                     // If the rest of the events in the condition chain are satisfied, then
                     // the criterion is satisfied. If not, we continue skimming over events.
                     if timing_matches {
-                        let rest = TraceCriterion::align(t0,
-                                                         event.get_time(),
-                                                         &conditions[1..],
-                                                         &events[idx+1..]);
+                        let rest = TraceCriterion::rec_align(t0,
+                                                             event.get_time(),
+                                                             &conditions[1..],
+                                                             &events[idx+1..]);
                         if let Some(rest) = rest {
                             matches.push(event);
                             matches.extend(rest.into_iter());

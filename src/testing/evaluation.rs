@@ -213,10 +213,20 @@ impl Evaluation {
                     // Evaluation results are only relevant when the exec_result is Ok(...).
                     .expect("Attempted to evaluate criterion when execution result failed")
                     .get_start();
-                if trace_criterion.violated(*execution_t0, self.traces.as_slice()) {
-                    (Status::Fail, None)
+                if let Some(aligned_traces) = trace_criterion.align(*execution_t0, self.traces.as_slice()) {
+                    let count = aligned_traces.len();
+                    let mut message = "Satisfied by: ".to_string();
+                    let it = aligned_traces.into_iter()
+                        .map(|t| format!("@{:?}", t.get_time() - *execution_t0));
+                    for (msg, no) in it.zip(1..) {
+                        message.push_str(&msg);
+                        if no < count {
+                            message.push_str(" → ");
+                        }
+                    }
+                    (Status::Pass, Some(message))
                 } else {
-                    (Status::Pass, None)
+                    (Status::Fail, None)
                 }
             },
         }

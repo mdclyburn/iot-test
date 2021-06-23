@@ -104,14 +104,12 @@ fn main() {
         Test::new(
             "blink-trace-alpha",
             (&[]).into_iter().copied(),
-            (&["capsule/led/command/on", "capsule/led/command/off"]).into_iter().copied(),
+            (&["capsule/radio/standby", "capsule/radio/transmit"]).into_iter().copied(),
             &[Operation { time: 0, pin_no: 23, input: Signal::Digital(false) },
               Operation { time: 3000, pin_no: 23, input: Signal::Digital(true) }],
-            &[Criterion::Trace(TraceCriterion::new(&[TraceCondition::new(2),
-                                                     TraceCondition::new(1).with_timing(Timing::Relative(Duration::from_millis(2)),
-                                                                                        Duration::from_micros(500)),
-                                                     TraceCondition::new(2).with_timing(Timing::Relative(Duration::from_millis(2)),
-                                                                                        Duration::from_micros(500))]))])
+            &[Criterion::Trace(TraceCriterion::new(&[TraceCondition::new(1),
+                                                     TraceCondition::new(2).with_timing(Timing::Relative(Duration::from_millis(150)),
+                                                                                        Duration::from_millis(20))]))])
     ];
 
     for test in &tests {
