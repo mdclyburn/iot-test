@@ -60,7 +60,7 @@ fn main() {
     // energy metering
     let ina219 = INA219::new(mapping.get_i2c().unwrap(), 0x40)
         .unwrap();
-    let energy_meters: Vec<(&str, Box<dyn EnergyMetering>)> = vec![("system", Box::new(ina219))];
+    let energy_meters: Vec<(&str, Box<dyn EnergyMetering>)> = vec![("system-total", Box::new(ina219))];
 
     // platform support
     let tock_support = Tock::new(
@@ -88,31 +88,30 @@ fn main() {
         //     "radio-packet-tx",
         //     (&["radio_send_app"]).into_iter().map(|x| *x),
         //     (&[]).into_iter().copied(),
-        //     &[Operation::reset_device(),
-        //       Operation::idle_testbed(Duration::from_millis(5000))],
-        //     &[Criterion::Energy(EnergyCriterion::new("system-total", EnergyStat::Total)
-        //                         .with_max(350.0))]),
-
-        // Test::new(
-        //     "no-app-test",
-        //     (&[]).into_iter().map(|x| *x),
         //     &[Operation { time: 0, pin_no: 23, input: Signal::Digital(false) },
-        //       Operation { time: 200, pin_no: 23, input: Signal::Digital(false) }],
-        //     &[Criterion::Energy(EnergyCriterion::new("system", EnergyStat::Average)
-        //                         .with_min(10.0))]),
+        //       Operation { time: 3000, pin_no: 23, input: Signal::Digital(true) }],
+        //     &[Criterion::Energy(EnergyCriterion::new("system-total", EnergyStat::Max)
+        //                         .with_max(120.0))]),
 
-        Test::new(
-            "blink-trace-alpha",
-            (&[]).into_iter().copied(),
-            (&["capsule/led/command/on", "capsule/led/command/off"]).into_iter().copied(),
-            &[Operation { time: 0, pin_no: 23, input: Signal::Digital(false) },
-              Operation { time: 3000, pin_no: 23, input: Signal::Digital(true) }],
-            &[Criterion::Trace(TraceCriterion::new(&[TraceCondition::new(2),
-                                                     TraceCondition::new(1).with_timing(Timing::Relative(Duration::from_millis(2)),
-                                                                                        Duration::from_micros(500)),
-                                                     TraceCondition::new(2).with_timing(Timing::Relative(Duration::from_millis(2)),
-                                                                                        Duration::from_micros(500))]))])
-    ];
+            // Test::new(
+            //     "no-app-test",
+            //     (&[]).into_iter().map(|x| *x),
+            //     &[Operation { time: 0, pin_no: 23, input: Signal::Digital(false) },
+            //       Operation { time: 200, pin_no: 23, input: Signal::Digital(false) }],
+            //     &[Criterion::Energy(EnergyCriterion::new("system", EnergyStat::Average)
+            //                         .with_min(10.0))]),
+
+            Test::new(
+                "radio-trace",
+                (&[]).into_iter().copied(),
+                (&["capsule/radio/standby",
+                   "capsule/radio/transmit"]).into_iter().copied(),
+                &[Operation { time: 0, pin_no: 23, input: Signal::Digital(false) },
+                  Operation { time: 3000, pin_no: 23, input: Signal::Digital(true) }],
+                &[Criterion::Trace(TraceCriterion::new(&[TraceCondition::new(1),
+                                                         TraceCondition::new(2).with_timing(Timing::Relative(Duration::from_millis(150)),
+                                                                                            Duration::from_millis(25))]))]),
+        ];
 
     for test in &tests {
         print!("{}\n\n", test);

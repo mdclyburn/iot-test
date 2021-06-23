@@ -116,15 +116,15 @@ impl Testbed {
             let platform_spec = res.unwrap();
 
             // Load application(s) if necessary.
-            if let Err(load_err) = self.load_apps(&test) {
-                println!("executor: error loading/removing application(s)");
-                let eval = Evaluation::failed(
-                    test,
-                    Some(&platform_spec),
-                    load_err);
-                test_results.push(eval);
-                continue;
-            }
+            // if let Err(load_err) = self.load_apps(&test) {
+            //     println!("executor: error loading/removing application(s)");
+            //     let eval = Evaluation::failed(
+            //         test,
+            //         Some(&platform_spec),
+            //         load_err);
+            //     test_results.push(eval);
+            //     continue;
+            // }
 
             *current_test.write().unwrap() = Some(test.clone());
 
