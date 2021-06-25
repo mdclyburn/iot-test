@@ -1,5 +1,6 @@
 //! Definitions for communications-related primitives.
 
+use std::convert::TryFrom;
 use std::fmt;
 use std::fmt::Display;
 
@@ -12,6 +13,19 @@ pub enum Direction {
     Out,
 }
 
+impl TryFrom<&str> for Direction {
+    type Error = String;
+
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        use Direction::*;
+        match s {
+            "in" => Ok(In),
+            "out" => Ok(Out),
+            _ => Err(format!("'{}' is not a valid direction", s)),
+        }
+    }
+}
+
 /// Signal class.
 #[allow(dead_code)]
 #[derive(Copy, Clone, Debug)]
@@ -20,6 +34,19 @@ pub enum Class {
     Analog,
     /// Digital signal
     Digital,
+}
+
+impl TryFrom<&str> for Class {
+    type Error = String;
+
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        use Class::*;
+        match s {
+            "analog" => Ok(Analog),
+            "digital" => Ok(Digital),
+            _ => Err(format!("'{}' is not a valid signal type", s)),
+        }
+    }
 }
 
 /// A signal value.

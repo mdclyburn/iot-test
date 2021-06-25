@@ -8,6 +8,7 @@ pub mod platform;
 
 use std::collections::HashSet;
 use std::convert::From;
+use std::convert::TryFrom;
 use std::fmt;
 use std::fmt::{Debug, Display};
 
@@ -21,6 +22,18 @@ type Result<T> = std::result::Result<T, Error>;
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Platform {
     Tock,
+}
+
+impl TryFrom<&str> for Platform {
+    type Error = String;
+
+    fn try_from(s: &str) -> std::result::Result<Self, Self::Error> {
+        use Platform::*;
+        match s {
+            "tock" => Ok(Tock),
+            _ => Err(format!("'{}' is not a valid platform", s)),
+        }
+    }
 }
 
 impl Display for Platform {

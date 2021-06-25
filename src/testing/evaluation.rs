@@ -268,8 +268,9 @@ impl Display for Evaluation {
                     let trace_point_name = spec.trace_point_name(trace.get_id())
                         .map(|s| s.as_str())
                         .unwrap_or("UNTRACKED?");
-                    write!(f, "    {}\t@{:?}\n",
+                    write!(f, "    {}\t(data: {})\t@{:?}\n",
                            trace_point_name,
+                           trace.get_extra(),
                            trace.get_offset(*execution.get_start()))?;
 
                     if spec.trace_point_name(trace.get_id()).is_none() {
