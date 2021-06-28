@@ -29,7 +29,7 @@ impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Error::*;
         match self {
-            Driver(ref msg) => write!(f, "driver initialization error"),
+            Driver(ref msg) => write!(f, "driver initialization error: {}", msg),
             Format(ref msg) => write!(f, "input format error: {}", msg),
             Hardware(ref _e) => write!(f, "hardware I/O error"),
             IO(ref _e) => write!(f, "I/O error"),

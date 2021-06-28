@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fs::File;
 use std::io::Read;
@@ -13,7 +14,8 @@ use crate::device::Device;
 use crate::facility::EnergyMetering;
 use crate::hw;
 use crate::io::Mapping;
-use crate::sw::Platform;
+use crate::sw::{Platform, PlatformSupport};
+use crate::sw::platform;
 use crate::testing::testbed::Testbed;
 
 use super::{Result,
@@ -27,7 +29,7 @@ pub struct JSONTestbedParser {
 }
 
 impl JSONTestbedParser {
-    pub fn new(&self, config_path: &Path) -> JSONTestbedParser {
+    pub fn new(config_path: &Path) -> JSONTestbedParser {
         JSONTestbedParser {
             config_path: config_path.to_path_buf(),
         }
@@ -36,12 +38,43 @@ impl JSONTestbedParser {
     fn parse_gpio(&self, json: &JSONValue) -> Result<IOConfig> {
         let io_json = json["io"].as_object()
             .ok_or(Error::Format("Missing 'io' object.".to_string()))?;
-        serde_json::from_value(json.clone())
+        serde_json::from_value(serde_json::Value::Object(io_json.clone()))
             .map_err(|e| Error::Format(format!("IO configuration parsing failed: {}", e)))
     }
 
-    // fn parse_energy(&self, json: &JSONValue) -> Result<HashMap<String, Box<dyn EnergyMetering>>> {
-    // }
+    fn parse_energy(&self, mapping: &Mapping, json: &JSONValue) -> Result<HashMap<String, Box<dyn EnergyMetering>>> {
+        let mut meters = HashMap::new();
+        let json_meters = json["meters"].as_array()
+            .ok_or(Error::Format("Energy 'meters' must be an array.".to_string()))?;
+        for json_meter in json_meters {
+            let name = json_meter["name"].as_str()
+                .ok_or(Error::Format("Energy meter is missing a name.".to_string()))?;
+            let driver = json_meter["driver-id"].as_str()
+                .ok_or(Error::Format("Energy meter is missing a 'driver-id'.".to_string()))?;
+            let props = json_meter["driver-props"].as_object()
+                .ok_or(Error::Format(format!("Energy meter '{}' is missing 'driver-props'.", name)))?;
+
+            let meter: Box<dyn EnergyMetering> = match driver {
+                "ina219" => Ok(Box::<hw::INA219>::new(hw::INA219::from_json(mapping, serde_json::Value::Object(props.clone()))?)),
+                _ => Err(Error::Unsupported),
+            }?;
+
+            meters.insert(name.to_string(), meter);
+        }
+
+        Ok(meters)
+    }
+
+    fn parse_platform(&self, platform_json: &JSONValue) -> Result<Box<dyn PlatformSupport>> {
+        let platform_id = platform_json["id"].as_str()
+            .ok_or(Error::Format("Platform missing 'id' string.".to_string()))?;
+        let platform: Box<dyn PlatformSupport> = match platform_id {
+            "tock" => Box::<platform::Tock>::new(platform::Tock::from_json(platform_json)?),
+            _ => return Err(Error::Unsupported),
+        };
+
+        Ok(platform)
+    }
 }
 
 impl TestbedConfigReader for JSONTestbedParser {
@@ -56,7 +89,7 @@ impl TestbedConfigReader for JSONTestbedParser {
         // Check file version.
         json["_version"].as_i64()
             .ok_or(Error::Format("Missing '_version' specifier.".to_string()))
-            .and_then(|ver| if ver != CONFIG_VERSION {
+            .and_then(|ver| if ver == CONFIG_VERSION {
                 Ok(())
             } else {
                 let msg = format!(
@@ -66,14 +99,21 @@ impl TestbedConfigReader for JSONTestbedParser {
                 Err(Error::Format(msg))
             })?;
 
-        let _platform = json["platform"].as_str()
-            .ok_or(Error::Format("Configuration does not specify 'platform'.".to_string()))
-            .and_then(|p_str| Platform::try_from(p_str).map_err(|e| Error::Format(e)))?;
-
-        let _mapping = self.parse_gpio(&json)?
+        // Host and target I/O.
+        let mapping = self.parse_gpio(&json)?
             .create_mapping()?;
+        // Energy metering.
+        let energy_meters = self.parse_energy(&mapping, &json["energy"])?;
+        // Software platform support.
+        let platform_support = self.parse_platform(&json["platform"])?;
 
-        Err(Error::Format("".to_string()))
+        let testbed = Testbed::new(
+            mapping,
+            platform_support,
+            energy_meters,
+            None);
+
+        Ok(testbed)
     }
 }
 
@@ -131,5 +171,32 @@ impl JSONHardware for hw::INA219 {
 
         hw::INA219::new(i2c, address)
             .map_err(|e| Error::Driver(e.to_string()))
+    }
+}
+
+trait JSONPlatform: Sized {
+    fn from_json(props: &JSONValue) -> Result<Self> {
+        Err(Error::Unsupported)
+    }
+}
+
+#[derive(Deserialize)]
+struct TockPlatformConfig {
+    #[serde(alias = "tockloader-path")]
+    tockloader_path: String,
+    #[serde(alias = "repo-path")]
+    repo_path: String,
+    board: String,
+}
+
+impl JSONPlatform for platform::Tock {
+    fn from_json(props: &JSONValue) -> Result<Self> {
+        let config: TockPlatformConfig = serde_json::from_value(props.clone())
+            .map_err(|e| Error::Format(format!("Tock support: deserialization error: {}", e)))?;
+        let tock_support = platform::Tock::new(
+            Path::new(&config.tockloader_path),
+            Path::new(&config.repo_path));
+
+        Ok(tock_support)
     }
 }

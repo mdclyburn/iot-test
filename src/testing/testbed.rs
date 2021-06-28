@@ -37,25 +37,17 @@ pub struct Testbed {
 
 impl Testbed {
     /// Create a new `Testbed`.
-    pub fn new<'a, T>(pin_mapping: Mapping,
+    pub fn new(pin_mapping: Mapping,
                       platform_support: Box<dyn PlatformSupport>,
-                      energy_meters: T,
-                      applications: Option<ApplicationSet>) -> Result<Testbed>
-    where
-        T: IntoIterator<Item = (&'a str, Box<dyn EnergyMetering>)>,
+                      energy_meters: HashMap<String, Box<dyn EnergyMetering>>,
+                      applications: Option<ApplicationSet>) -> Testbed
     {
-        let energy_meters = energy_meters.into_iter()
-            .map(|(id, meter)| (id.to_string(), meter))
-            .collect();
-
-        let testbed = Testbed {
+        Testbed {
             pin_mapping,
             platform_support,
             energy_meters: Arc::new(Mutex::new(energy_meters)),
             applications,
-        };
-
-        Ok(testbed)
+        }
     }
 
     /** Run tests.

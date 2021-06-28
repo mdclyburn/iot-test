@@ -11,12 +11,15 @@ mod io;
 mod sw;
 mod testing;
 
+use std::collections::HashMap;
 use std::time::Duration;
 
 use crate::comm::{Direction, Class as SignalClass, Signal};
 use crate::device::Device;
 use crate::facility::EnergyMetering;
 use crate::hw::INA219;
+use crate::input::TestbedConfigReader;
+use crate::input::json::JSONTestbedParser;
 use crate::io::Mapping;
 use crate::sw::application::{Application, ApplicationSet};
 use crate::sw::{PlatformSupport, Platform};
@@ -37,48 +40,67 @@ use crate::testing::test::{
 };
 
 fn main() {
-    // physical mapping
-    let device = Device::new(
-        &[(13, (Direction::Out, SignalClass::Digital)), // D0
-          (14, (Direction::Out, SignalClass::Digital)), // D1
-          (19, (Direction::Out, SignalClass::Digital)), // D6
-          (20, (Direction::Out, SignalClass::Digital)), // D7
-          (23, (Direction::In, SignalClass::Digital)),  // reset
-        ]);
-    let mapping = Mapping::new(
-        &device,
-        &[(17, 23), // reset
+    // // physical mapping
+    // let device = Device::new(
+    //     &[(13, (Direction::Out, SignalClass::Digital)), // D0
+    //       (14, (Direction::Out, SignalClass::Digital)), // D1
+    //       (19, (Direction::Out, SignalClass::Digital)), // D6
+    //       (20, (Direction::Out, SignalClass::Digital)), // D7
+    //       (23, (Direction::In, SignalClass::Digital)),  // reset
+    //     ]);
+    // let mapping = Mapping::new(
+    //     &device,
+    //     &[(17, 23), // reset
 
-          // GPIO tracing
-          (14, 13),
-          (15, 14),
-          (18, 19),
-          (23, 20),
-        ],
-        &[13, 14, 19, 20],
-    ).unwrap();
+    //       // GPIO tracing
+    //       (14, 13),
+    //       (15, 14),
+    //       (18, 19),
+    //       (23, 20),
+    //     ],
+    //     &[13, 14, 19, 20],
+    // ).unwrap();
 
-    // energy metering
-    let ina219 = INA219::new(mapping.get_i2c().unwrap(), 0x40)
-        .unwrap();
-    let energy_meters: Vec<(&str, Box<dyn EnergyMetering>)> = vec![("system", Box::new(ina219))];
+    // // energy metering
+    // let ina219 = INA219::new(mapping.get_i2c().unwrap(), 0x40)
+    //     .unwrap();
+    // let energy_meters: Vec<(&str, Box<dyn EnergyMetering>)> = vec![
+    //     ("system", Box::new(ina219))
+    // ];
+    // let energy_meters: HashMap<String, _> = energy_meters.into_iter()
+    //     .map(|(name, meter)| (name.to_string(), meter))
+    //     .collect();
 
-    // platform support
-    let tock_support = Tock::new(
-        Path::new("/usr/local/bin/tockloader"),
-        Path::new("/home/ubuntu/work/tock"));
+    // // platform support
+    // let tock_support = Tock::new(
+    //     Path::new("/usr/local/bin/tockloader"),
+    //     Path::new("/home/ubuntu/work/tock"));
 
-    // applications
-    let app_set = ApplicationSet::new(
-        &[Application::new("blink", &[(Platform::Tock, Path::new("/home/ubuntu/work/apps/tock/blink.tab"))])]
-    );
+    // // applications
+    // let app_set = ApplicationSet::new(
+    //     &[Application::new("blink", &[(Platform::Tock, Path::new("/home/ubuntu/work/apps/tock/blink.tab"))])]
+    // );
 
-    let testbed = Testbed::new(
-        mapping,
-        Box::new(tock_support),
-        energy_meters,
-        Some(app_set)).unwrap();
-    print!("{}\n", testbed);
+    // let testbed = Testbed::new(
+    //     mapping,
+    //     Box::new(tock_support),
+    //     energy_meters,
+    //     Some(app_set));
+    // print!("{}\n", testbed);
+
+    let testbed_parser = JSONTestbedParser::new(
+        Path::new("/home/ubuntu/work/config.json"));
+    let testbed_generator: &dyn TestbedConfigReader = &testbed_parser;
+
+    let testbed = testbed_generator.create();
+    if let Err(e) = testbed.as_ref() {
+        println!("Failed to initialize the testbed.\n{}", e);
+        return;
+    }
+
+    let testbed = testbed.unwrap();
+    println!("{}\n", testbed);
+    return;
 
     let tests = [
         // Test::new(

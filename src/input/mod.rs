@@ -3,8 +3,8 @@ use std::iter::Iterator;
 use crate::testing::testbed::Testbed;
 use crate::testing::test::Test;
 
-mod error;
-mod json;
+pub mod error;
+pub mod json;
 
 type Result<T> = std::result::Result<T, error::Error>;
 
