@@ -10,6 +10,8 @@ use serde_json::Value as JSONValue;
 use crate::comm::{Direction,
                   Class as SignalClass};
 use crate::device::Device;
+use crate::facility::EnergyMetering;
+use crate::hw;
 use crate::io::Mapping;
 use crate::sw::Platform;
 use crate::testing::testbed::Testbed;
@@ -37,6 +39,9 @@ impl JSONTestbedParser {
         serde_json::from_value(json.clone())
             .map_err(|e| Error::Format(format!("IO configuration parsing failed: {}", e)))
     }
+
+    // fn parse_energy(&self, json: &JSONValue) -> Result<HashMap<String, Box<dyn EnergyMetering>>> {
+    // }
 }
 
 impl TestbedConfigReader for JSONTestbedParser {
@@ -108,4 +113,23 @@ struct PinConfig {
     tpin: u8,
     direction: String,
     signal: String,
+}
+
+trait JSONHardware: Sized {
+    fn from_json(mapping: &Mapping, json: JSONValue) -> Result<Self> {
+        Err(Error::Unsupported)
+    }
+}
+
+impl JSONHardware for hw::INA219 {
+    fn from_json(mapping: &Mapping, json: JSONValue) -> Result<Self> {
+        let i2c = mapping.get_i2c()?;
+        let address = json["i2c-address"].as_i64()
+            .ok_or(Error::Format("INA219: missing 'i2c-address' property.".to_string()))
+            .and_then(|addr| u8::try_from(addr)
+                                 .map_err(|_e| Error::Format("INA219: 'i2c-address' is not valid.".to_string())))?;
+
+        hw::INA219::new(i2c, address)
+            .map_err(|e| Error::Driver(e.to_string()))
+    }
 }
