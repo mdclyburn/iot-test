@@ -67,9 +67,6 @@ fn main() {
     let tock_support = Tock::new(
         Path::new("/usr/local/bin/tockloader"),
         Path::new("/home/ubuntu/work/tock"));
-    let platforms: Vec<Box<dyn PlatformSupport>> = vec![
-        Box::new(tock_support),
-    ];
 
     // applications
     let app_set = ApplicationSet::new(
@@ -78,8 +75,7 @@ fn main() {
 
     let testbed = Testbed::new(
         mapping,
-        Platform::Tock,
-        platforms,
+        Box::new(tock_support),
         energy_meters,
         Some(app_set)).unwrap();
     print!("{}\n", testbed);

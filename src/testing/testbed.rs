@@ -30,7 +30,6 @@ type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug)]
 pub struct Testbed {
     pin_mapping: Mapping,
-    target_platform: Platform,
     platform_support: Box<dyn PlatformSupport>,
     energy_meters: Arc<Mutex<HashMap<String, Box<dyn EnergyMetering>>>>,
     applications: Option<ApplicationSet>
@@ -38,26 +37,19 @@ pub struct Testbed {
 
 impl Testbed {
     /// Create a new `Testbed`.
-    pub fn new<'a, T, U>(pin_mapping: Mapping,
-                         target_platform: Platform,
-                         platform_support: T,
-                         energy_meters: U,
-                         applications: Option<ApplicationSet>) -> Result<Testbed>
+    pub fn new<'a, T>(pin_mapping: Mapping,
+                      platform_support: Box<dyn PlatformSupport>,
+                      energy_meters: T,
+                      applications: Option<ApplicationSet>) -> Result<Testbed>
     where
-        T: IntoIterator<Item = Box<dyn PlatformSupport>>,
-        U: IntoIterator<Item = (&'a str, Box<dyn EnergyMetering>)>,
+        T: IntoIterator<Item = (&'a str, Box<dyn EnergyMetering>)>,
     {
         let energy_meters = energy_meters.into_iter()
             .map(|(id, meter)| (id.to_string(), meter))
             .collect();
 
-        let platform_support = platform_support.into_iter()
-            .find(|p| p.platform() == target_platform)
-            .ok_or(Error::Init(format!("Configuration for platform '{}' was not provided.", target_platform)))?;
-
         let testbed = Testbed {
             pin_mapping,
-            target_platform,
             platform_support,
             energy_meters: Arc::new(Mutex::new(energy_meters)),
             applications,
@@ -328,7 +320,7 @@ impl Testbed {
         let app_set = self.applications.as_ref()
             .ok_or(Error::NoApplications)?;
 
-        println!("executor: loading/unloading {} software", self.target_platform);
+        println!("executor: loading/unloading {} software", self.platform_support.platform());
         let currently_loaded = self.platform_support.loaded_software();
         for app_id in &currently_loaded {
             if !test.get_app_ids().contains(app_id) {
