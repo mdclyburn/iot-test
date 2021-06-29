@@ -6,7 +6,6 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
-use super::application::Application;
 use super::error::Error;
 use super::instrument::Spec;
 use super::Platform;
@@ -128,6 +127,7 @@ impl Tock {
             .map_err(|io_err| Error::IO(io_err))
     }
 
+    #[allow(dead_code)]
     fn program(&self) -> Result<Output> {
         let mut command = self.make_command();
         command.args(&["program"]);

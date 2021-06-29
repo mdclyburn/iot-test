@@ -13,8 +13,6 @@ use crate::sw;
 /// Test-related error.
 #[derive(Debug)]
 pub enum Error {
-    /// Testbed initialization error.
-    Init(String),
     /// Testbed to device I/O error.
     IO(io::Error),
     /// GPIO-related error.
@@ -25,10 +23,6 @@ pub enum Error {
     Threading(std::io::Error),
     /// Energy meter does not exist.
     NoSuchMeter(String),
-    /// Platform configuration not provided.
-    NoPlatformConfig(String),
-    /// No applications provided when tests require one.
-    NoApplications,
     /// Error originating from interacting with software ([`sw::error::Error`]).
     Software(sw::error::Error),
 }
@@ -73,14 +67,11 @@ impl From<sw::error::Error> for Error {
 impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::Init(ref s) => write!(f, "Testbed initialization error: {}", s),
             Error::IO(ref e) => write!(f, "I/O error: {}", e),
             Error::GPIO(ref e) => write!(f, "GPIO error while testing: {}", e),
             Error::Comm(ref e) => write!(f, "thread communication error: {}", e),
             Error::Threading(ref e) => write!(f, "thread spawning error: {}", e),
             Error::NoSuchMeter(ref id) => write!(f, "the meter '{}' does not exist", id),
-            Error::NoPlatformConfig(ref name) => write!(f, "config for '{}' required but missing", name),
-            Error::NoApplications => write!(f, "no applications defined but at least one expected"),
             Error::Software(ref e) => write!(f, "software interaction error: {}", e),
         }
     }

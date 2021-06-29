@@ -15,8 +15,7 @@ use std::time::Instant;
 
 use crate::facility::EnergyMetering;
 use crate::io::Mapping;
-use crate::sw::{PlatformSupport, Platform};
-use crate::sw::application::ApplicationSet;
+use crate::sw::PlatformSupport;
 use crate::testing::test::Response;
 
 use super::Error;

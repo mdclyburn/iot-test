@@ -1,7 +1,7 @@
 /*! Software integration with devices under test.
  */
 
-pub mod application;
+// pub mod application;
 pub mod error;
 pub mod instrument;
 pub mod platform;
@@ -12,7 +12,6 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::fmt::{Debug, Display};
 
-use application::Application;
 use instrument::Spec;
 use error::Error;
 

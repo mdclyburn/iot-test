@@ -14,7 +14,7 @@ use crate::device::Device;
 use crate::facility::EnergyMetering;
 use crate::hw;
 use crate::io::Mapping;
-use crate::sw::{Platform, PlatformSupport};
+use crate::sw::PlatformSupport;
 use crate::sw::platform;
 use crate::testing::testbed::Testbed;
 
