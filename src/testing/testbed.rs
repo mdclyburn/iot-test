@@ -32,21 +32,18 @@ pub struct Testbed {
     pin_mapping: Mapping,
     platform_support: Box<dyn PlatformSupport>,
     energy_meters: Arc<Mutex<HashMap<String, Box<dyn EnergyMetering>>>>,
-    applications: Option<ApplicationSet>
 }
 
 impl Testbed {
     /// Create a new `Testbed`.
     pub fn new(pin_mapping: Mapping,
                       platform_support: Box<dyn PlatformSupport>,
-                      energy_meters: HashMap<String, Box<dyn EnergyMetering>>,
-                      applications: Option<ApplicationSet>) -> Testbed
+                      energy_meters: HashMap<String, Box<dyn EnergyMetering>>) -> Testbed
     {
         Testbed {
             pin_mapping,
             platform_support,
             energy_meters: Arc::new(Mutex::new(energy_meters)),
-            applications,
         }
     }
 
@@ -309,9 +306,6 @@ impl Testbed {
 
     /// Load specified applications onto the device.
     fn load_apps(&self, test: &Test) -> Result<()> {
-        let app_set = self.applications.as_ref()
-            .ok_or(Error::NoApplications)?;
-
         println!("executor: loading/unloading {} software", self.platform_support.platform());
         let currently_loaded = self.platform_support.loaded_software();
         for app_id in &currently_loaded {

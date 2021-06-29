@@ -105,9 +105,7 @@ fn main() {
     //     Box::new(tock_support),
     //     energy_meters,
     //     Some(app_set));
-    // print!("{}\n", testbed);
-    println!("{}\n", testbed);
-    return;
+    print!("{}\n", testbed);
 
     let tests = [
         // Test::new(
@@ -143,7 +141,7 @@ fn main() {
         print!("{}\n\n", test);
     }
 
-                            println!("  timing of event matches");
+    println!("  timing of event matches");
     let res = testbed.execute(&tests);
     if let Ok(results) = res {
         for r in results {

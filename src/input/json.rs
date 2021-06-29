@@ -111,8 +111,7 @@ impl TestbedConfigReader for JSONTestbedParser {
         let testbed = Testbed::new(
             mapping,
             platform_support,
-            energy_meters,
-            None);
+            energy_meters);
 
         Ok(testbed)
     }
@@ -197,6 +196,7 @@ impl JSONPlatform for platform::Tock {
         let config: TockPlatformConfig = serde_json::from_value(props.clone())
             .map_err(|e| Error::Format(format!("Tock support: deserialization error: {}", e)))?;
         let tock_support = platform::Tock::new(
+            config.board.as_str(),
             Path::new(&config.tockloader_path),
             Path::new(&config.repo_path),
             Path::new(&config.app_path));

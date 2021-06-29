@@ -16,6 +16,7 @@ use super::Result;
 /// Testbed support for the Tock OS platform.
 #[derive(Clone, Debug)]
 pub struct Tock {
+    board: String,
     tockloader_path: PathBuf,
     // The use of this type (and the RefCell) to wrap this type is in lieu of
     // doing something more robust such as querying the device itself for its
@@ -28,10 +29,12 @@ pub struct Tock {
 
 impl Tock {
     /// Create a new Tock platform instance.
-    pub fn new(tockloader_path: &Path,
+    pub fn new(board: &str,
+               tockloader_path: &Path,
                source_path: &Path,
                app_path: &Path) -> Tock {
         Tock {
+            board: board.to_string(),
             tockloader_path: tockloader_path.to_path_buf(),
             loaded_apps: RefCell::new(HashSet::new()),
             enabled_trace_points: RefCell::new(HashSet::new()),
