@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::iter::Iterator;
 
 use crate::testing::testbed::Testbed;
@@ -9,7 +10,7 @@ pub mod json;
 type Result<T> = std::result::Result<T, error::Error>;
 
 /// Configuration reader producing a configured testbed from an input source.
-pub trait TestbedConfigReader {
+pub trait TestbedConfigReader: Debug {
     /// Create a configured testbed ready to run tests.
     fn create(&self) -> Result<Testbed>;
 }

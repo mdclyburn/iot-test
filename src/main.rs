@@ -1,6 +1,9 @@
 //! IoT testing tool
 
+use std::collections::HashMap;
 use std::path::Path;
+use std::process;
+use std::time::Duration;
 
 mod comm;
 mod device;
@@ -8,11 +11,9 @@ mod facility;
 mod hw;
 mod input;
 mod io;
+mod opts;
 mod sw;
 mod testing;
-
-use std::collections::HashMap;
-use std::time::Duration;
 
 use crate::comm::{Direction, Class as SignalClass, Signal};
 use crate::device::Device;
@@ -40,6 +41,24 @@ use crate::testing::test::{
 };
 
 fn main() {
+    let result = opts::parse();
+    if let Err(ref e) = result {
+        use opts::Error::*;
+        match e {
+            Help(msg) => println!("{}", msg),
+            _ => println!("Initialization failed.\n{}", e),
+        };
+        process::exit(1);
+    }
+    let configuration = result.unwrap();
+
+    let result = configuration.get_testbed_reader().create();
+    if let Err(ref e) = result {
+        println!("Failed to initialize testbed.\n{}", e);
+        process::exit(1);
+    }
+    let testbed = result.unwrap();
+
     // // physical mapping
     // let device = Device::new(
     //     &[(13, (Direction::Out, SignalClass::Digital)), // D0
@@ -87,18 +106,6 @@ fn main() {
     //     energy_meters,
     //     Some(app_set));
     // print!("{}\n", testbed);
-
-    let testbed_parser = JSONTestbedParser::new(
-        Path::new("/home/ubuntu/work/config.json"));
-    let testbed_generator: &dyn TestbedConfigReader = &testbed_parser;
-
-    let testbed = testbed_generator.create();
-    if let Err(e) = testbed.as_ref() {
-        println!("Failed to initialize the testbed.\n{}", e);
-        return;
-    }
-
-    let testbed = testbed.unwrap();
     println!("{}\n", testbed);
     return;
 

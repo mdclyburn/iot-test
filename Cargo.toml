@@ -5,6 +5,7 @@ authors = ["Marshall Clyburn"]
 edition = "2018"
 
 [dependencies]
+getopts = "^0.2"
 json = "^0.12"
 rppal = "^0.11"
 serde = { version = "^1.0", features = ["derive"] }

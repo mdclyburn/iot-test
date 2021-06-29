@@ -24,6 +24,7 @@ use super::error::Error;
 
 const CONFIG_VERSION: i64 = 1;
 
+#[derive(Debug)]
 pub struct JSONTestbedParser {
     config_path: PathBuf,
 }
