@@ -321,10 +321,10 @@ impl Testbed {
             }
         }
 
-        for app_id in test.get_app_ids() {
-            if !currently_loaded.contains(app_id) {
-                println!("executor: loading '{}'", app_id);
-                self.platform_support.load(app_set.get(app_id)?)
+        for app_name in test.get_app_ids() {
+            if !currently_loaded.contains(app_name) {
+                println!("executor: loading '{}'", app_name);
+                self.platform_support.load(app_name)
                     .map_err(|e| Error::Software(e))?;
             }
         }

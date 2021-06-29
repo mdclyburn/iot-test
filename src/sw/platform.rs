@@ -23,16 +23,20 @@ pub struct Tock {
     loaded_apps: RefCell<HashSet<String>>,
     enabled_trace_points: RefCell<HashSet<String>>,
     source_path: PathBuf,
+    app_path: PathBuf,
 }
 
 impl Tock {
     /// Create a new Tock platform instance.
-    pub fn new(tockloader_path: &Path, source_path: &Path) -> Tock {
+    pub fn new(tockloader_path: &Path,
+               source_path: &Path,
+               app_path: &Path) -> Tock {
         Tock {
             tockloader_path: tockloader_path.to_path_buf(),
             loaded_apps: RefCell::new(HashSet::new()),
             enabled_trace_points: RefCell::new(HashSet::new()),
             source_path: source_path.to_path_buf(),
+            app_path: app_path.to_path_buf(),
         }
     }
 
@@ -137,35 +141,35 @@ impl PlatformSupport for Tock {
         Platform::Tock
     }
 
-    fn load(&self, app: &Application) -> Result<()> {
-        let tockloader_path_str = self.tockloader_path.to_str()
-            .ok_or(Error::Other(format!("cannot convert '{}' to Unicode", self.tockloader_path.display())))?;
-        let path = app.get_for(self.platform())?;
-        let app_path_str = path.to_str()
-            .ok_or(Error::Other(format!("cannot convert '{}' to Unicode", path.display())))?;
+    fn load(&self, name: &str) -> Result<()> {
+        let tockloader_path_str = self.tockloader_path.to_str().unwrap();
+        let tab_name = format!("{}.tab", name);
+        let app_path = self.app_path.join(tab_name);
+
+        if !app_path.is_file() {
+            return Err(Error::AppForPlatform(name.to_string(), self.platform()));
+        }
 
         let output = Command::new(tockloader_path_str)
-            .args(&["install", app_path_str])
+            .args(&["install", app_path.to_str().unwrap()])
             .output()?;
 
         if output.status.success() {
             self.loaded_apps.borrow_mut()
-                .insert(app.get_id().to_string());
+                .insert(name.to_string());
             Ok(())
         } else {
             Err(Error::Tool(output))
         }
     }
 
-    fn unload(&self, app_id: &str) -> Result<()> {
+    fn unload(&self, name: &str) -> Result<()> {
         // No need to remove what's not there.
-        let was_present =  self.loaded_apps.borrow_mut()
-            .remove(app_id);
+        let was_present = self.loaded_apps.borrow_mut().remove(name);
         if !was_present {
             Ok(())
         } else {
-            let tockloader_path_str = self.tockloader_path.to_str()
-                .ok_or(Error::Other(format!("cannot convert '{}' to Unicode", self.tockloader_path.display())))?;
+            let tockloader_path_str = self.tockloader_path.to_str().unwrap();
 
             let output = Command::new(tockloader_path_str)
                 .args(&["uninstall"])

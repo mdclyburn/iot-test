@@ -58,10 +58,10 @@ pub trait PlatformSupport: Debug {
     fn platform(&self) -> Platform;
 
     /// Load software onto the device.
-    fn load(&self, app: &Application) -> Result<()>;
+    fn load(&self, name: &str) -> Result<()>;
 
     /// Remove software from the target.
-    fn unload(&self, app_id: &str) -> Result<()>;
+    fn unload(&self, name: &str) -> Result<()>;
 
     /// Returns an iterator over the platform's loaded software.
     fn loaded_software(&self) -> HashSet<String>;

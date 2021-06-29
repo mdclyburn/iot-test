@@ -187,6 +187,8 @@ struct TockPlatformConfig {
     tockloader_path: String,
     #[serde(alias = "repo-path")]
     repo_path: String,
+    #[serde(alias = "application-path")]
+    app_path: String,
     board: String,
 }
 
@@ -196,7 +198,8 @@ impl JSONPlatform for platform::Tock {
             .map_err(|e| Error::Format(format!("Tock support: deserialization error: {}", e)))?;
         let tock_support = platform::Tock::new(
             Path::new(&config.tockloader_path),
-            Path::new(&config.repo_path));
+            Path::new(&config.repo_path),
+            Path::new(&config.app_path));
 
         Ok(tock_support)
     }
