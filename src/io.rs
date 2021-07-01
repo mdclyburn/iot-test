@@ -13,6 +13,11 @@ use rppal::gpio;
 use rppal::gpio::{Gpio, InputPin, OutputPin};
 use rppal::i2c;
 use rppal::i2c::I2c;
+use rppal::uart;
+use rppal::uart::{
+    Uart,
+    Parity as UARTParity,
+};
 
 use crate::comm::Direction;
 use crate::device;
@@ -28,16 +33,20 @@ pub type DeviceOutputs = Pins<InputPin>;
 /// Errors related to acquiring and configuring I/O.
 #[derive(Debug)]
 pub enum Error {
-    /// Device-specific error
+    /// Device-specific error.
     Device(device::Error),
-    /// GPIO-specific error
+    /// GPIO-specific error.
     Gpio(gpio::Error),
-    /// Requested pin is not mapped
+    /// Requested pin is not mapped.
     UndefinedPin(u8),
-    /// Mapping does not allow I2C
+    /// Mapping does not allow I2C.
     I2CUnavailable,
-    /// I2C initialization error
+    /// I2C initialization error.
     I2C(i2c::Error),
+    /// Mapping does not allow UART.
+    UARTUnavailable,
+    /// UART initialization error.
+    UART(uart::Error),
 }
 
 impl std::error::Error for Error {
@@ -57,7 +66,9 @@ impl Display for Error {
             Error::Gpio(ref e) => write!(f, "error with GPIO interface: {}", e),
             Error::UndefinedPin(pin_no) => write!(f, "target pin {} not mapped", pin_no),
             Error::I2CUnavailable => write!(f, "I2C pins (2, 3) are mapped"),
-            Error::I2C(ref e) => write!(f, "could obtain I2C interface: {}", e),
+            Error::I2C(ref e) => write!(f, "could not obtain I2C interface: {}", e),
+            Error::UARTUnavailable => write!(f, "UART pins (14, 15) are mapped"),
+            Error::UART(ref e) => write!(f, "could not obtain UART interface: {}", e),
         }
     }
 }
@@ -71,6 +82,12 @@ impl From<gpio::Error> for Error {
 impl From<i2c::Error> for Error {
     fn from(e: i2c::Error) -> Self {
         Error::I2C(e)
+    }
+}
+
+impl From<uart::Error> for Error {
+    fn from(e: uart::Error) -> Self {
+        Error::UART(e)
     }
 }
 
@@ -197,6 +214,22 @@ impl Mapping {
             Err(Error::I2CUnavailable)
         } else {
             Ok(I2c::new()?)
+        }
+    }
+
+    pub fn get_uart(&self,
+                    baud_rate: u32,
+                    parity: UARTParity,
+                    data_bits: u8,
+                    stop_bits: u8) -> Result<Uart>
+    {
+        let uart_pins_mapped =
+            self.numbering.contains_key(&14)
+            || self.numbering.contains_key(&15);
+        if uart_pins_mapped {
+            Err(Error::UARTUnavailable)
+        } else {
+            Ok(Uart::new(baud_rate, parity, data_bits, stop_bits)?)
         }
     }
 }
