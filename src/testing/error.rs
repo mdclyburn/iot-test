@@ -6,6 +6,7 @@ use std::fmt::Display;
 use std::sync::mpsc;
 
 use rppal::gpio;
+use rppal::uart;
 
 use crate::io;
 use crate::sw;
@@ -25,6 +26,8 @@ pub enum Error {
     NoSuchMeter(String),
     /// Error originating from interacting with software ([`sw::error::Error`]).
     Software(sw::error::Error),
+    /// Error configuring UART hardware.
+    UART(uart::Error),
 }
 
 impl error::Error for Error {
@@ -35,6 +38,7 @@ impl error::Error for Error {
             Error::Comm(ref e) => Some(e),
             Error::Threading(ref e) => Some(e),
             Error::Software(ref e) => Some(e),
+            Error::UART(ref e) => Some(e),
             _ => None,
         }
     }
@@ -64,6 +68,12 @@ impl From<sw::error::Error> for Error {
     }
 }
 
+impl From<uart::Error> for Error {
+    fn from(e: uart::Error) -> Error {
+        Error::UART(e)
+    }
+}
+
 impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -73,6 +83,7 @@ impl Display for Error {
             Error::Threading(ref e) => write!(f, "thread spawning error: {}", e),
             Error::NoSuchMeter(ref id) => write!(f, "the meter '{}' does not exist", id),
             Error::Software(ref e) => write!(f, "software interaction error: {}", e),
+            Error::UART(ref e) => write!(f, "UART configuration error: {}", e),
         }
     }
 }

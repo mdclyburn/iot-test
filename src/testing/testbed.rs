@@ -22,6 +22,7 @@ use super::Error;
 use super::evaluation::Evaluation;
 use super::test::Test;
 use super::trace;
+use super::trace::SerialTrace;
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -36,8 +37,8 @@ pub struct Testbed {
 impl Testbed {
     /// Create a new `Testbed`.
     pub fn new(pin_mapping: Mapping,
-                      platform_support: Box<dyn PlatformSupport>,
-                      energy_meters: HashMap<String, Box<dyn EnergyMetering>>) -> Testbed
+               platform_support: Box<dyn PlatformSupport>,
+               energy_meters: HashMap<String, Box<dyn EnergyMetering>>) -> Testbed
     {
         Testbed {
             pin_mapping,
@@ -298,6 +299,49 @@ impl Testbed {
                         }
                     }
                     energy_schannel.send(None).unwrap(); // done communicating results
+                }
+            })
+            .map_err(|e| Error::Threading(e))
+    }
+
+    fn launch_tracing(
+        &self,
+        test_container: Arc<RwLock<Option<Test>>>,
+        barrier: Arc<Barrier>,
+        trace_schannel: SyncSender<Option<SerialTrace>>,
+    ) -> Result<JoinHandle<()>> {
+        println!("Starting tracing thread.");
+
+        let uart = self.pin_mapping.get_uart()?;
+
+        thread::Builder::new()
+            .name("test-stracing".to_string())
+            .spawn(move || {
+                println!("stracing: started.");
+
+                let mut uart = uart;
+                let mut trace_data = Vec::new();
+                let mut traces = Vec::new();
+
+                loop {
+                    // wait for next test
+                    barrier.wait();
+
+                    if let Some(ref test) = *test_container.read().unwrap() {
+                        let data_buffer: &mut [u8] = test.prep_tracing(&mut uart, &mut trace_data).unwrap();
+                        test.trace(&mut uart, data_buffer, &mut traces).unwrap();
+                    } else {
+                        // no more tests to run
+                        break;
+                    }
+
+                    barrier.wait();
+
+                    // communicate results back
+                    for trace in traces.drain(..) {
+                        trace_schannel.send(Some(trace)).unwrap();
+                    }
+                    trace_schannel.send(None); // done communicating results
                 }
             })
             .map_err(|e| Error::Threading(e))

@@ -217,11 +217,7 @@ impl Mapping {
         }
     }
 
-    pub fn get_uart(&self,
-                    baud_rate: u32,
-                    parity: UARTParity,
-                    data_bits: u8,
-                    stop_bits: u8) -> Result<Uart>
+    pub fn get_uart(&self) -> Result<Uart>
     {
         let uart_pins_mapped =
             self.numbering.contains_key(&14)
@@ -229,7 +225,9 @@ impl Mapping {
         if uart_pins_mapped {
             Err(Error::UARTUnavailable)
         } else {
-            Ok(Uart::new(baud_rate, parity, data_bits, stop_bits)?)
+            // Use hard-coded values here to avoid complexity
+            // in code wanting to use the UART.
+            Ok(Uart::new(1_152_000, UARTParity::Even, 8, 1)?)
         }
     }
 }

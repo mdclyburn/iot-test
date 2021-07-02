@@ -138,3 +138,11 @@ fn id_mask(len: u8) -> u16 {
 fn extra_mask(id_len: u8) -> u16 {
     u16::MAX ^ id_mask(id_len)
 }
+
+pub struct SerialTrace {  }
+
+impl SerialTrace {
+    pub fn new() -> SerialTrace {
+        SerialTrace {  }
+    }
+}

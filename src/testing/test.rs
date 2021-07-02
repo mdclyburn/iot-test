@@ -13,6 +13,7 @@ use rppal::gpio::{
     Level,
     Trigger,
 };
+use rppal::uart::Uart;
 
 use crate::comm::Signal;
 use crate::facility::EnergyMetering;
@@ -23,6 +24,7 @@ use super::criteria::{
     Criterion,
     GPIOCriterion,
 };
+use super::trace::SerialTrace;
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -373,6 +375,24 @@ impl Test {
                 buf.push(meter.power());
             }
         }
+    }
+
+    pub fn prep_tracing<'a>(&self,
+                            uart: &mut Uart,
+                            data_buffer: &'a mut Vec<u8>) -> Result<&'a mut [u8]> {
+        uart.set_read_mode(0, Duration::from_millis(25_500))?;
+
+        data_buffer.clear();
+        data_buffer.reserve_exact(255);
+
+        Ok(data_buffer.as_mut_slice())
+    }
+
+    pub fn trace(&self,
+                 _uart: &mut Uart,
+                 _buffer: &mut [u8],
+                 _out: &mut Vec<SerialTrace>) -> Result<()> {
+        Ok(())
     }
 
     /// Return the maximum length of time the test can run.
