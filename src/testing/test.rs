@@ -392,8 +392,7 @@ impl Test {
 
     pub fn trace(&self,
                  uart: &mut Uart,
-                 buffer: &mut [u8],
-                 _out: &mut Vec<SerialTrace>) -> Result<usize> {
+                 buffer: &mut [u8]) -> Result<usize> {
         let start = Instant::now();
         let max_runtime = self.get_max_runtime();
         let mut bytes_read: usize = 0;

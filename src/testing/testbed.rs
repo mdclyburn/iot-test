@@ -63,7 +63,7 @@ impl Testbed {
     {
         let mut test_results = Vec::new();
 
-        let barrier = Arc::new(Barrier::new(3));
+        let barrier = Arc::new(Barrier::new(4));
         let current_test: Arc<RwLock<Option<Test>>> = Arc::new(RwLock::new(None));
 
         let (observer_schannel, observer_rchannel) = mpsc::sync_channel(0);
@@ -75,6 +75,11 @@ impl Testbed {
         let energy_thread = self.launch_metering(Arc::clone(&current_test),
                                                  Arc::clone(&barrier),
                                                  energy_schannel)?;
+
+        let (trace_schannel, trace_rchannel) = mpsc::sync_channel(0);
+        let trace_thread = self.launch_tracing(Arc::clone(&current_test),
+                                               Arc::clone(&barrier),
+                                               trace_schannel)?;
 
         for test in tests {
             println!("executor: running '{}'", test.get_id());
@@ -158,6 +163,12 @@ impl Testbed {
                     .push(sample);
             }
 
+            // get tracing data
+            let mut trace_data = Vec::new();
+            while let Some(byte) = trace_rchannel.recv()? {
+                trace_data.push(byte);
+            }
+
             let evaluation = Evaluation::new(
                 test,
                 &platform_spec,
@@ -181,6 +192,9 @@ impl Testbed {
         });
         energy_thread.join().unwrap_or_else(|_e| {
             println!("executor: failed to join with metering thread");
+        });
+        trace_thread.join().unwrap_or_else(|_e| {
+            println!("executor: failed to join with tracing thread");
         });
 
         Ok(test_results)
@@ -308,7 +322,7 @@ impl Testbed {
         &self,
         test_container: Arc<RwLock<Option<Test>>>,
         barrier: Arc<Barrier>,
-        trace_schannel: SyncSender<Option<SerialTrace>>,
+        trace_schannel: SyncSender<Option<u8>>,
     ) -> Result<JoinHandle<()>> {
         println!("Starting tracing thread.");
 
@@ -320,16 +334,15 @@ impl Testbed {
                 println!("stracing: started.");
 
                 let mut uart = uart;
-                let mut trace_data = Vec::new();
-                let mut traces = Vec::new();
+                let mut buffer = Vec::new();
 
                 loop {
                     // wait for next test
                     barrier.wait();
 
                     if let Some(ref test) = *test_container.read().unwrap() {
-                        let data_buffer: &mut [u8] = test.prep_tracing(&mut uart, &mut trace_data).unwrap();
-                        test.trace(&mut uart, data_buffer, &mut traces).unwrap();
+                        let data_buffer: &mut [u8] = test.prep_tracing(&mut uart, &mut buffer).unwrap();
+                        let _bytes = test.trace(&mut uart, data_buffer).unwrap();
                     } else {
                         // no more tests to run
                         break;
@@ -338,10 +351,10 @@ impl Testbed {
                     barrier.wait();
 
                     // communicate results back
-                    for trace in traces.drain(..) {
-                        trace_schannel.send(Some(trace)).unwrap();
+                    for byte in buffer.drain(..) {
+                        trace_schannel.send(Some(byte)).unwrap();
                     }
-                    trace_schannel.send(None); // done communicating results
+                    trace_schannel.send(None).unwrap(); // done communicating results
                 }
             })
             .map_err(|e| Error::Threading(e))
