@@ -380,19 +380,30 @@ impl Test {
     pub fn prep_tracing<'a>(&self,
                             uart: &mut Uart,
                             data_buffer: &'a mut Vec<u8>) -> Result<&'a mut [u8]> {
-        uart.set_read_mode(0, Duration::from_millis(25_500))?;
+        // Timeout is a bit arbitrary here.
+        // Don't want the thread hanging the test unnecessarily.
+        uart.set_read_mode(0, Duration::from_millis(50))?;
 
         data_buffer.clear();
-        data_buffer.reserve_exact(255);
+        data_buffer.reserve_exact(1 * 1024 * 1024);
 
         Ok(data_buffer.as_mut_slice())
     }
 
     pub fn trace(&self,
-                 _uart: &mut Uart,
-                 _buffer: &mut [u8],
-                 _out: &mut Vec<SerialTrace>) -> Result<()> {
-        Ok(())
+                 uart: &mut Uart,
+                 buffer: &mut [u8],
+                 _out: &mut Vec<SerialTrace>) -> Result<usize> {
+        let start = Instant::now();
+        let max_runtime = self.get_max_runtime();
+        let mut bytes_read: usize = 0;
+
+        loop {
+            if Instant::now() - start >= max_runtime { break; }
+            bytes_read += uart.read(&mut buffer[bytes_read..])?;
+        }
+
+        Ok(bytes_read)
     }
 
     /// Return the maximum length of time the test can run.

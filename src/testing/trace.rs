@@ -139,10 +139,15 @@ fn extra_mask(id_len: u8) -> u16 {
     u16::MAX ^ id_mask(id_len)
 }
 
-pub struct SerialTrace {  }
+#[derive(Debug)]
+pub struct SerialTrace {
+    raw_data: Vec<u8>,
+}
 
 impl SerialTrace {
-    pub fn new() -> SerialTrace {
-        SerialTrace {  }
+    pub fn new(raw_data: &[u8]) -> SerialTrace {
+        SerialTrace {
+            raw_data: Vec::from(raw_data),
+        }
     }
 }
