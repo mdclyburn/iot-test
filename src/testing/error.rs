@@ -24,6 +24,8 @@ pub enum Error {
     Threading(std::io::Error),
     /// Energy meter does not exist.
     NoSuchMeter(String),
+    /// Unexpected end of serial.
+    SerialEnd,
     /// Error originating from interacting with software ([`sw::error::Error`]).
     Software(sw::error::Error),
     /// Error configuring UART hardware.
@@ -82,6 +84,7 @@ impl Display for Error {
             Error::Comm(ref e) => write!(f, "thread communication error: {}", e),
             Error::Threading(ref e) => write!(f, "thread spawning error: {}", e),
             Error::NoSuchMeter(ref id) => write!(f, "the meter '{}' does not exist", id),
+            Error::SerialEnd => write!(f, "unexpected end of serial data stream"),
             Error::Software(ref e) => write!(f, "software interaction error: {}", e),
             Error::UART(ref e) => write!(f, "UART configuration error: {}", e),
         }

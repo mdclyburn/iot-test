@@ -165,16 +165,25 @@ impl Testbed {
 
             // get tracing data
             println!("executor: receiving trace data");
-            let mut trace_data = Vec::new();
-            while let Some(byte) = trace_rchannel.recv()? {
-                trace_data.push(byte);
+            let mut serial_data = Vec::new();
+            while let Some(len_byte) = trace_rchannel.recv()? {
+                let mut trace_data = Vec::new();
+                for byte_no in 0..len_byte {
+                    if let Some(byte) = trace_rchannel.recv()? {
+                        trace_data.push(byte);
+                    } else {
+                        Err(Error::SerialEnd)?;
+                    }
+                }
+                serial_data.push(trace_data);
             }
 
-            for (byte, no) in (&trace_data).into_iter().zip(1..) {
-                print!("{:2X} ", byte);
-                if no % 5 == 0 {
-                    println!("");
+            for data_stream in &serial_data {
+                print!("Serial stream: ");
+                for byte in data_stream {
+                    print!("{:2X} ", byte);
                 }
+                println!("");
             }
 
             let evaluation = Evaluation::new(
@@ -183,6 +192,7 @@ impl Testbed {
                 exec_result,
                 other_gpio,
                 traces,
+                serial_data,
                 energy_data);
             test_results.push(evaluation);
             println!("executor: test finished.");
