@@ -20,6 +20,8 @@ pub enum Criterion {
     Energy(EnergyCriterion),
     /// GPIO-based activity tracing.
     Trace(TraceCriterion),
+    /// Serial-based activity tracing.
+    SerialTrace(SerialTraceCriterion),
 }
 
 impl Display for Criterion {
@@ -28,6 +30,7 @@ impl Display for Criterion {
             Criterion::GPIO(ref c) => write!(f, "GPIO activity: {}", c),
             Criterion::Energy(ref c) => write!(f, "Energy: {}", c),
             Criterion::Trace(ref c) => write!(f, "Trace: {}", c),
+            Criterion::SerialTrace(ref c) => write!(f, "Serial trace: {}", c),
         }
     }
 }
@@ -398,5 +401,15 @@ impl Display for EnergyStat {
             EnergyStat::Max => write!(f, "max consumption"),
             EnergyStat::Min => write!(f, "min consumption"),
         }
+    }
+}
+
+#[allow(unused)]
+#[derive(Clone, Debug)]
+pub struct SerialTraceCriterion {  }
+
+impl Display for SerialTraceCriterion {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Ok(())
     }
 }

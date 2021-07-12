@@ -152,4 +152,24 @@ impl SerialTrace {
             raw_data: Vec::from(raw_data),
         }
     }
+
+    pub fn len(&self) -> usize {
+        self.raw_data.len()
+    }
+
+    pub fn data(&self) -> &[u8] {
+        self.raw_data.as_slice()
+    }
+}
+
+impl Display for SerialTrace {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "[ ")?;
+        for byte in &self.raw_data {
+            write!(f, "{:2X} ", byte)?;
+        }
+        write!(f, " ]")?;
+
+        Ok(())
+    }
 }

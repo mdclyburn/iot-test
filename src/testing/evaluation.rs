@@ -233,6 +233,10 @@ impl Evaluation {
                     (Status::Fail, None)
                 }
             },
+
+            Criterion::SerialTrace(trace_criterion) => {
+                (Status::Pass, None)
+            },
         }
     }
 }
