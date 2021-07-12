@@ -382,10 +382,11 @@ impl Test {
                             data_buffer: &'a mut Vec<u8>) -> Result<&'a mut [u8]> {
         // Timeout is a bit arbitrary here.
         // Don't want the thread hanging the test unnecessarily.
-        uart.set_read_mode(0, Duration::from_millis(50))?;
+        uart.set_read_mode(0, Duration::from_millis(100))?;
 
-        data_buffer.clear();
-        data_buffer.reserve_exact(1 * 1024 * 1024);
+        let buffer_alloc: usize = 1 * 1024 * 1024;
+        data_buffer.reserve_exact(buffer_alloc);
+        while data_buffer.len() < buffer_alloc { data_buffer.push(0); }
 
         Ok(data_buffer.as_mut_slice())
     }

@@ -164,9 +164,17 @@ impl Testbed {
             }
 
             // get tracing data
+            println!("executor: receiving trace data");
             let mut trace_data = Vec::new();
             while let Some(byte) = trace_rchannel.recv()? {
                 trace_data.push(byte);
+            }
+
+            for (byte, no) in (&trace_data).into_iter().zip(1..) {
+                print!("{:2X} ", byte);
+                if no % 5 == 0 {
+                    println!("");
+                }
             }
 
             let evaluation = Evaluation::new(
@@ -335,6 +343,7 @@ impl Testbed {
 
                 let mut uart = uart;
                 let mut buffer = Vec::new();
+                let mut bytes_rx = 0;
 
                 loop {
                     // wait for next test
@@ -342,7 +351,10 @@ impl Testbed {
 
                     if let Some(ref test) = *test_container.read().unwrap() {
                         let data_buffer: &mut [u8] = test.prep_tracing(&mut uart, &mut buffer).unwrap();
-                        let _bytes = test.trace(&mut uart, data_buffer).unwrap();
+
+                        barrier.wait();
+                        bytes_rx = test.trace(&mut uart, data_buffer).unwrap();
+                        println!("stracing: received {} bytes over UART", bytes_rx);
                     } else {
                         // no more tests to run
                         break;
@@ -351,7 +363,7 @@ impl Testbed {
                     barrier.wait();
 
                     // communicate results back
-                    for byte in buffer.drain(..) {
+                    for byte in buffer.drain(0..bytes_rx) {
                         trace_schannel.send(Some(byte)).unwrap();
                     }
                     trace_schannel.send(None).unwrap(); // done communicating results

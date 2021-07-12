@@ -80,6 +80,8 @@ pub fn reconstruct<'a, T>(responses: T,
 where
     T: IntoIterator<Item = &'a Response>
 {
+    if pin_sig.len() == 0 { return Vec::new(); }
+
     let last_trace_pin = *pin_sig.iter()
         .reduce(|(pin_no_a, sig_a), (pin_no_b, sig_b)| {
             if sig_a > sig_b {
