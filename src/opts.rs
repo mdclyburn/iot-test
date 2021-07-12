@@ -12,6 +12,7 @@ use crate::input::{
     // TestConfigAdapter,
 };
 use crate::input::json::JSONTestbedParser;
+use crate::input::hard_code::HardCodedTestbed;
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -95,25 +96,29 @@ pub fn parse() -> Result<Configuration> {
             .ok_or(Error::ArgumentMissing("testbed config"))?;
 
         // Other provided arguments.
-        let testbed_reader = if matches.opt_present("testbed-format") {
+        let testbed_reader: Box<dyn TestbedConfigReader> = if matches.opt_present("testbed-format") {
             let format = matches.opt_str("testbed-format")
                 .ok_or(Error::ArgumentMissing("testbed-format"))?;
             match format.as_str() {
-                "json" => {
-                    let json_path = Path::new(testbed_config);
-                    Ok(Box::new(JSONTestbedParser::new(json_path)))
-                },
+                    "code" => {
+                        Ok(Box::new(HardCodedTestbed::new()) as Box<dyn TestbedConfigReader>)
+                    },
 
-                _ => {
-                    let msg = format!("{} is not a testbed format", format);
-                    Err(Error::Invalid(msg))
-                }
-            }
+                    "json" => {
+                        let json_path = Path::new(testbed_config);
+                        Ok(Box::new(JSONTestbedParser::new(json_path)) as Box<dyn TestbedConfigReader>)
+                    },
+
+                    _ => {
+                        let msg = format!("{} is not a testbed format", format);
+                        Err(Error::Invalid(msg))
+                    },
+                }?
         } else {
-            // Default to the JSON testbed reader.
+            // Default to the hard-coded testbed.
             let json_path = Path::new(testbed_config);
-            Ok(Box::new(JSONTestbedParser::new(json_path)))
-        }?;
+            Box::new(HardCodedTestbed::new())
+        };
 
         Ok(Configuration::new(testbed_reader))
     }
