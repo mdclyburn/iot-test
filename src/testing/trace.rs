@@ -183,3 +183,33 @@ impl Display for SerialTrace {
         Ok(())
     }
 }
+
+pub fn reconstruct_serial<'a, T>(raw_data: &[u8], timings: T) -> Vec<SerialTrace>
+where
+    T: IntoIterator<Item = &'a (Instant, usize)>
+{
+    // Create a flattened array of Instants the bytes were received over UART.
+    let times: Vec<Instant> = timings.into_iter()
+        .flat_map(|(time, len)| vec![*time; *len])
+        .collect();
+
+    let mut data_it = raw_data.into_iter()
+        .copied()
+        .zip(0..);
+    let mut traces: Vec<SerialTrace> = Vec::new();
+
+    loop {
+        if let Some((len, byte_no)) = data_it.next() {
+            let trace = SerialTrace::new(
+                times[byte_no],
+                &raw_data[byte_no+1..byte_no+1+(len as usize)]);
+            traces.push(trace);
+            // TODO: replace with .advance_by() when stabilized?
+            for _ in 0..len { let _ = data_it.next(); }
+        } else {
+            break;
+        }
+    }
+
+    traces
+}

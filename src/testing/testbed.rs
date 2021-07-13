@@ -363,27 +363,9 @@ impl Testbed {
 
                     barrier.wait();
 
-                    // Create a flattened array of Instant the bytes were received over UART.
-                    let times: Vec<Instant> = schedule.iter()
-                        .flat_map(|(time, len)| vec![*time; *len])
-                        .collect();
-
-                    let mut serial_traces: Vec<SerialTrace> = Vec::new();
-                    let mut buffer_it = (&buffer).into_iter()
-                        .copied()
-                        .zip(0..bytes_rx);
-                    loop {
-                        if let Some((len, byte_no)) = buffer_it.next() {
-                            let trace = SerialTrace::new(
-                                times[byte_no],
-                                &buffer[byte_no+1..byte_no+1+(len as usize)]);
-                            serial_traces.push(trace);
-                            for _i in 0..len { let _ = buffer_it.next(); }
-                        } else {
-                            break;
-                        }
-                    }
-
+                    let serial_traces = trace::reconstruct_serial(
+                        &buffer.as_slice()[0..bytes_rx],
+                        &schedule);
                     // communicate results back
                     for trace in serial_traces {
                         trace_schannel.send(Some(trace)).unwrap();
