@@ -228,7 +228,7 @@ impl Mapping {
             // Use hard-coded values here to avoid complexity
             // in code wanting to use the UART.
             let mut uart = Uart::with_path("/dev/ttyAMA0", 115_200, UARTParity::Even, 8, 1)?;
-            uart.set_hardware_flow_control(false);
+            uart.set_hardware_flow_control(false)?;
 
             Ok(uart)
         }

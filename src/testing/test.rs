@@ -24,7 +24,6 @@ use super::criteria::{
     Criterion,
     GPIOCriterion,
 };
-use super::trace::SerialTrace;
 
 type Result<T> = std::result::Result<T, Error>;
 

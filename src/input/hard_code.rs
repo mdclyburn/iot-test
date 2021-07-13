@@ -6,7 +6,6 @@ use crate::device::Device;
 use crate::facility::EnergyMetering;
 use crate::hw::INA219;
 use crate::io::Mapping;
-use crate::sw::{PlatformSupport, Platform};
 use crate::sw::platform::Tock;
 use crate::testing::testbed::Testbed;
 use crate::testing::criteria::{
@@ -25,7 +24,6 @@ use crate::testing::test::{
 
 use super::{Result,
             TestbedConfigReader};
-use super::error::Error;
 
 #[derive(Debug)]
 pub struct HardCodedTestbed {  }
