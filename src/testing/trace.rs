@@ -141,14 +141,16 @@ fn extra_mask(id_len: u8) -> u16 {
     u16::MAX ^ id_mask(id_len)
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct SerialTrace {
+    time: Instant,
     raw_data: Vec<u8>,
 }
 
 impl SerialTrace {
-    pub fn new(raw_data: &[u8]) -> SerialTrace {
+    pub fn new(time: Instant, raw_data: &[u8]) -> SerialTrace {
         SerialTrace {
+            time,
             raw_data: Vec::from(raw_data),
         }
     }
@@ -160,6 +162,14 @@ impl SerialTrace {
     pub fn data(&self) -> &[u8] {
         self.raw_data.as_slice()
     }
+
+    pub fn offset(&self, t0: Instant) -> Duration {
+        if t0 < self.time {
+            self.time - t0
+        } else {
+            Duration::from_millis(0)
+        }
+    }
 }
 
 impl Display for SerialTrace {
@@ -168,7 +178,7 @@ impl Display for SerialTrace {
         for byte in &self.raw_data {
             write!(f, "{:2X} ", byte)?;
         }
-        write!(f, " ]")?;
+        write!(f, "]")?;
 
         Ok(())
     }

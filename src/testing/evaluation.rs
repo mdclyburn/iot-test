@@ -18,7 +18,10 @@ use super::test::{
     Response,
     Test
 };
-use super::trace::Trace;
+use super::trace::{
+    SerialTrace,
+    Trace
+};
 
 /// Summary of an `Evaluation`.
 #[allow(dead_code)]
@@ -53,7 +56,7 @@ pub struct Evaluation {
     exec_result: Result<Execution>,
     device_responses: Vec<Response>,
     traces: Vec<Trace>,
-    serial_data: Vec<Vec<u8>>,
+    serial_traces: Vec<SerialTrace>,
     energy_metrics: HashMap<String, Vec<f32>>,
 }
 
@@ -63,7 +66,7 @@ impl Evaluation {
                exec_result: Result<Execution>,
                device_responses: Vec<Response>,
                traces: Vec<Trace>,
-               serial_data: Vec<Vec<u8>>,
+               serial_traces: Vec<SerialTrace>,
                energy_metrics: HashMap<String, Vec<f32>>) -> Evaluation
     {
         Evaluation {
@@ -72,7 +75,7 @@ impl Evaluation {
             exec_result,
             device_responses,
             traces,
-            serial_data,
+            serial_traces,
             energy_metrics,
         }
     }
@@ -84,7 +87,7 @@ impl Evaluation {
             exec_result: Err(error),
             device_responses: Vec::new(),
             traces: Vec::new(),
-            serial_data: Vec::new(),
+            serial_traces: Vec::new(),
             energy_metrics: HashMap::new(),
         }
     }

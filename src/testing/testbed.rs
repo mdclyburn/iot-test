@@ -165,25 +165,15 @@ impl Testbed {
 
             // get tracing data
             println!("executor: receiving trace data");
-            let mut serial_data = Vec::new();
-            while let Some(len_byte) = trace_rchannel.recv()? {
-                let mut trace_data = Vec::new();
-                for byte_no in 0..len_byte {
-                    if let Some(byte) = trace_rchannel.recv()? {
-                        trace_data.push(byte);
-                    } else {
-                        Err(Error::SerialEnd)?;
-                    }
-                }
-                serial_data.push(trace_data);
+            let mut serial_traces: Vec<SerialTrace> = Vec::new();
+            while let Some(trace) = trace_rchannel.recv()? {
+                serial_traces.push(trace);
             }
 
-            for data_stream in &serial_data {
-                print!("Serial stream: ");
-                for byte in data_stream {
-                    print!("{:2X} ", byte);
-                }
-                println!("");
+            for trace in &serial_traces {
+                println!("Serial trace @{:?} -> {}",
+                       trace.offset(*exec_result.as_ref().unwrap().get_start()),
+                       trace);
             }
 
             let evaluation = Evaluation::new(
@@ -192,7 +182,7 @@ impl Testbed {
                 exec_result,
                 other_gpio,
                 traces,
-                serial_data,
+                serial_traces,
                 energy_data);
             test_results.push(evaluation);
             println!("executor: test finished.");
@@ -340,7 +330,7 @@ impl Testbed {
         &self,
         test_container: Arc<RwLock<Option<Test>>>,
         barrier: Arc<Barrier>,
-        trace_schannel: SyncSender<Option<u8>>,
+        trace_schannel: SyncSender<Option<SerialTrace>>,
     ) -> Result<JoinHandle<()>> {
         println!("Starting tracing thread.");
 
@@ -352,7 +342,8 @@ impl Testbed {
                 println!("stracing: started.");
 
                 let mut uart = uart;
-                let mut buffer = Vec::new();
+                let mut buffer: Vec<u8> = Vec::new();
+                let mut schedule: Vec<(Instant, usize)> = Vec::new();
                 let mut bytes_rx = 0;
 
                 loop {
@@ -360,10 +351,10 @@ impl Testbed {
                     barrier.wait();
 
                     if let Some(ref test) = *test_container.read().unwrap() {
-                        let data_buffer: &mut [u8] = test.prep_tracing(&mut uart, &mut buffer).unwrap();
+                        test.prep_tracing(&mut uart, &mut buffer, &mut schedule).unwrap();
 
                         barrier.wait();
-                        bytes_rx = test.trace(&mut uart, data_buffer).unwrap();
+                        bytes_rx = test.trace(&mut uart, &mut buffer, &mut schedule).unwrap();
                         println!("stracing: received {} bytes over UART", bytes_rx);
                     } else {
                         // no more tests to run
@@ -372,9 +363,30 @@ impl Testbed {
 
                     barrier.wait();
 
+                    // Create a flattened array of Instant the bytes were received over UART.
+                    let times: Vec<Instant> = schedule.iter()
+                        .flat_map(|(time, len)| vec![*time; *len])
+                        .collect();
+
+                    let mut serial_traces: Vec<SerialTrace> = Vec::new();
+                    let mut buffer_it = (&buffer).into_iter()
+                        .copied()
+                        .zip(0..bytes_rx);
+                    loop {
+                        if let Some((len, byte_no)) = buffer_it.next() {
+                            let trace = SerialTrace::new(
+                                times[byte_no],
+                                &buffer[byte_no+1..byte_no+1+(len as usize)]);
+                            serial_traces.push(trace);
+                            for _i in 0..len { let _ = buffer_it.next(); }
+                        } else {
+                            break;
+                        }
+                    }
+
                     // communicate results back
-                    for byte in buffer.drain(0..bytes_rx) {
-                        trace_schannel.send(Some(byte)).unwrap();
+                    for trace in serial_traces {
+                        trace_schannel.send(Some(trace)).unwrap();
                     }
                     trace_schannel.send(None).unwrap(); // done communicating results
                 }

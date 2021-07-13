@@ -379,28 +379,41 @@ impl Test {
 
     pub fn prep_tracing<'a>(&self,
                             uart: &mut Uart,
-                            data_buffer: &'a mut Vec<u8>) -> Result<&'a mut [u8]> {
+                            data_buffer: &'a mut Vec<u8>,
+                            schedule: &'a mut Vec<(Instant, usize)>) -> Result<()> {
         // Timeout is a bit arbitrary here.
         // Don't want the thread hanging the test unnecessarily.
         uart.set_read_mode(0, Duration::from_millis(100))?;
 
+        schedule.clear();
+
         let buffer_alloc: usize = 1 * 1024 * 1024;
         data_buffer.reserve_exact(buffer_alloc);
+        schedule.reserve_exact(buffer_alloc);
         while data_buffer.len() < buffer_alloc { data_buffer.push(0); }
 
-        Ok(data_buffer.as_mut_slice())
+        Ok(())
     }
 
     pub fn trace(&self,
                  uart: &mut Uart,
-                 buffer: &mut [u8]) -> Result<usize> {
-        let start = Instant::now();
-        let max_runtime = self.get_max_runtime();
+                 buffer: &mut Vec<u8>,
+                 schedule: &mut Vec<(Instant, usize)>) -> Result<usize> {
+        let buffer: &mut [u8] = buffer.as_mut_slice();
         let mut bytes_read: usize = 0;
 
+        let max_runtime = self.get_max_runtime();
+        let start = Instant::now();
+
         loop {
-            if Instant::now() - start >= max_runtime { break; }
-            bytes_read += uart.read(&mut buffer[bytes_read..])?;
+            let now = Instant::now();
+            if now - start >= max_runtime { break; }
+
+            let read = uart.read(&mut buffer[bytes_read..])?;
+            if read > 0 {
+                bytes_read += read;
+                schedule.push((now, read));
+            }
         }
 
         Ok(bytes_read)
