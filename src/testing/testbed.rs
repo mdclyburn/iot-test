@@ -150,7 +150,8 @@ impl Testbed {
                              r,
                              r.get_offset(*exec_result.as_ref().unwrap().get_start()));
                 }
-                let traces = trace::reconstruct(&traces, &platform_spec, &trace_pins);
+                let traces = trace::reconstruct_parallel(
+                    &traces, &platform_spec, &trace_pins);
 
                 (traces, all_other)
             };

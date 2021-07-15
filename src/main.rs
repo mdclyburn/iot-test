@@ -20,8 +20,8 @@ use crate::testing::criteria::{
     // EnergyCriterion,
     // EnergyStat,
     Timing,
-    TraceCondition,
-    TraceCriterion,
+    ParallelTraceCondition,
+    ParallelTraceCriterion,
 };
 use crate::testing::test::{
     Operation,
@@ -72,10 +72,10 @@ fn main() {
             (&["capsule/led/command/on", "capsule/led/command/off"]).into_iter().copied(),
             &[Operation { time: 0, pin_no: 23, input: Signal::Digital(false) },
               Operation { time: 3000, pin_no: 23, input: Signal::Digital(true) }],
-            &[Criterion::Trace(TraceCriterion::new(&[TraceCondition::new(2).with_extra_data(1),
-                                                     TraceCondition::new(1).with_timing(Timing::Relative(Duration::from_millis(50)),
-                                                                                        Duration::from_millis(5))
-                                                     .with_extra_data(1)]))])
+            &[Criterion::ParallelTrace(ParallelTraceCriterion::new(&[ParallelTraceCondition::new(2).with_extra_data(1),
+                                                     ParallelTraceCondition::new(1).with_timing(Timing::Relative(Duration::from_millis(50)),
+                                                                                                Duration::from_millis(5))
+                                                                     .with_extra_data(1)]))])
     ];
 
     for test in &tests {

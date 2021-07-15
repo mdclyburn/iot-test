@@ -12,16 +12,16 @@ use super::test::Response;
 
 /// Trace execution information derived from GPIO activity.
 #[derive(Clone, Debug)]
-pub struct Trace {
+pub struct ParallelTrace {
     id: u16,
     extra: u16,
     responses: Vec<Response>,
 }
 
-impl Trace {
+impl ParallelTrace {
     /// Construct a new Trace.
-    fn new(id: u16, extra: u16, responses: Vec<Response>) -> Trace {
-        Trace {
+    fn new(id: u16, extra: u16, responses: Vec<Response>) -> ParallelTrace {
+        ParallelTrace {
             id,
             extra,
             responses,
@@ -62,7 +62,7 @@ impl Trace {
     }
 }
 
-impl Display for Trace {
+impl Display for ParallelTrace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Trace - ID: {}, data: {}\nRaw responses:\n", self.id, self.extra)?;
         for r in &self.responses {
@@ -73,10 +73,10 @@ impl Display for Trace {
     }
 }
 
-/// Derive [`Trace`]s from the provided GPIO activity.
-pub fn reconstruct<'a, T>(responses: T,
-                          test_spec: &Spec,
-                          pin_sig: &HashMap<u8, u16>) -> Vec<Trace>
+/// Derive [`ParallelTrace`]s from the provided GPIO activity.
+pub fn reconstruct_parallel<'a, T>(responses: T,
+                                   test_spec: &Spec,
+                                   pin_sig: &HashMap<u8, u16>) -> Vec<ParallelTrace>
 where
     T: IntoIterator<Item = &'a Response>
 {
@@ -115,7 +115,7 @@ where
             }
         }
 
-        let trace = Trace::new(
+        let trace = ParallelTrace::new(
             trace_val & id_mask(test_spec.id_bit_length()),
             (trace_val & extra_mask(test_spec.id_bit_length())) >> test_spec.id_bit_length(),
             trace_responses);

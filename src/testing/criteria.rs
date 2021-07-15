@@ -5,7 +5,10 @@ use std::fmt;
 use std::fmt::Display;
 use std::time::{Duration, Instant};
 
-use super::trace::Trace;
+use super::trace::{
+    ParallelTrace,
+    SerialTrace,
+};
 
 /** Defined response to look for from the device under test.
 
@@ -19,7 +22,7 @@ pub enum Criterion {
     /// Energy consumption.
     Energy(EnergyCriterion),
     /// GPIO-based activity tracing.
-    Trace(TraceCriterion),
+    ParallelTrace(ParallelTraceCriterion),
     /// Serial-based activity tracing.
     SerialTrace(SerialTraceCriterion),
 }
@@ -29,7 +32,7 @@ impl Display for Criterion {
         match self {
             Criterion::GPIO(ref c) => write!(f, "GPIO activity: {}", c),
             Criterion::Energy(ref c) => write!(f, "Energy: {}", c),
-            Criterion::Trace(ref c) => write!(f, "Trace: {}", c),
+            Criterion::ParallelTrace(ref c) => write!(f, "Parallel trace: {}", c),
             Criterion::SerialTrace(ref c) => write!(f, "Serial trace: {}", c),
         }
     }
@@ -81,18 +84,18 @@ impl Display for Timing {
     }
 }
 
-/// Component condition of a [`TraceCriterion`].
+/// Component condition of a [`ParallelTraceCriterion`].
 #[derive(Copy, Clone, Debug)]
-pub struct TraceCondition {
+pub struct ParallelTraceCondition {
     id: u16,
     extra: Option<u16>,
     timing: Option<(Timing, Duration)>,
 }
 
-impl TraceCondition {
+impl ParallelTraceCondition {
     /// Create a new tracing requirement.
-    pub fn new(id: u16) -> TraceCondition {
-        TraceCondition {
+    pub fn new(id: u16) -> ParallelTraceCondition {
+        ParallelTraceCondition {
             id,
             extra: None,
             timing: None,
@@ -151,13 +154,13 @@ impl TraceCondition {
     ///
     /// Because the required timing of the condition is dependent on whether the timing is relative to the
     /// previous Trace or absolute (relative to the beginning of the test), this function does not check timing.
-    fn satisfied_by(&self, event: &Trace) -> bool {
+    fn satisfied_by(&self, event: &ParallelTrace) -> bool {
         event.get_id() == self.id
             && self.extra.map_or(true, |extra| event.get_extra() == extra)
     }
 }
 
-impl Display for TraceCondition {
+impl Display for ParallelTraceCondition {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Trace point with ID {}", self.get_id())?;
 
@@ -175,17 +178,17 @@ impl Display for TraceCondition {
 
 /// Trace criterion specification details.
 #[derive(Clone, Debug)]
-pub struct TraceCriterion {
-    conditions: Vec<TraceCondition>,
+pub struct ParallelTraceCriterion {
+    conditions: Vec<ParallelTraceCondition>,
 }
 
-impl TraceCriterion {
+impl ParallelTraceCriterion {
     /// Create a new trace criterion.
-    pub fn new<'a, T>(conditions: T) -> TraceCriterion
+    pub fn new<'a, T>(conditions: T) -> ParallelTraceCriterion
     where
-        T: IntoIterator<Item = &'a TraceCondition>
+        T: IntoIterator<Item = &'a ParallelTraceCondition>
     {
-        TraceCriterion {
+        ParallelTraceCriterion {
             conditions: conditions.into_iter()
                 .copied()
                 .collect(),
@@ -193,15 +196,13 @@ impl TraceCriterion {
     }
 
     /// Returns the [`Trace`]s satisfying the criterion.
-    pub fn align<'a>(&self, t0: Instant, traces: &'a [Trace]) -> Option<Vec<&'a Trace>> {
-        TraceCriterion::rec_align(t0,
-                                  t0,
-                                  self.conditions.as_slice(),
-                                  traces)
+    pub fn align<'a>(&self, t0: Instant, traces: &'a [ParallelTrace]) -> Option<Vec<&'a ParallelTrace>> {
+        ParallelTraceCriterion::rec_align(
+            t0, t0, self.conditions.as_slice(), traces)
     }
 
 
-    /** Attempt to satisfy conditions with the provided [`Trace`]s.
+    /** Attempt to satisfy conditions with the provided [`ParallelTrace`]s.
 
     # Algorithm overview
 
@@ -217,8 +218,8 @@ impl TraceCriterion {
      */
     fn rec_align<'a>(t0: Instant,
                      tp: Instant,
-                     conditions: &[TraceCondition],
-                     events: &'a [Trace]) -> Option<Vec<&'a Trace>>
+                     conditions: &[ParallelTraceCondition],
+                     events: &'a [ParallelTrace]) -> Option<Vec<&'a ParallelTrace>>
     {
         let mut matches = Vec::new();
 
@@ -250,10 +251,8 @@ impl TraceCriterion {
                     // If the rest of the events in the condition chain are satisfied, then
                     // the criterion is satisfied. If not, we continue skimming over events.
                     if timing_matches {
-                        let rest = TraceCriterion::rec_align(t0,
-                                                             event.get_time(),
-                                                             &conditions[1..],
-                                                             &events[idx+1..]);
+                        let rest = ParallelTraceCriterion::rec_align(
+                            t0, event.get_time(), &conditions[1..], &events[idx+1..]);
                         if let Some(rest) = rest {
                             matches.push(event);
                             matches.extend(rest.into_iter());
@@ -272,7 +271,7 @@ impl TraceCriterion {
     }
 }
 
-impl Display for TraceCriterion {
+impl Display for ParallelTraceCriterion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for condition in &self.conditions {
             write!(f, "\n   → ID: {}, data: {}{}",

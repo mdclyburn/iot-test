@@ -253,7 +253,7 @@ impl Test {
         // Configure interrupts on the trace pins differently if specified.
         let contains_trace_criterion = self.criteria.iter()
             .find(|c| match c {
-                Criterion::Trace(_) => true,
+                Criterion::ParallelTrace(_) => true,
                 _ => false,
             })
             .is_some();

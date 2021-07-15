@@ -14,8 +14,8 @@ use crate::testing::criteria::{
     EnergyCriterion,
     EnergyStat,
     Timing,
-    TraceCondition,
-    TraceCriterion,
+    ParallelTraceCondition,
+    ParallelTraceCriterion,
 };
 use crate::testing::test::{
     Operation,

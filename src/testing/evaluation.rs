@@ -19,8 +19,8 @@ use super::test::{
     Test
 };
 use super::trace::{
+    ParallelTrace,
     SerialTrace,
-    Trace
 };
 
 /// Summary of an `Evaluation`.
@@ -55,7 +55,7 @@ pub struct Evaluation {
     spec: Option<Spec>,
     exec_result: Result<Execution>,
     device_responses: Vec<Response>,
-    traces: Vec<Trace>,
+    parallel_traces: Vec<ParallelTrace>,
     serial_traces: Vec<SerialTrace>,
     energy_metrics: HashMap<String, Vec<f32>>,
 }
@@ -65,7 +65,7 @@ impl Evaluation {
                spec: &Spec,
                exec_result: Result<Execution>,
                device_responses: Vec<Response>,
-               traces: Vec<Trace>,
+               parallel_traces: Vec<ParallelTrace>,
                serial_traces: Vec<SerialTrace>,
                energy_metrics: HashMap<String, Vec<f32>>) -> Evaluation
     {
@@ -74,7 +74,7 @@ impl Evaluation {
             spec: Some(spec.clone()),
             exec_result,
             device_responses,
-            traces,
+            parallel_traces,
             serial_traces,
             energy_metrics,
         }
@@ -86,7 +86,7 @@ impl Evaluation {
             spec: spec.map(|s| s.clone()),
             exec_result: Err(error),
             device_responses: Vec::new(),
-            traces: Vec::new(),
+            parallel_traces: Vec::new(),
             serial_traces: Vec::new(),
             energy_metrics: HashMap::new(),
         }
@@ -214,13 +214,13 @@ impl Evaluation {
                 }
             },
 
-            Criterion::Trace(trace_criterion) => {
+            Criterion::ParallelTrace(trace_criterion) => {
                 let execution_t0 = self.exec_result
                     .as_ref()
                     // Evaluation results are only relevant when the exec_result is Ok(...).
                     .expect("Attempted to evaluate criterion when execution result failed")
                     .get_start();
-                if let Some(aligned_traces) = trace_criterion.align(*execution_t0, self.traces.as_slice()) {
+                if let Some(aligned_traces) = trace_criterion.align(*execution_t0, self.parallel_traces.as_slice()) {
                     let count = aligned_traces.len();
                     let mut message = "Satisfied by: ".to_string();
                     let it = aligned_traces.into_iter()
@@ -272,9 +272,9 @@ impl Display for Evaluation {
                 }
             }
 
-            if self.traces.len() > 0 {
+            if self.parallel_traces.len() > 0 {
                 write!(f, "  Traces:\n")?;
-                for trace in &self.traces {
+                for trace in &self.parallel_traces {
                     let spec = self.spec.as_ref().unwrap();
                     let trace_point_name = spec.trace_point_name(trace.get_id())
                         .map(|s| s.as_str())
