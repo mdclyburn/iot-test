@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::path::Path;
+use std::time::Duration;
 
 use crate::comm::{Direction, Class as SignalClass, Signal};
 use crate::device::Device;
@@ -23,7 +24,8 @@ use crate::testing::test::{
 };
 
 use super::{Result,
-            TestbedConfigReader};
+            TestbedConfigReader,
+            TestConfigAdapter};
 
 #[derive(Debug)]
 pub struct HardCodedTestbed {  }
@@ -81,5 +83,56 @@ impl TestbedConfigReader for HardCodedTestbed {
             energy_meters);
 
         Ok(testbed)
+    }
+}
+
+#[derive(Debug)]
+pub struct HardCodedTests {
+    tests: Vec<Test>,
+}
+
+impl HardCodedTests {
+    pub fn new() -> HardCodedTests {
+        HardCodedTests {
+            tests: vec![
+                // Test::new(
+                //     "radio-packet-tx",
+                //     (&["radio_send_app"]).into_iter().map(|x| *x),
+                //     (&[]).into_iter().copied(),
+                //     &[Operation::reset_device(),
+                //       Operation::idle_testbed(Duration::from_millis(5000))],
+                //     &[Criterion::Energy(EnergyCriterion::new("system-total", EnergyStat::Total)
+                //                         .with_max(350.0))]),
+
+                // Test::new(
+                //     "no-app-test",
+                //     (&[]).into_iter().map(|x| *x),
+                //     &[Operation { time: 0, pin_no: 23, input: Signal::Digital(false) },
+                //       Operation { time: 200, pin_no: 23, input: Signal::Digital(false) }],
+                //     &[Criterion::Energy(EnergyCriterion::new("system", EnergyStat::Average)
+                //                         .with_min(10.0))]),
+
+                Test::new(
+                    "blink-trace",
+                    (&[]).into_iter().copied(),
+                    (&["capsule/led/command/on", "capsule/led/command/off"]).into_iter().copied(),
+                    &[Operation { time: 0, pin_no: 23, input: Signal::Digital(false) },
+                      Operation { time: 3000, pin_no: 23, input: Signal::Digital(true) }],
+                    &[Criterion::ParallelTrace(ParallelTraceCriterion::new(&[ParallelTraceCondition::new(2).with_extra_data(1),
+                                                                             ParallelTraceCondition::new(1).with_timing(Timing::Relative(Duration::from_millis(50)),
+                                                                                                                        Duration::from_millis(5))
+                                                                             .with_extra_data(1)]))])
+            ],
+        }
+    }
+}
+
+impl TestConfigAdapter for HardCodedTests {
+    fn tests(&self) -> Box<dyn Iterator<Item = Result<Test>>>
+    {
+        let it = self.tests.clone().into_iter()
+            .map(|test| Ok(test));
+
+        Box::new(it)
     }
 }

@@ -9,10 +9,13 @@ use getopts::Options;
 
 use crate::input::{
     TestbedConfigReader,
-    // TestConfigAdapter,
+    TestConfigAdapter,
 };
 use crate::input::json::JSONTestbedParser;
-use crate::input::hard_code::HardCodedTestbed;
+use crate::input::hard_code::{
+    HardCodedTestbed,
+    HardCodedTests,
+};
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -58,30 +61,38 @@ impl From<getopts::Fail> for Error {
 #[derive(Debug)]
 pub struct Configuration {
     testbed_reader: Box<dyn TestbedConfigReader>,
-    // test_reader: Box<dyn TestConfigAdapter>,
+    test_adapter: Box<dyn TestConfigAdapter>,
 }
 
 impl Configuration {
-    fn new(testbed_reader: Box<dyn TestbedConfigReader>) -> Configuration {
+    fn new(testbed_reader: Box<dyn TestbedConfigReader>,
+           test_adapter: Box<dyn TestConfigAdapter>) -> Configuration
+    {
         Configuration {
             testbed_reader,
+            test_adapter,
         }
     }
 
     pub fn get_testbed_reader(&self) -> &dyn TestbedConfigReader {
         self.testbed_reader.as_ref()
     }
+
+    pub fn get_test_adapter(&self) -> &dyn TestConfigAdapter {
+        self.test_adapter.as_ref()
+    }
 }
 
 fn create_options() -> Options {
     let mut opts = Options::new();
     opts.optopt("b", "testbed-format", "select a testbed input format", "FORMAT");
+    opts.optopt("t", "test-format", "select a test input format", "FORMAT");
     opts.optflag("h", "help", "show help");
 
     opts
 }
 
-pub fn parse() -> Result<Configuration> {
+pub fn parse<'a>() -> Result<Configuration> {
     let opts = create_options();
 
     let cli_args: Vec<_> = env::args().collect();
@@ -115,10 +126,28 @@ pub fn parse() -> Result<Configuration> {
             }?
         } else {
             // Default to the hard-coded testbed.
-            let json_path = Path::new(testbed_config);
             Box::new(HardCodedTestbed::new())
         };
 
-        Ok(Configuration::new(testbed_reader))
+        let test_adapter: Box<dyn TestConfigAdapter> = if matches.opt_present("test-format") {
+            let test_format = matches.opt_str("test-format")
+                .ok_or(Error::ArgumentMissing("test-format"))?;
+            match test_format.as_str() {
+                "code" => {
+                    // hard-coded test adapter
+                    Ok(Box::new(HardCodedTests::new()))
+                },
+
+                _ => {
+                    let msg = format!("{} is not a test format", test_format);
+                    Err(Error::Invalid(msg))
+                },
+            }?
+        } else {
+            // Default to the hard-coded tests.
+            Box::new(HardCodedTests::new())
+        };
+
+        Ok(Configuration::new(testbed_reader, test_adapter))
     }
 }
