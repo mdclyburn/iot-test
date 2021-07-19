@@ -88,32 +88,31 @@ pub fn parse() -> Result<Configuration> {
     let matches = opts.parse(&cli_args[1..])?;
 
     if matches.opt_present("h") {
-        let brief = format!("Usage: {} [ options ] <testbed config>", &cli_args[0]);
+        let brief = format!("Usage: {} [ options ] <config-specific options>", &cli_args[0]);
         Err(Error::Help(opts.usage(&brief)))
     } else {
-        // Free arguments.
-        let testbed_config = matches.free.get(0)
-            .ok_or(Error::ArgumentMissing("testbed config"))?;
-
-        // Other provided arguments.
         let testbed_reader: Box<dyn TestbedConfigReader> = if matches.opt_present("testbed-format") {
             let format = matches.opt_str("testbed-format")
                 .ok_or(Error::ArgumentMissing("testbed-format"))?;
             match format.as_str() {
-                    "code" => {
-                        Ok(Box::new(HardCodedTestbed::new()) as Box<dyn TestbedConfigReader>)
-                    },
+                "code" => {
+                    Ok(Box::new(HardCodedTestbed::new()) as Box<dyn TestbedConfigReader>)
+                },
 
-                    "json" => {
-                        let json_path = Path::new(testbed_config);
-                        Ok(Box::new(JSONTestbedParser::new(json_path)) as Box<dyn TestbedConfigReader>)
-                    },
+                "json" => {
+                    // Free arguments
+                    let testbed_config = matches.free.get(0)
+                        .ok_or(Error::ArgumentMissing("testbed config"))?;
 
-                    _ => {
-                        let msg = format!("{} is not a testbed format", format);
-                        Err(Error::Invalid(msg))
-                    },
-                }?
+                    let json_path = Path::new(testbed_config);
+                    Ok(Box::new(JSONTestbedParser::new(json_path)) as Box<dyn TestbedConfigReader>)
+                },
+
+                _ => {
+                    let msg = format!("{} is not a testbed format", format);
+                    Err(Error::Invalid(msg))
+                },
+            }?
         } else {
             // Default to the hard-coded testbed.
             let json_path = Path::new(testbed_config);
