@@ -195,7 +195,7 @@ impl ParallelTraceCriterion {
         }
     }
 
-    /// Returns the [`Trace`]s satisfying the criterion.
+    /// Returns the [`ParallelTrace`]s satisfying the criterion.
     pub fn align<'a>(&self, t0: Instant, traces: &'a [ParallelTrace]) -> Option<Vec<&'a ParallelTrace>> {
         ParallelTraceCriterion::rec_align(
             t0, t0, self.conditions.as_slice(), traces)
