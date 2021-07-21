@@ -1,3 +1,5 @@
+//! Pluggable testbed and test providers.
+
 use std::fmt::Debug;
 use std::iter::Iterator;
 
@@ -18,5 +20,6 @@ pub trait TestbedConfigReader: Debug {
 
 /// Data adapter producing tests read from an input source.
 pub trait TestConfigAdapter: Debug {
+    /// Create a Test-producing iterator.
     fn tests(&self) -> Box<dyn Iterator<Item = Test> + '_>;
 }

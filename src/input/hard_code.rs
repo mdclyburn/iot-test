@@ -1,3 +1,5 @@
+//! Hard-coded Testbed and Test providers.
+
 use std::collections::HashMap;
 use std::path::Path;
 use std::time::Duration;
@@ -27,6 +29,7 @@ use super::{Result,
             TestbedConfigReader,
             TestConfigAdapter};
 
+/// Testbed created from code compiled into the binary.
 #[derive(Debug)]
 pub struct HardCodedTestbed {  }
 
@@ -86,6 +89,7 @@ impl TestbedConfigReader for HardCodedTestbed {
     }
 }
 
+/// Test adapter providing tests built from code compiled into the binary.
 #[derive(Debug)]
 pub struct HardCodedTests {
     tests: Vec<Test>,

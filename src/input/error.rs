@@ -1,3 +1,5 @@
+//! Testbed input-related errors.
+
 use std::convert::From;
 use std::error;
 use std::fmt;
@@ -5,12 +7,18 @@ use std::fmt::Display;
 
 use crate::io as hw_io;
 
+/// Errors from creating testbeds and tests from provided input.
 #[derive(Debug)]
 pub enum Error {
+    /// A problem with a configuration provided to a driver.
     Driver(String),
+    /// Input format error with provided input.
     Format(String),
+    /// Testbed hardware I/O error.
     Hardware(hw_io::Error),
+    /// I/O error.
     IO(std::io::Error),
+    /// Provided input is not supported.
     Unsupported,
 }
 

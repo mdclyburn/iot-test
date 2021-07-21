@@ -159,11 +159,15 @@ impl SerialTrace {
         self.raw_data.len()
     }
 
-    pub fn data(&self) -> &[u8] {
+    pub fn get_data(&self) -> &[u8] {
         self.raw_data.as_slice()
     }
 
-    pub fn offset(&self, t0: Instant) -> Duration {
+    pub fn get_time(&self) -> Instant {
+        self.time
+    }
+
+    pub fn get_offset(&self, t0: Instant) -> Duration {
         if t0 < self.time {
             self.time - t0
         } else {

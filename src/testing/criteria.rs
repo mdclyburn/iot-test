@@ -256,6 +256,7 @@ impl ParallelTraceCriterion {
                         if let Some(rest) = rest {
                             matches.push(event);
                             matches.extend(rest.into_iter());
+
                             return Some(matches);
                         }
                     }
@@ -405,7 +406,130 @@ impl Display for EnergyStat {
 
 #[allow(unused)]
 #[derive(Clone, Debug)]
-pub struct SerialTraceCriterion {  }
+pub struct SerialTraceCondition {
+    data: Vec<u8>,
+    timing: Option<(Timing, Duration)>,
+}
+
+impl SerialTraceCondition {
+    pub fn new<'a, T>(data: T) -> SerialTraceCondition
+    where
+        T: IntoIterator<Item = &'a u8>,
+    {
+        SerialTraceCondition {
+            data: data.into_iter()
+                .copied()
+                .collect(),
+            timing: None,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn with_timing(self, time: Timing, tolerance: Duration) -> Self {
+        Self {
+            timing: Some((time, tolerance)),
+            ..self
+        }
+    }
+
+    pub fn get_data(&self) -> &Vec<u8> {
+        &self.data
+    }
+
+    pub fn get_offset(&self) -> Option<Timing> {
+        self.timing.as_ref()
+            .map(|(timing, _tolerance)| timing)
+            .copied()
+    }
+
+    pub fn get_tolerance(&self) -> Option<Duration> {
+        self.timing.as_ref()
+            .map(|(_timing, tolerance)| tolerance)
+            .copied()
+    }
+
+    pub fn satisfied_by(&self, event: &SerialTrace) -> bool {
+        self.data.len() == event.len()
+            &&
+            (&self.data).into_iter()
+            .eq(event.get_data())
+    }
+}
+
+#[allow(unused)]
+#[derive(Clone, Debug)]
+pub struct SerialTraceCriterion {
+    conditions: Vec<SerialTraceCondition>,
+}
+
+impl SerialTraceCriterion {
+    /// Create a new serial trace criterion.
+    pub fn new<'a, T>(conditions: T) -> SerialTraceCriterion
+    where
+        T: IntoIterator<Item = &'a SerialTraceCondition>,
+    {
+        SerialTraceCriterion {
+            conditions: conditions.into_iter()
+                .cloned()
+                .collect(),
+        }
+    }
+
+    /// Returns the [`SerialTrace`]s satisfying the criterion.
+    pub fn align<'a>(&self, t0: Instant, traces: &'a [SerialTrace]) -> Option<Vec<&'a SerialTrace>> {
+        SerialTraceCriterion::rec_align(
+            t0, t0, self.conditions.as_slice(), traces)
+    }
+
+    /** Attempt to satisfy conditions with the provided [`SerialTrace`]s.
+
+    This function is the serial parallel to the parallel tracing implementation.
+    See [`ParallelTraceCriterion::rec_align`] for more information.
+     */
+    fn rec_align<'a>(t0: Instant,
+                     tp: Instant,
+                     conditions: &[SerialTraceCondition],
+                     events: &'a [SerialTrace]) -> Option<Vec<&'a SerialTrace>>
+    {
+        let mut matches = Vec::new();
+
+        if conditions.len() > 0 {
+            let condition = &conditions[0];
+            for (event, idx) in events.iter().zip(0..) {
+                if condition.satisfied_by(event) {
+                    let timing_matches: bool = {
+                        if let Some(timing) = condition.get_offset() {
+                            let t_req = match timing {
+                                Timing::Absolute(d) => t0 + d,
+                                Timing::Relative(d) => tp + d,
+                            };
+
+                            let since = t_req.max(event.get_time()) - t_req.min(event.get_time());
+                            since < condition.get_tolerance().unwrap()
+                        } else {
+                            true
+                        }
+                    };
+
+                    if timing_matches {
+                        let rest = SerialTraceCriterion::rec_align(
+                            t0, event.get_time(), &conditions[1..], &events[idx+1..]);
+                        if let Some(rest) = rest {
+                            matches.push(event);
+                            matches.extend(rest.into_iter());
+
+                            return Some(matches);
+                        }
+                    }
+                }
+            }
+
+            None
+        } else {
+            Some(Vec::new())
+        }
+    }
+}
 
 impl Display for SerialTraceCriterion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

@@ -1,3 +1,5 @@
+//! Build testbeds and tests from JSON-formatted data.
+
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fs::File;
@@ -24,12 +26,14 @@ use super::error::Error;
 
 const CONFIG_VERSION: i64 = 1;
 
+/// Parser for testbeds described in JSON.
 #[derive(Debug)]
 pub struct JSONTestbedParser {
     config_path: PathBuf,
 }
 
 impl JSONTestbedParser {
+    /// Create a new parser.
     pub fn new(config_path: &Path) -> JSONTestbedParser {
         JSONTestbedParser {
             config_path: config_path.to_path_buf(),

@@ -173,7 +173,7 @@ impl Testbed {
 
             for trace in &serial_traces {
                 println!("Serial trace @{:?} -> {}",
-                       trace.offset(*exec_result.as_ref().unwrap().get_start()),
+                       trace.get_offset(*exec_result.as_ref().unwrap().get_start()),
                        trace);
             }
 
