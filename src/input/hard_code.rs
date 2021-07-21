@@ -128,9 +128,10 @@ impl HardCodedTests {
 }
 
 impl TestConfigAdapter for HardCodedTests {
-    fn tests(&self) -> Box<dyn Iterator<Item = Result<Test>>>
+    fn tests(&self) -> Box<dyn Iterator<Item = Result<Test>> + '_>
     {
-        let it = self.tests.clone().into_iter()
+        let it = self.tests.iter()
+            .cloned()
             .map(|test| Ok(test));
 
         Box::new(it)
