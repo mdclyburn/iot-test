@@ -57,9 +57,9 @@ impl Testbed {
      *    testbed.execute(&[test], &mut results);
      * ```
      */
-    pub fn execute<'a, T>(&self, tests: T) -> Result<Vec<Evaluation>>
+    pub fn execute<'a, T>(&self, tests: &mut T) -> Result<Vec<Evaluation>>
     where
-        T: IntoIterator<Item = &'a Test>
+        T: Iterator<Item = Test>,
     {
         let mut test_results = Vec::new();
 
@@ -93,7 +93,7 @@ impl Testbed {
             let res = self.platform_support.reconfigure(&trace_points);
             if let Err(reconfig_err) = res {
                 let eval = Evaluation::failed(
-                    test,
+                    &test,
                     None,
                     Error::Software(reconfig_err));
                 test_results.push(eval);
@@ -105,7 +105,7 @@ impl Testbed {
             if let Err(load_err) = self.load_apps(&test) {
                 println!("executor: error loading/removing application(s)");
                 let eval = Evaluation::failed(
-                    test,
+                    &test,
                     Some(&platform_spec),
                     load_err);
                 test_results.push(eval);
@@ -178,7 +178,7 @@ impl Testbed {
             }
 
             let evaluation = Evaluation::new(
-                test,
+                &test,
                 &platform_spec,
                 exec_result,
                 other_gpio,

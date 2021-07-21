@@ -37,12 +37,8 @@ fn main() {
     let testbed = result.unwrap();
     print!("{}\n", testbed);
 
-    let tests: Vec<Test> = configuration.get_test_adapter().tests()
-        .into_iter()
-        .map(|r| r.unwrap().clone())
-        .collect();
-
-    let res = testbed.execute(&tests);
+    let mut tests = configuration.get_test_adapter().tests();
+    let res = testbed.execute(&mut tests);
     if let Ok(results) = res {
         for r in results {
             println!("{}", r);

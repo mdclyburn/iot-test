@@ -18,5 +18,5 @@ pub trait TestbedConfigReader: Debug {
 
 /// Data adapter producing tests read from an input source.
 pub trait TestConfigAdapter: Debug {
-    fn tests(&self) -> Box<dyn Iterator<Item = Result<Test>> + '_>;
+    fn tests(&self) -> Box<dyn Iterator<Item = Test> + '_>;
 }
