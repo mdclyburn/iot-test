@@ -19,6 +19,8 @@ use crate::testing::criteria::{
     Timing,
     ParallelTraceCondition,
     ParallelTraceCriterion,
+    SerialTraceCondition,
+    SerialTraceCriterion,
 };
 use crate::testing::test::{
     Operation,
@@ -116,16 +118,29 @@ impl HardCodedTests {
                 //     &[Criterion::Energy(EnergyCriterion::new("system", EnergyStat::Average)
                 //                         .with_min(10.0))]),
 
+                // Test::new(
+                //     "blink-trace",
+                //     (&[]).into_iter().copied(),
+                //     (&["capsule/led/command/on", "capsule/led/command/off"]).into_iter().copied(),
+                //     &[Operation { time: 0, pin_no: 23, input: Signal::Digital(false) },
+                //       Operation { time: 3000, pin_no: 23, input: Signal::Digital(true) }],
+                //     &[Criterion::ParallelTrace(ParallelTraceCriterion::new(&[ParallelTraceCondition::new(2).with_extra_data(1),
+                //                                                              ParallelTraceCondition::new(1).with_timing(Timing::Relative(Duration::from_millis(50)),
+                //                                                                                                         Duration::from_millis(5))
+                //                                                              .with_extra_data(1)]))]),
+
                 Test::new(
-                    "blink-trace",
+                    "serial-blink-trace",
                     (&[]).into_iter().copied(),
-                    (&["capsule/led/command/on", "capsule/led/command/off"]).into_iter().copied(),
+                    (&[]).into_iter().copied(),
                     &[Operation { time: 0, pin_no: 23, input: Signal::Digital(false) },
                       Operation { time: 3000, pin_no: 23, input: Signal::Digital(true) }],
-                    &[Criterion::ParallelTrace(ParallelTraceCriterion::new(&[ParallelTraceCondition::new(2).with_extra_data(1),
-                                                                             ParallelTraceCondition::new(1).with_timing(Timing::Relative(Duration::from_millis(50)),
-                                                                                                                        Duration::from_millis(5))
-                                                                             .with_extra_data(1)]))])
+                    &[Criterion::SerialTrace(
+                        SerialTraceCriterion::new(&[
+                            SerialTraceCondition::new(&[0x6c, 0x65, 0x64, 0x20, 0x6f, 0x6e]),
+                            SerialTraceCondition::new(&[0x6c, 0x65, 0x64, 0x20, 0x6f, 0x6e])
+                                .with_timing(Timing::Relative(Duration::from_millis(0)),
+                                             Duration::from_millis(10))]))]),
             ],
         }
     }

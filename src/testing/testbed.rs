@@ -83,6 +83,7 @@ impl Testbed {
 
         for test in tests {
             println!("executor: running '{}'", test.get_id());
+            println!("{}", test);
 
             // Reconfigure target if necessary.
             // Just always configuring when there are trace points
