@@ -533,6 +533,24 @@ impl SerialTraceCriterion {
 
 impl Display for SerialTraceCriterion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for condition in &self.conditions {
+            write!(f, "\n  → data: [ ")?;
+            for byte in condition.get_data() {
+                write!(f, "{:02X} ", byte)?;
+            }
+            write!(f, "]")?;
+
+            if let Some(timing) = condition.get_offset() {
+                write!(f, " @ {:?}±{:?} from {}",
+                        timing.get_offset(),
+                        condition.get_tolerance().unwrap(),
+                        match timing {
+                            Timing::Absolute(_) => "test start",
+                            Timing::Relative(_) => "last event",
+                        })?;
+            }
+        }
+
         Ok(())
     }
 }
