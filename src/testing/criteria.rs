@@ -224,7 +224,7 @@ impl ParallelTraceCriterion {
         let mut matches = Vec::new();
 
         if conditions.len() > 0 {
-            let condition = conditions[0];
+            let condition = &conditions[0];
             for (event, idx) in events.iter().zip(0..) {
                 // Check the timing of the trace event as that cannot be determined
                 // within the context of the TraceCondition alone, especially if the
