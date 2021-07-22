@@ -65,6 +65,7 @@ impl TestbedConfigReader for HardCodedTestbed {
             ],
             // Parallel tracing pins (by device pin number).
             &[],
+            Some(23),
         ).unwrap();
 
         // Energy metering

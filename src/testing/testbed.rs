@@ -48,14 +48,14 @@ impl Testbed {
     }
 
     /** Run tests.
-     *
-     * Execute the given tests one after the other.
-     *
-     * # Examples
-     * ```
-     *    let mut results = Vec::new();
-     *    testbed.execute(&[test], &mut results);
-     * ```
+
+    Execute the given tests one after the other.
+
+    # Examples
+    ```
+    let mut results = Vec::new();
+    testbed.execute(&[test], &mut results);
+    ```
      */
     pub fn execute<'a, T>(&self, tests: &mut T) -> Result<Vec<Evaluation>>
     where

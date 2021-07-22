@@ -107,6 +107,7 @@ pub struct Mapping {
     device: Device,
     numbering: HashMap<u8, u8>,
     trace_pins: Vec<u8>,
+    reset_pin: Option<u8>,
 }
 
 impl Mapping {
@@ -120,8 +121,9 @@ impl Mapping {
     ```
      */
     pub fn new<'a, T, U>(device: &Device,
-                      host_target_map: T,
-                      trace_pins: U) -> Result<Mapping>
+                         host_target_map: T,
+                         trace_pins: U,
+                         reset_pin: Option<u8>) -> Result<Mapping>
     where
         T: IntoIterator<Item = &'a (u8, u8)>,
         U: IntoIterator<Item = &'a u8>,
@@ -132,10 +134,12 @@ impl Mapping {
         let trace_pins: Vec<u8> = trace_pins.into_iter()
             .copied()
             .collect();
+        let reset_pin_v = if let Some(pin) = reset_pin { vec![pin] } else { Vec::new() };
 
         let used_device_pins = numbering.iter()
             .map(|(_h, t)| *t)
-            .chain(trace_pins.iter().copied());
+            .chain(trace_pins.iter().copied())
+            .chain(reset_pin_v.into_iter());
         // device.has_pins(numbering.iter().map(|(_h, t)| *t))?;
         device.has_pins(used_device_pins)?;
 
@@ -143,6 +147,7 @@ impl Mapping {
             device: device.clone(),
             numbering,
             trace_pins,
+            reset_pin,
         })
     }
 

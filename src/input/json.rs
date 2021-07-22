@@ -127,6 +127,8 @@ impl TestbedConfigReader for JSONTestbedParser {
 struct IOConfig {
     gpio: Vec<PinConfig>,
     trace_pins: Vec<u8>,
+    #[serde(alias = "reset-pin")]
+    reset_pin: Option<u8>,
 }
 
 impl IOConfig {
@@ -146,7 +148,7 @@ impl IOConfig {
             .collect();
         let it_trace_pins = self.trace_pins.iter();
 
-        let mapping = Mapping::new(&device, &pin_conns, it_trace_pins)
+        let mapping = Mapping::new(&device, &pin_conns, it_trace_pins, self.reset_pin)
             .map_err(|e| Error::Format(format!("IO mapping error: {}", e)))?;
 
         Ok(mapping)
