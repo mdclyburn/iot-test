@@ -33,7 +33,7 @@ pub enum Action {
     /// No-op
     Idle(Duration),
     /// Apply an input signal to a particular pin.
-    Input(Signal, u8)
+    Input(Signal, u8),
 }
 
 impl Display for Action {
@@ -209,6 +209,7 @@ pub struct Test {
     actions: BinaryHeap<Reverse<Operation>>,
     criteria: Vec<Criterion>,
     tail_duration: Option<Duration>,
+    reset_device: bool,
 }
 
 impl Test {
@@ -217,7 +218,8 @@ impl Test {
                                app_id: T,
                                trace_points: U,
                                ops: V,
-                               criteria: W) -> Test
+                               criteria: W,
+                               reset_device: bool) -> Test
     where
         T: IntoIterator<Item = &'a str>,
         U: IntoIterator<Item = &'a str>,
@@ -231,6 +233,7 @@ impl Test {
             actions: ops.into_iter().map(|x| Reverse(*x)).collect(),
             criteria: criteria.into_iter().cloned().collect(),
             tail_duration: Some(Duration::from_millis(5)),
+            reset_device,
         }
     }
 
@@ -252,6 +255,11 @@ impl Test {
     /// Returns defined test criteria.
     pub fn get_criteria(&self) -> &Vec<Criterion> {
         &self.criteria
+    }
+
+    /// Returns true if the device under test should reset for the test.
+    pub fn get_reset_on_start(&self) -> bool {
+        self.reset_device
     }
 
     /// Drive test outputs (inputs to the device).

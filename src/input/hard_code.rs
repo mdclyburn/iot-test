@@ -140,7 +140,8 @@ impl HardCodedTests {
                             SerialTraceCondition::new(&[0x6c, 0x65, 0x64, 0x20, 0x6f, 0x6e]),
                             SerialTraceCondition::new(&[0x6c, 0x65, 0x64, 0x20, 0x6f, 0x6e])
                                 .with_timing(Timing::Relative(Duration::from_millis(0)),
-                                             Duration::from_millis(10))]))]),
+                                             Duration::from_millis(10))]))],
+                    true),
             ],
         }
     }
