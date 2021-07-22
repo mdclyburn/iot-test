@@ -134,8 +134,7 @@ impl HardCodedTests {
                     "serial-blink-trace",
                     (&[]).into_iter().copied(),
                     (&[]).into_iter().copied(),
-                    &[Operation { time: 0, pin_no: 23, input: Signal::Digital(false) },
-                      Operation { time: 3000, pin_no: 23, input: Signal::Digital(true) }],
+                    &[Operation::at(0).idle_sync(Duration::from_millis(3000))],
                     &[Criterion::SerialTrace(
                         SerialTraceCriterion::new(&[
                             SerialTraceCondition::new(&[0x6c, 0x65, 0x64, 0x20, 0x6f, 0x6e]),

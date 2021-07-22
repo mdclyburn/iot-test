@@ -247,7 +247,7 @@ impl Evaluation {
                     let count = aligned_traces.len();
                     let mut message = "Satisfied by: ".to_string();
                     let it = aligned_traces.into_iter()
-                        .map(|t| format!("@{:?}", t.get_time() - *execution_t0));
+                        .map(|t| format!("@{:?}", t.get_offset(*execution_t0)));
                     for (msg, no) in it.zip(1..) {
                         message.push_str(&msg);
                         if no < count {

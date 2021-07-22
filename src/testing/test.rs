@@ -27,20 +27,70 @@ use super::criteria::{
 
 type Result<T> = std::result::Result<T, Error>;
 
+/// An action that occurs as part of an operation.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum Action {
+    /// No-op
+    Idle(Duration),
+    /// Apply an input signal to a particular pin.
+    Input(Signal, u8)
+}
+
+impl Display for Action {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use Action::*;
+        match self {
+            Idle(d) => write!(f, "idle for {:?}", d),
+            Input(signal, pin) => write!(f, "input {}, pin {}", signal, pin),
+        }
+    }
+}
+
 /// An input to perform at a specific time.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Operation {
-    /// Time to perform the input in milliseconds
-    pub time: u64,
-    /// Signal to apply
-    pub input: Signal,
-    /// Device pin to apply the signal to.
-    pub pin_no: u8,
+    time: u64,
+    action: Option<Action>,
+}
+
+impl Operation {
+    pub fn at(time: u64) -> Operation {
+        Operation {
+            time,
+            // Create with no action initially.
+            // Idling should be explicit and not accidental/coincidental
+            // since there is a function to create idle time.
+            // Empty Operations should be ignored by testing.
+            action: None,
+        }
+    }
+
+    /// Create an input.
+    pub fn input(self, signal: Signal, pin: u8) -> Self {
+        Self {
+            action: Some(Action::Input(signal, pin)),
+            ..self
+        }
+    }
+
+    /// Create a synchronous idling period.
+    pub fn idle_sync(self, length: Duration) -> Self {
+        Self {
+            action: Some(Action::Idle(length)),
+            ..self
+        }
+    }
 }
 
 impl Display for Operation {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\tinput: {}", self.time, self.input)
+        let action_text = if let Some(action) = self.action {
+            format!("{}", action)
+        } else {
+            "None".to_string()
+        };
+
+        write!(f, "@{}ms\taction: {}", self.time, action_text)
     }
 }
 
@@ -210,15 +260,21 @@ impl Test {
             .map(|Reverse(op)| (t0 + Duration::from_millis(op.time), op));
         for (t, op) in timeline {
             while Instant::now() < t {  } // spin wait?
-            match op.input {
-                Signal::Digital(true) =>
-                    (*pins.get_pin_mut(op.pin_no)?)
-                    .set_high(),
-                Signal::Digital(false) =>
-                    (*pins.get_pin_mut(op.pin_no)?)
-                    .set_low(),
-                input => panic!("Unhandled input type: {:?}", input),
-            };
+
+            if let Some(action) = op.action {
+                match action {
+                    Action::Idle(wait_length) => {
+                        let t_until = t + wait_length;
+                        while Instant::now() < t_until {  } // spin wait?
+                    },
+
+                    Action::Input(signal, pin_no) => match signal {
+                        Signal::Digital(true) => (*pins.get_pin_mut(pin_no)?).set_high(),
+                        Signal::Digital(false) => (*pins.get_pin_mut(pin_no)?).set_low(),
+                        input => panic!("Unhandled input type: {:?}", input),
+                    },
+                };
+            }
         }
 
         Ok(Execution::new(t0, Instant::now()))
@@ -423,7 +479,12 @@ impl Test {
     /// TODO: make this dependent on actions' timing, criteria timing, and another tail duration(?).
     fn get_max_runtime(&self) -> Duration {
         let duration_ms = self.actions.iter()
-            .map(|Reverse(action)| action.time)
+            // Only Operations with actions.
+            .filter(|Reverse(op)| op.action.is_some())
+            .map(|Reverse(op)| match op.action.unwrap() {
+                Action::Idle(idle_duration) => op.time + (idle_duration.as_millis() as u64),
+                _ => op.time,
+            })
             .last()
             .unwrap_or(0);
         let tail_ms = self.tail_duration
@@ -438,18 +499,15 @@ impl Display for Test {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Test: {}\n", self.id)?;
         write!(f, "=== Operation timeline\n")?;
-        write!(f, "|{:>10}|{:^5}|{:^20}|\n", "time (ms)", "pin", "operation")?;
-        write!(f, "|----------+-----+--------------------|\n")?;
+        write!(f, "|{:>10}|{:^20}|\n", "time (ms)", "operation")?;
+        write!(f, "|----------+--------------------|\n")?;
         for Reverse(ref action) in &self.actions {
-            let sig_text = match action.input {
-                Signal::Digital(true) => "digital 1".to_string(),
-                Signal::Digital(false) => "digital 0".to_string(),
-                Signal::Analog(lv) => format!("analog {:5}", lv),
-            };
-            write!(f, "|{:>10}|{:^5}|{:^20}|\n",
-                   action.time,
-                   action.pin_no,
-                   sig_text)?;
+            if let Some(act) = action.action {
+                let act_text = format!("{}", act);
+                write!(f, "|{:>10}|{:^20}|\n", action.time, act_text)?;
+            } else {
+                write!(f, "|{:>10}|{:^20}|\n", action.time, "-")?;
+            }
         }
         write!(f, "\n")?;
 
