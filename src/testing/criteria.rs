@@ -176,7 +176,7 @@ impl Display for ParallelTraceCondition {
     }
 }
 
-/// Trace criterion specification details.
+/// Parallel tracing criterion specification details.
 #[derive(Clone, Debug)]
 pub struct ParallelTraceCriterion {
     conditions: Vec<ParallelTraceCondition>,
@@ -404,6 +404,7 @@ impl Display for EnergyStat {
     }
 }
 
+/// Component condition of a [`SerialTraceCriterion`].
 #[allow(unused)]
 #[derive(Clone, Debug)]
 pub struct SerialTraceCondition {
@@ -412,6 +413,7 @@ pub struct SerialTraceCondition {
 }
 
 impl SerialTraceCondition {
+    /// Create a new serial tracing condition.
     pub fn new<'a, T>(data: T) -> SerialTraceCondition
     where
         T: IntoIterator<Item = &'a u8>,
@@ -424,6 +426,7 @@ impl SerialTraceCondition {
         }
     }
 
+    /// Specify the timing requirements to meet the condition.
     #[allow(dead_code)]
     pub fn with_timing(self, time: Timing, tolerance: Duration) -> Self {
         Self {
@@ -432,22 +435,29 @@ impl SerialTraceCondition {
         }
     }
 
+    /// Returns the required data to match.
     pub fn get_data(&self) -> &Vec<u8> {
         &self.data
     }
 
+    /// Returns the time requirement.
     pub fn get_offset(&self) -> Option<Timing> {
         self.timing.as_ref()
             .map(|(timing, _tolerance)| timing)
             .copied()
     }
 
+    /// Returns the timing tolerance.
     pub fn get_tolerance(&self) -> Option<Duration> {
         self.timing.as_ref()
             .map(|(_timing, tolerance)| tolerance)
             .copied()
     }
 
+    /// Returns true if the provided trace’s ID and extra data satisfy the condition.
+
+    /// Because the required timing of the condition is dependent on whether the timing is relative
+    /// to the previous Trace or absolute (relative to the beginning of the test), this function does not check timing.
     pub fn satisfied_by(&self, event: &SerialTrace) -> bool {
         self.data.len() == event.len()
             &&
@@ -456,6 +466,7 @@ impl SerialTraceCondition {
     }
 }
 
+/// Serial tracing criterion specification details.
 #[allow(unused)]
 #[derive(Clone, Debug)]
 pub struct SerialTraceCriterion {

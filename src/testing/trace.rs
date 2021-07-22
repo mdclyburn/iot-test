@@ -141,6 +141,7 @@ fn extra_mask(id_len: u8) -> u16 {
     u16::MAX ^ id_mask(id_len)
 }
 
+/// Trace execution information derived from UART communication.
 #[derive(Clone, Debug)]
 pub struct SerialTrace {
     time: Instant,
@@ -148,6 +149,7 @@ pub struct SerialTrace {
 }
 
 impl SerialTrace {
+    /// Create a new serial trace.
     pub fn new(time: Instant, raw_data: &[u8]) -> SerialTrace {
         SerialTrace {
             time,
@@ -155,18 +157,24 @@ impl SerialTrace {
         }
     }
 
+    /// Returns the size of the trace data.
     pub fn len(&self) -> usize {
         self.raw_data.len()
     }
 
+    /// Returns the raw trace data.
     pub fn get_data(&self) -> &[u8] {
         self.raw_data.as_slice()
     }
 
+    /// Returns the time the trace arrived.
     pub fn get_time(&self) -> Instant {
         self.time
     }
 
+    /// Calculates the offset from the given time to the time the trace arrived.
+    ///
+    /// If `t0` is less than the Instant the trace arrived, this function returns an empty Duration.
     pub fn get_offset(&self, t0: Instant) -> Duration {
         if t0 < self.time {
             self.time - t0
@@ -188,11 +196,13 @@ impl Display for SerialTrace {
     }
 }
 
+/// Create structured [`SerialTrace`]s from raw UART data.
 pub fn reconstruct_serial<'a, T>(raw_data: &[u8], timings: T) -> Vec<SerialTrace>
 where
     T: IntoIterator<Item = &'a (Instant, usize)>
 {
     // Create a flattened array of Instants the bytes were received over UART.
+    // This makes it easier to find out when a particular byte arrived.
     let times: Vec<Instant> = timings.into_iter()
         .flat_map(|(time, len)| vec![*time; *len])
         .collect();

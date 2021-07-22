@@ -24,6 +24,7 @@ use super::{Result,
             TestbedConfigReader};
 use super::error::Error;
 
+/// Supported JSON version.
 const CONFIG_VERSION: i64 = 1;
 
 /// Parser for testbeds described in JSON.
@@ -121,6 +122,7 @@ impl TestbedConfigReader for JSONTestbedParser {
     }
 }
 
+/// IO configuration JSON representation.
 #[derive(Deserialize)]
 struct IOConfig {
     gpio: Vec<PinConfig>,
@@ -151,6 +153,7 @@ impl IOConfig {
     }
 }
 
+/// Pin configuration JSON representation.
 #[derive(Deserialize)]
 struct PinConfig {
     dpin: u8,
@@ -159,6 +162,7 @@ struct PinConfig {
     signal: String,
 }
 
+/// Hardware driver derivable from JSON.
 trait JSONHardware: Sized {
     fn from_json(mapping: &Mapping, json: JSONValue) -> Result<Self> {
         Err(Error::Unsupported)
@@ -178,12 +182,14 @@ impl JSONHardware for hw::INA219 {
     }
 }
 
+/// Platform derivable from JSON.
 trait JSONPlatform: Sized {
     fn from_json(props: &JSONValue) -> Result<Self> {
         Err(Error::Unsupported)
     }
 }
 
+/// Tock configuration JSON representation.
 #[derive(Deserialize)]
 struct TockPlatformConfig {
     #[serde(alias = "tockloader-path")]

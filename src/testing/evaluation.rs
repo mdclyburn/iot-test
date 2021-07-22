@@ -80,6 +80,7 @@ impl Evaluation {
         }
     }
 
+    /// Create an evaluation that fails due to an error during testing.
     pub fn failed(test: &Test, spec: Option<&Spec>, error: Error) -> Evaluation {
         Evaluation {
             test: test.clone(),
