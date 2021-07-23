@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 use std::path::Path;
+use std::thread;
 use std::time::Duration;
 use std::rc::Rc;
 
@@ -56,6 +57,11 @@ impl TestbedConfigReader for HardCodedTestbed {
         // reset fn
         let reset_fn: Rc<dyn Fn(&mut DeviceInputs) -> io::Result<()>> = Rc::new(
             |to_device| {
+                let reset_pin = to_device.get_pin_mut(23)?;
+                reset_pin.set_low();
+                thread::sleep(Duration::from_millis(100));
+                reset_pin.set_high();
+
                 Ok(())
             });
 

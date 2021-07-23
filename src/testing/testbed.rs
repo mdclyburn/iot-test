@@ -121,17 +121,13 @@ impl Testbed {
             barrier.wait();
 
             if test.get_reset_on_start() {
-                if let Some(pin_no) = self.pin_mapping.get_reset_pin() {
-                    println!("executor: resetting device...");
-                    thread::sleep(Duration::from_millis(150));
-                    inputs.get_pin_mut(pin_no).expect("failed to get reset pin")
-                        .set_low();
-                } else {
+                let reset_res = self.pin_mapping.get_device().reset(&mut inputs);
+                if let Err(e) = reset_res {
                     test_results.push(
                         Evaluation::failed(
                             &test,
                             Some(&platform_spec),
-                            Error::ResetUnavailable));
+                            Error::Reset(e)));
                     continue;
                 }
             }
@@ -140,11 +136,11 @@ impl Testbed {
             barrier.wait();
             println!("executor: starting test '{}'", test.get_id());
 
-            if test.get_reset_on_start() {
-                let reset_pin_no = self.pin_mapping.get_reset_pin().unwrap();
-                inputs.get_pin_mut(reset_pin_no).unwrap()
-                    .set_high();
-            }
+            // if test.get_reset_on_start() {
+            //     let reset_pin_no = self.pin_mapping.get_reset_pin().unwrap();
+            //     inputs.get_pin_mut(reset_pin_no).unwrap()
+            //         .set_high();
+            // }
 
             let exec_result = test.execute(Instant::now(), &mut inputs);
 

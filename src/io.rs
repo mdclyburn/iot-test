@@ -41,6 +41,8 @@ pub enum Error {
     I2CUnavailable,
     /// I2C initialization error.
     I2C(i2c::Error),
+    /// Reset functionality not defined.
+    NoReset,
     /// Mapping does not allow UART.
     UARTUnavailable,
     /// UART initialization error.
@@ -66,6 +68,7 @@ impl Display for Error {
             UndefinedPin(pin_no) => write!(f, "target pin {} not mapped", pin_no),
             I2CUnavailable => write!(f, "I2C pins (2, 3) are mapped"),
             I2C(ref e) => write!(f, "could not obtain I2C interface: {}", e),
+            NoReset => write!(f, "reset functionality is not defined for the device"),
             UARTUnavailable => write!(f, "UART pins (14, 15) are mapped"),
             UART(ref e) => write!(f, "could not obtain UART interface: {}", e),
             UndefinedPin(pin_no) => write!(f, "undefined pin ({}) used", pin_no),
@@ -241,6 +244,12 @@ impl Device {
             .map(|&(_dir, sig)| sig)
             .ok_or(Error::UndefinedPin(pin))
     }
+
+    /// Perform a reset of the device.
+    pub fn reset(&self, inputs: &mut DeviceInputs) -> Result<()> {
+        let reset = &*self.reset_fn.as_ref().ok_or(Error::NoReset)?;
+        reset(inputs)
+    }
 }
 
 impl fmt::Debug for Device {
@@ -301,6 +310,11 @@ impl Mapping {
             trace_pins,
             reset_pin,
         })
+    }
+
+    /// Returns the device definition.
+    pub fn get_device(&self) -> &Device {
+        &self.device
     }
 
     /// Returns the host-target pin mapping.
