@@ -19,9 +19,11 @@ use rppal::uart::{
     Parity as UARTParity,
 };
 
-use crate::comm::Direction;
-use crate::device;
-use crate::device::Device;
+use crate::comm::{
+    Class as SignalClass,
+    Direction,
+};
+
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -33,12 +35,8 @@ pub type DeviceOutputs = Pins<InputPin>;
 /// Errors related to acquiring and configuring I/O.
 #[derive(Debug)]
 pub enum Error {
-    /// Device-specific error.
-    Device(device::Error),
     /// GPIO-specific error.
     Gpio(gpio::Error),
-    /// Requested pin is not mapped.
-    UndefinedPin(u8),
     /// Mapping does not allow I2C.
     I2CUnavailable,
     /// I2C initialization error.
@@ -47,12 +45,13 @@ pub enum Error {
     UARTUnavailable,
     /// UART initialization error.
     UART(uart::Error),
+    /// A provided pin was not defined.
+    UndefinedPin(u8),
 }
 
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match *self {
-            Error::Device(ref dev_error) => Some(dev_error),
+        match self {
             Error::Gpio(ref gpio_error) => Some(gpio_error),
             _ => None,
         }
@@ -61,14 +60,15 @@ impl std::error::Error for Error {
 
 impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Error::Device(ref e) => write!(f, "error with target interface: {}", e),
-            Error::Gpio(ref e) => write!(f, "error with GPIO interface: {}", e),
-            Error::UndefinedPin(pin_no) => write!(f, "target pin {} not mapped", pin_no),
-            Error::I2CUnavailable => write!(f, "I2C pins (2, 3) are mapped"),
-            Error::I2C(ref e) => write!(f, "could not obtain I2C interface: {}", e),
-            Error::UARTUnavailable => write!(f, "UART pins (14, 15) are mapped"),
-            Error::UART(ref e) => write!(f, "could not obtain UART interface: {}", e),
+        use Error::*;
+        match self {
+            Gpio(ref e) => write!(f, "error with GPIO interface: {}", e),
+            UndefinedPin(pin_no) => write!(f, "target pin {} not mapped", pin_no),
+            I2CUnavailable => write!(f, "I2C pins (2, 3) are mapped"),
+            I2C(ref e) => write!(f, "could not obtain I2C interface: {}", e),
+            UARTUnavailable => write!(f, "UART pins (14, 15) are mapped"),
+            UART(ref e) => write!(f, "could not obtain UART interface: {}", e),
+            UndefinedPin(pin_no) => write!(f, "undefined pin ({}) used", pin_no),
         }
     }
 }
@@ -91,9 +91,145 @@ impl From<uart::Error> for Error {
     }
 }
 
-impl From<device::Error> for Error {
-    fn from(e: device::Error) -> Self {
-        Error::Device(e)
+/// Wrapper around a set of pins.
+#[derive(Debug)]
+pub struct Pins<T> {
+    pins: HashMap<u8, T>,
+}
+
+impl<T> Pins<T> {
+    /// Create a new collection of pins.
+    fn new<U>(pins: U) -> Pins<T> where
+        U: IntoIterator<Item = (u8, T)>
+    {
+        Pins {
+            pins: pins.into_iter()
+                .map(|(pin_no, pin)| (pin_no, pin))
+                .collect(),
+        }
+    }
+
+    /// Returns a reference to the specified pin.
+    #[allow(dead_code)]
+    pub fn get_pin(&self, pin_no: u8) -> Result<&T> {
+        self.pins.get(&pin_no)
+            .ok_or(Error::UndefinedPin(pin_no))
+    }
+
+    /// Returns a mutable reference to the specified pin.
+    pub fn get_pin_mut(&mut self, pin_no: u8) -> Result<&mut T> {
+        self.pins.get_mut(&pin_no)
+            .ok_or(Error::UndefinedPin(pin_no))
+    }
+
+    /// Returns all configured pins as plain references.
+    pub fn get(&self) -> Result<Vec<&T>> {
+        let pins = self.pins.iter()
+            .map(|(_pin_no, pin)| pin)
+            .collect();
+        Ok(pins)
+    }
+}
+
+/** An iterator over mutable pins.
+
+This iterator allows the pins that are iterated over to change state
+(e.g., set/clear interrupts or change logic state).
+
+# Examples
+```
+for p in &mut pins {
+    println!("Pin #{:02}", p.pin());
+    p.set_high()?;
+    thread::sleep(500);
+    p.set_low()?;
+}
+```
+*/
+pub struct PinsIterMut<'a, T> {
+    pins_it: std::collections::hash_map::IterMut<'a, u8, T>,
+}
+
+impl<'a, T> PinsIterMut<'a, T> {
+    fn new(pins: &'a mut HashMap<u8, T>) -> PinsIterMut<'a, T> {
+        PinsIterMut {
+            pins_it: pins.iter_mut(),
+        }
+    }
+}
+
+impl<'a, T> Iterator for PinsIterMut<'a, T> {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.pins_it.next()
+            .map(|(_pin_no, pin)| pin)
+    }
+}
+
+impl<'a, T> IntoIterator for &'a mut Pins<T> {
+    type Item = &'a mut T;
+    type IntoIter = PinsIterMut<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PinsIterMut::new(&mut self.pins)
+    }
+}
+
+/// Properties of a device under test.
+#[derive(Clone, Debug)]
+pub struct Device {
+    io: HashMap<u8, (Direction, SignalClass)>,
+}
+
+impl Device {
+    /** Define a new device.
+
+    A device under test has a defined set of inputs and outputs.
+    Each I/O has a signal type that it emits or accepts.
+    */
+    pub fn new<'a, T>(pin_map: T) -> Device where
+        T: IntoIterator<Item = &'a (u8, (Direction, SignalClass))> {
+        Device {
+            io: pin_map.into_iter().map(|x| *x).collect(),
+        }
+    }
+
+    /// Returns true if the device definition defines a pin.
+    pub fn has_pin(&self, pin_no: u8) -> bool {
+        self.io.contains_key(&pin_no)
+    }
+
+    /// Returns Ok(()) if the device definition defines all the given pins.
+    pub fn has_pins<T>(&self, pins: T) -> Result<()> where
+        T: IntoIterator<Item = u8>
+    {
+        for pin_no in pins {
+            if !self.has_pin(pin_no) {
+                return Err(Error::UndefinedPin(pin_no));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Returns the direction of the pin.
+    ///
+    /// Returns an error if the pin is not defined.
+    pub fn direction_of(&self, pin: u8) -> Result<Direction> {
+        self.io.get(&pin)
+            .map(|&(dir, _sig)| dir )
+            .ok_or(Error::UndefinedPin(pin))
+    }
+
+    /// Returns the signal of the pin.
+    ///
+    /// Returns an error if the pin is not defined.
+    #[allow(dead_code)]
+    pub fn signal_of(&self, pin: u8) -> Result<SignalClass> {
+        self.io.get(&pin)
+            .map(|&(_dir, sig)| sig)
+            .ok_or(Error::UndefinedPin(pin))
     }
 }
 
@@ -260,90 +396,5 @@ impl Display for Mapping {
         }
 
         Ok(())
-    }
-}
-
-/// Wrapper around a set of pins.
-#[derive(Debug)]
-pub struct Pins<T> {
-    pins: HashMap<u8, T>,
-}
-
-impl<T> Pins<T> {
-    /// Create a new collection of pins.
-    fn new<U>(pins: U) -> Pins<T> where
-        U: IntoIterator<Item = (u8, T)>
-    {
-        Pins {
-            pins: pins.into_iter()
-                .map(|(pin_no, pin)| (pin_no, pin))
-                .collect(),
-        }
-    }
-
-    /// Returns a reference to the specified pin.
-    #[allow(dead_code)]
-    pub fn get_pin(&self, pin_no: u8) -> Result<&T> {
-        self.pins.get(&pin_no)
-            .ok_or(Error::UndefinedPin(pin_no))
-    }
-
-    /// Returns a mutable reference to the specified pin.
-    pub fn get_pin_mut(&mut self, pin_no: u8) -> Result<&mut T> {
-        self.pins.get_mut(&pin_no)
-            .ok_or(Error::UndefinedPin(pin_no))
-    }
-
-    /// Returns all configured pins as plain references.
-    pub fn get(&self) -> Result<Vec<&T>> {
-        let pins = self.pins.iter()
-            .map(|(_pin_no, pin)| pin)
-            .collect();
-        Ok(pins)
-    }
-}
-
-/** An iterator over mutable pins.
-
-This iterator allows the pins that are iterated over to change state
-(e.g., set/clear interrupts or change logic state).
-
-# Examples
-```
-for p in &mut pins {
-    println!("Pin #{:02}", p.pin());
-    p.set_high()?;
-    thread::sleep(500);
-    p.set_low()?;
-}
-```
-*/
-pub struct PinsIterMut<'a, T> {
-    pins_it: std::collections::hash_map::IterMut<'a, u8, T>,
-}
-
-impl<'a, T> PinsIterMut<'a, T> {
-    fn new(pins: &'a mut HashMap<u8, T>) -> PinsIterMut<'a, T> {
-        PinsIterMut {
-            pins_it: pins.iter_mut(),
-        }
-    }
-}
-
-impl<'a, T> Iterator for PinsIterMut<'a, T> {
-    type Item = &'a mut T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.pins_it.next()
-            .map(|(_pin_no, pin)| pin)
-    }
-}
-
-impl<'a, T> IntoIterator for &'a mut Pins<T> {
-    type Item = &'a mut T;
-    type IntoIter = PinsIterMut<'a, T>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        PinsIterMut::new(&mut self.pins)
     }
 }

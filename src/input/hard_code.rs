@@ -5,10 +5,9 @@ use std::path::Path;
 use std::time::Duration;
 
 use crate::comm::{Direction, Class as SignalClass, Signal};
-use crate::device::Device;
 use crate::facility::EnergyMetering;
 use crate::hw::INA219;
-use crate::io::Mapping;
+use crate::io::{Device, Mapping};
 use crate::sw::platform::Tock;
 use crate::testing::testbed::Testbed;
 use crate::testing::criteria::{
@@ -138,6 +137,9 @@ impl HardCodedTests {
                     &[Criterion::SerialTrace(
                         SerialTraceCriterion::new(&[
                             SerialTraceCondition::new(&[0x6c, 0x65, 0x64, 0x20, 0x6f, 0x6e]),
+                            SerialTraceCondition::new(&[0x6c, 0x65, 0x64, 0x20, 0x6f, 0x6e])
+                                .with_timing(Timing::Relative(Duration::from_millis(250)),
+                                             Duration::from_millis(25)),
                             SerialTraceCondition::new(&[0x6c, 0x65, 0x64, 0x20, 0x6f, 0x6e])
                                 .with_timing(Timing::Relative(Duration::from_millis(0)),
                                              Duration::from_millis(10))]))],

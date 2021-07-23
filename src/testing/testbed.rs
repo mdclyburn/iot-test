@@ -153,7 +153,7 @@ impl Testbed {
             barrier.wait();
 
             // get GPIO responses
-            let (traces, other_gpio) = {
+            let (parallel_traces, gpio_activity) = {
                 let mut responses = Vec::new();
                 while let Some(response) = observer_rchannel.recv()? {
                     let response = response.remapped(self.pin_mapping.get_mapping());
@@ -194,18 +194,12 @@ impl Testbed {
                 serial_traces.push(trace);
             }
 
-            for trace in &serial_traces {
-                println!("Serial trace @{:?} -> {}",
-                       trace.get_offset(*exec_result.as_ref().unwrap().get_start()),
-                       trace);
-            }
-
             let evaluation = Evaluation::new(
                 &test,
                 &platform_spec,
                 exec_result,
-                other_gpio,
-                traces,
+                gpio_activity,
+                parallel_traces,
                 serial_traces,
                 energy_data);
             test_results.push(evaluation);

@@ -3,7 +3,6 @@
 use std::process;
 
 mod comm;
-mod device;
 mod facility;
 mod hw;
 mod input;
