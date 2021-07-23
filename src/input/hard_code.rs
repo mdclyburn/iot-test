@@ -3,11 +3,13 @@
 use std::collections::HashMap;
 use std::path::Path;
 use std::time::Duration;
+use std::rc::Rc;
 
 use crate::comm::{Direction, Class as SignalClass, Signal};
 use crate::facility::EnergyMetering;
 use crate::hw::INA219;
-use crate::io::{Device, Mapping};
+use crate::io;
+use crate::io::{Device, Mapping, DeviceInputs};
 use crate::sw::platform::Tock;
 use crate::testing::testbed::Testbed;
 use crate::testing::criteria::{
@@ -43,17 +45,25 @@ impl HardCodedTestbed {
 impl TestbedConfigReader for HardCodedTestbed {
     fn create(&self) -> Result<Testbed> {
         // physical mapping
-        let device = Device::new(
-            &[
-                // (13, (Direction::Out, SignalClass::Digital)), // D0
-                // (14, (Direction::Out, SignalClass::Digital)), // D1
-                // (19, (Direction::Out, SignalClass::Digital)), // D6
-                // (20, (Direction::Out, SignalClass::Digital)), // D7
-                (23, (Direction::In, SignalClass::Digital)),  // reset
-            ]);
+        let host_to_device_pins = [
+            // (13, (Direction::Out, SignalClass::Digital)), // D0
+            // (14, (Direction::Out, SignalClass::Digital)), // D1
+            // (19, (Direction::Out, SignalClass::Digital)), // D6
+            // (20, (Direction::Out, SignalClass::Digital)), // D7
+            (23, (Direction::In, SignalClass::Digital)),  // reset
+        ];
+
+        // reset fn
+        let reset_fn: Rc<dyn Fn(&mut DeviceInputs) -> io::Result<()>> = Rc::new(
+            |to_device| {
+                Ok(())
+            });
+
+        let device = Device::new(&host_to_device_pins)
+            .with_reset(reset_fn.clone());
 
         let mapping = Mapping::new(
-            &device,
+            device,
             // Host to device-under-test pin mapping.
             &[(17, 23), // Reset
 

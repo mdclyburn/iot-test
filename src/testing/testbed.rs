@@ -57,7 +57,7 @@ impl Testbed {
     testbed.execute(&[test], &mut results);
     ```
      */
-    pub fn execute<'a, T>(&self, tests: &mut T) -> Result<Vec<Evaluation>>
+    pub fn execute<'b, T>(&self, tests: &mut T) -> Result<Vec<Evaluation>>
     where
         T: Iterator<Item = Test>,
     {

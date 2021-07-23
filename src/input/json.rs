@@ -131,7 +131,7 @@ struct IOConfig {
 }
 
 impl IOConfig {
-    fn create_mapping(&self) -> Result<Mapping> {
+    fn create_mapping<'a>(&self) -> Result<Mapping> {
         let mut device_io: Vec<(u8, (Direction, SignalClass))> = Vec::new();
         for pcfg in &self.gpio {
             let dir = Direction::try_from(pcfg.direction.as_str())
@@ -147,7 +147,7 @@ impl IOConfig {
             .collect();
         let it_trace_pins = self.trace_pins.iter();
 
-        let mapping = Mapping::new(&device, &pin_conns, it_trace_pins, self.reset_pin)
+        let mapping = Mapping::new(device, &pin_conns, it_trace_pins, self.reset_pin)
             .map_err(|e| Error::Format(format!("IO mapping error: {}", e)))?;
 
         Ok(mapping)

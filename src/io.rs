@@ -8,6 +8,7 @@ use std::convert::From;
 use std::fmt;
 use std::fmt::Display;
 use std::iter::{Iterator, IntoIterator};
+use std::rc::Rc;
 
 use rppal::gpio;
 use rppal::gpio::{Gpio, InputPin, OutputPin};
@@ -24,8 +25,7 @@ use crate::comm::{
     Direction,
 };
 
-
-type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 /// Set of pins that provide input _to_ the device under test.
 pub type DeviceInputs = Pins<OutputPin>;
@@ -177,9 +177,9 @@ impl<'a, T> IntoIterator for &'a mut Pins<T> {
 }
 
 /// Properties of a device under test.
-#[derive(Clone, Debug)]
 pub struct Device {
     io: HashMap<u8, (Direction, SignalClass)>,
+    reset_fn: Option<Rc<dyn Fn(&mut DeviceInputs) -> Result<()>>>,
 }
 
 impl Device {
@@ -188,10 +188,20 @@ impl Device {
     A device under test has a defined set of inputs and outputs.
     Each I/O has a signal type that it emits or accepts.
     */
-    pub fn new<'a, T>(pin_map: T) -> Device where
-        T: IntoIterator<Item = &'a (u8, (Direction, SignalClass))> {
+    pub fn new<'b, T>(pin_map: T) -> Device where
+        T: IntoIterator<Item = &'b (u8, (Direction, SignalClass))> {
         Device {
             io: pin_map.into_iter().map(|x| *x).collect(),
+            reset_fn: None,
+        }
+    }
+
+    pub fn with_reset(self, reset_fn: Rc<dyn Fn(&mut DeviceInputs) -> Result<()>>) -> Self
+    {
+        let reset_fn = Some(reset_fn);
+        Self {
+            reset_fn,
+            ..self
         }
     }
 
@@ -233,6 +243,12 @@ impl Device {
     }
 }
 
+impl fmt::Debug for Device {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Ok(())
+    }
+}
+
 /** Interface to I/O between the testbed and the device under test.
 
 `Mapping` defines the interface between the testbed and the device under test.
@@ -256,13 +272,13 @@ impl Mapping {
     let mapping = Mapping::new(&device, &[(17, 23), (2, 13)]);
     ```
      */
-    pub fn new<'a, T, U>(device: &Device,
+    pub fn new<'b, T, U>(device: Device,
                          host_target_map: T,
                          trace_pins: U,
                          reset_pin: Option<u8>) -> Result<Mapping>
     where
-        T: IntoIterator<Item = &'a (u8, u8)>,
-        U: IntoIterator<Item = &'a u8>,
+        T: IntoIterator<Item = &'b (u8, u8)>,
+        U: IntoIterator<Item = &'b u8>,
     {
         let numbering: HashMap<u8, u8> = host_target_map.into_iter()
             .map(|(h_pin, t_pin)| (*h_pin, *t_pin))
@@ -280,7 +296,7 @@ impl Mapping {
         device.has_pins(used_device_pins)?;
 
         Ok(Mapping {
-            device: device.clone(),
+            device,
             numbering,
             trace_pins,
             reset_pin,
