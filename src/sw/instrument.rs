@@ -86,7 +86,7 @@ impl Spec {
 
 impl Display for Spec {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Platform specification:\n")?;
+        write!(f, "Platform build specification:\n")?;
         for (name, value) in &self.name_value {
             write!(f, "  {} => {:2}\n", name, value)?;
         }
