@@ -5,6 +5,8 @@ authors = ["Marshall Clyburn"]
 edition = "2018"
 
 [dependencies]
+flexbed-common = { path = "../common" }
+
 getopts = "^0.2"
 json = "^0.12"
 rppal = "^0.11"

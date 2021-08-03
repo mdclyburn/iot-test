@@ -15,15 +15,14 @@ use rppal::gpio::{
 };
 use rppal::uart::Uart;
 
+use crate::Error;
 use crate::comm::Signal;
-use crate::facility::EnergyMetering;
-use crate::io::{DeviceInputs, DeviceOutputs};
-
-use super::Error;
-use super::criteria::{
+use crate::criteria::{
     Criterion,
     GPIOCriterion,
 };
+use crate::facility::EnergyMetering;
+use crate::io::{DeviceInputs, DeviceOutputs};
 
 type Result<T> = std::result::Result<T, Error>;
 

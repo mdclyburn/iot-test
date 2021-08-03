@@ -6,7 +6,6 @@ mod comm;
 mod facility;
 mod hw;
 mod input;
-mod io;
 mod opts;
 mod sw;
 mod testing;
