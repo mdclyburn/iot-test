@@ -87,7 +87,6 @@ impl Tock {
     }
 
     /// Issue a `make clean`.
-    #[allow(dead_code)]
     fn clean(&self) -> Result<Output> {
         let mut command = self.make_command();
         command.args(&["clean"]);
@@ -99,7 +98,6 @@ impl Tock {
     }
 
     /// Build Tock OS.
-    #[allow(dead_code)]
     fn build(&self) -> Result<Output> {
         let mut command = self.make_command();
 
@@ -111,7 +109,6 @@ impl Tock {
 
 
     /// Build Tock OS according to a spec.
-    #[allow(dead_code)]
     fn build_instrumented(&self, spec: &Spec) -> Result<Output> {
         // TODO: centralize and 'uniquify' this path.
         let spec_path = Path::new("/var/tmp/__autogen_trace.json");
@@ -127,7 +124,6 @@ impl Tock {
             .map_err(|io_err| Error::IO(io_err))
     }
 
-    #[allow(dead_code)]
     fn program(&self) -> Result<Output> {
         let mut command = self.make_command();
         command.args(&["program"]);

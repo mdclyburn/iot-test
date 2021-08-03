@@ -24,7 +24,6 @@ use flexbed_common::trace::{
 use super::{Error, Result};
 
 /// Summary of an `Evaluation`.
-#[allow(dead_code)]
 #[derive(Copy, Clone, Debug)]
 pub enum Status {
     /// Execution finished without error.

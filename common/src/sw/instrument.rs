@@ -40,13 +40,11 @@ impl Spec {
         }
     }
 
-    #[allow(dead_code)]
     pub fn trace_point_value(&self, name: &str) -> Option<u16> {
         self.name_value.get(name)
             .map(|val| *val)
     }
 
-    #[allow(dead_code)]
     pub fn trace_point_name(&self, value: u16) -> Option<&String> {
         self.value_name.get(&value)
     }
@@ -62,7 +60,6 @@ impl Spec {
         panic!("ID bit length too long.");
     }
 
-    #[allow(dead_code)]
     pub fn write(&self, out_path: &Path) -> Result<()> {
         let points: Vec<JsonValue> = self.name_value.iter()
             .map(|(name, value)| json::object! { name: name.clone(), value: *value })

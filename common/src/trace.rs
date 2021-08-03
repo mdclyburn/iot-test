@@ -29,13 +29,11 @@ impl ParallelTrace {
     }
 
     /// Returns the ID of the trace.
-    #[allow(dead_code)]
     pub fn get_id(&self) -> u16 {
         self.id
     }
 
     /// Returns data transmitted by extra data pins for the trace.
-    #[allow(dead_code)]
     pub fn get_extra(&self) -> u16 {
         self.extra
     }
@@ -44,7 +42,6 @@ impl ParallelTrace {
 
     This is equivalent to the time the first pin in the set of GPIO trace pins was set by the hardware under test.
      */
-    #[allow(dead_code)]
     pub fn get_time(&self) -> Instant {
         self.responses[0].get_time()
     }

@@ -8,7 +8,6 @@ use std::process::Output;
 
 use super::Platform;
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub enum Error {
     /// A [`std::io`] error.
