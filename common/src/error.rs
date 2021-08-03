@@ -19,7 +19,7 @@ pub enum Error {
     IO(io::Error),
     /// Energy meter does not exist.
     NoSuchMeter(String),
-    /// Reset requested when [`Mapping`] does not specify one.
+    /// Reset requested when [`io::Mapping`] does not specify one.
     Reset(io::Error),
     /// Error originating from interacting with software ([`sw::error::Error`]).
     Software(sw::error::Error),

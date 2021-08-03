@@ -12,7 +12,7 @@ use flexbed_common::{io, sw};
 pub enum Error {
     /// A problem occured while executing a test.
     Execution(flexbed_common::error::Error),
-    /// Reset requested when [`Mapping`] does not specify one.
+    /// Reset requested when [`flexbed_common::io::Mapping`] does not specify one.
     Reset(io::Error),
     /// Error originating from interacting with software ([`sw::error::Error`]).
     Software(sw::error::Error),
