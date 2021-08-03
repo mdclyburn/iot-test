@@ -166,7 +166,7 @@ struct PinConfig {
 
 /// Hardware driver derivable from JSON.
 trait JSONHardware: Sized {
-    fn from_json(mapping: &Mapping, json: JSONValue) -> Result<Self> {
+    fn from_json(_mapping: &Mapping, _json: JSONValue) -> Result<Self> {
         Err(Error::Unsupported)
     }
 }
@@ -186,7 +186,7 @@ impl JSONHardware for hw::INA219 {
 
 /// Platform derivable from JSON.
 trait JSONPlatform: Sized {
-    fn from_json(props: &JSONValue) -> Result<Self> {
+    fn from_json(_props: &JSONValue) -> Result<Self> {
         Err(Error::Unsupported)
     }
 }

@@ -6,12 +6,13 @@ use std::thread;
 use std::time::Duration;
 use std::rc::Rc;
 
-use flexbed_common::comm::{Direction, Class as SignalClass, Signal};
+use flexbed_common::comm::{Direction, Class as SignalClass};
 use flexbed_common::facility::EnergyMetering;
 use flexbed_common::hw::INA219;
 use flexbed_common::io;
 use flexbed_common::io::{Device, Mapping, DeviceInputs};
 use flexbed_common::sw::platform::Tock;
+#[allow(unused_imports)]
 use flexbed_common::criteria::{
     Criterion,
     GPIOCriterion,

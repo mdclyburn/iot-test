@@ -11,7 +11,7 @@ use std::sync::{Arc,
                 RwLock};
 use std::thread;
 use std::thread::JoinHandle;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use flexbed_common::facility::EnergyMetering;
 use flexbed_common::io::Mapping;
@@ -357,7 +357,6 @@ impl Testbed {
                 let mut uart = uart;
                 let mut buffer: Vec<u8> = Vec::new();
                 let mut schedule: Vec<(Instant, usize)> = Vec::new();
-                let mut bytes_rx = 0;
 
                 loop {
                     // wait for next test
@@ -367,7 +366,10 @@ impl Testbed {
                         test.prep_tracing(&mut uart, &mut buffer, &mut schedule).unwrap();
 
                         barrier.wait();
-                        bytes_rx = test.trace(&mut uart, &mut buffer, &mut schedule).unwrap();
+                        let bytes_rx = test.trace(
+                            &mut uart,
+                            &mut buffer,
+                            &mut schedule).unwrap();
                         println!("stracing: received {} bytes over UART", bytes_rx);
                     } else {
                         // no more tests to run

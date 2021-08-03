@@ -6,11 +6,6 @@ mod input;
 mod opts;
 mod testing;
 
-use flexbed_common::test::{
-    Operation,
-    Test,
-};
-
 fn main() {
     let result = opts::parse();
     if let Err(ref e) = result {

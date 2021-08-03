@@ -65,7 +65,6 @@ impl Display for Error {
         use Error::*;
         match self {
             Gpio(ref e) => write!(f, "error with GPIO interface: {}", e),
-            UndefinedPin(pin_no) => write!(f, "target pin {} not mapped", pin_no),
             I2CUnavailable => write!(f, "I2C pins (2, 3) are mapped"),
             I2C(ref e) => write!(f, "could not obtain I2C interface: {}", e),
             NoReset => write!(f, "reset functionality is not defined for the device"),
@@ -253,7 +252,7 @@ impl Device {
 }
 
 impl fmt::Debug for Device {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
         Ok(())
     }
 }
