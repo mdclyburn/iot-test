@@ -10,7 +10,6 @@ use flexbed_common::criteria::{
     GPIOCriterion,
     EnergyStat,
 };
-use flexbed_common::error::Error;
 use flexbed_common::sw::instrument::Spec;
 use flexbed_common::test::{
     Execution,
@@ -22,7 +21,7 @@ use flexbed_common::trace::{
     SerialTrace,
 };
 
-use super::Result;
+use super::{Error, Result};
 
 /// Summary of an `Evaluation`.
 #[allow(dead_code)]

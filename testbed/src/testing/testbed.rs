@@ -68,17 +68,17 @@ impl Testbed {
         let (observer_schannel, observer_rchannel) = mpsc::sync_channel(0);
         let watch_thread = self.launch_observer(Arc::clone(&current_test),
                                                 Arc::clone(&barrier),
-                                                observer_schannel)?;
+                                                observer_schannel);
 
         let (energy_schannel, energy_rchannel) = mpsc::sync_channel(0);
         let energy_thread = self.launch_metering(Arc::clone(&current_test),
                                                  Arc::clone(&barrier),
-                                                 energy_schannel)?;
+                                                 energy_schannel);
 
         let (trace_schannel, trace_rchannel) = mpsc::sync_channel(0);
         let trace_thread = self.launch_tracing(Arc::clone(&current_test),
                                                Arc::clone(&barrier),
-                                               trace_schannel)?;
+                                               trace_schannel);
 
         for test in tests {
             println!("executor: running '{}'", test.get_id());
@@ -114,7 +114,8 @@ impl Testbed {
 
             *current_test.write().unwrap() = Some(test.clone());
 
-            let mut inputs = self.pin_mapping.get_gpio_inputs()?;
+            let mut inputs = self.pin_mapping.get_gpio_inputs()
+                .expect("Could not obtain GPIO inputs from executor thread.");
 
             // wait for observer, metering thread to be ready
             barrier.wait();
@@ -141,7 +142,8 @@ impl Testbed {
             //         .set_high();
             // }
 
-            let exec_result = test.execute(Instant::now(), &mut inputs);
+            let exec_result = test.execute(Instant::now(), &mut inputs)
+                .map_err(|e| Error::Execution(e));
 
             // release observer thread
             println!("executor: test execution complete");
@@ -150,7 +152,7 @@ impl Testbed {
             // get GPIO responses
             let (parallel_traces, gpio_activity) = {
                 let mut responses = Vec::new();
-                while let Some(response) = observer_rchannel.recv()? {
+                while let Some(response) = observer_rchannel.recv().unwrap() {
                     let response = response.remapped(self.pin_mapping.get_mapping());
                     responses.push(response);
                 }
@@ -176,7 +178,7 @@ impl Testbed {
 
             // get energy data
             let mut energy_data = HashMap::new();
-            while let Some((meter_id, sample)) = energy_rchannel.recv()? {
+            while let Some((meter_id, sample)) = energy_rchannel.recv().unwrap() {
                 energy_data.entry(meter_id)
                     .or_insert(Vec::new())
                     .push(sample);
@@ -185,7 +187,7 @@ impl Testbed {
             // get tracing data
             println!("executor: receiving trace data");
             let mut serial_traces: Vec<SerialTrace> = Vec::new();
-            while let Some(trace) = trace_rchannel.recv()? {
+            while let Some(trace) = trace_rchannel.recv().unwrap() {
                 serial_traces.push(trace);
             }
 
@@ -226,8 +228,9 @@ impl Testbed {
         test_container: Arc<RwLock<Option<Test>>>,
         barrier: Arc<Barrier>,
         response_schannel: SyncSender<Option<Response>>,
-    ) -> Result<JoinHandle<()>> {
-        let mut outputs = self.pin_mapping.get_gpio_outputs()?;
+    ) -> JoinHandle<()> {
+        let mut outputs = self.pin_mapping.get_gpio_outputs()
+            .expect("Could not obtain GPIO outputs from observer thread.");
         let trace_pins = self.pin_mapping.get_trace_pin_nos().clone();
 
         thread::Builder::new()
@@ -277,7 +280,7 @@ impl Testbed {
 
                 println!("observer: exiting");
             })
-            .map_err(|e| Error::Threading(e))
+            .expect("Could not spawn observer thread.")
     }
 
     fn launch_metering(
@@ -285,7 +288,7 @@ impl Testbed {
         test_container: Arc<RwLock<Option<Test>>>,
         barrier: Arc<Barrier>,
         energy_schannel: SyncSender<Option<(String, f32)>>,
-    ) -> Result<JoinHandle<()>> {
+    ) -> JoinHandle<()> {
         println!("Starting energy metering thread.");
 
         let meters = Arc::clone(&self.energy_meters);
@@ -336,7 +339,7 @@ impl Testbed {
                     energy_schannel.send(None).unwrap(); // done communicating results
                 }
             })
-            .map_err(|e| Error::Threading(e))
+            .expect("Could not spawn metering thread.")
     }
 
     fn launch_tracing(
@@ -344,10 +347,11 @@ impl Testbed {
         test_container: Arc<RwLock<Option<Test>>>,
         barrier: Arc<Barrier>,
         trace_schannel: SyncSender<Option<SerialTrace>>,
-    ) -> Result<JoinHandle<()>> {
+    ) -> JoinHandle<()> {
         println!("Starting tracing thread.");
 
-        let uart = self.pin_mapping.get_uart()?;
+        let uart = self.pin_mapping.get_uart()
+            .expect("Could not obtain UART from tracing thread.");
 
         thread::Builder::new()
             .name("test-stracing".to_string())
@@ -357,6 +361,7 @@ impl Testbed {
                 let mut uart = uart;
                 let mut buffer: Vec<u8> = Vec::new();
                 let mut schedule: Vec<(Instant, usize)> = Vec::new();
+                let mut bytes_rx;
 
                 loop {
                     // wait for next test
@@ -366,7 +371,7 @@ impl Testbed {
                         test.prep_tracing(&mut uart, &mut buffer, &mut schedule).unwrap();
 
                         barrier.wait();
-                        let bytes_rx = test.trace(
+                        bytes_rx = test.trace(
                             &mut uart,
                             &mut buffer,
                             &mut schedule).unwrap();
@@ -388,7 +393,7 @@ impl Testbed {
                     trace_schannel.send(None).unwrap(); // done communicating results
                 }
             })
-            .map_err(|e| Error::Threading(e))
+            .expect("Could not spawn tracing thread.")
     }
 
     /// Load specified applications onto the device.
