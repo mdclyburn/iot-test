@@ -2,15 +2,11 @@
 
 use std::process;
 
-mod comm;
-mod facility;
-mod hw;
 mod input;
 mod opts;
-mod sw;
 mod testing;
 
-use crate::testing::test::{
+use flexbed_common::test::{
     Operation,
     Test,
 };

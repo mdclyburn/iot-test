@@ -13,16 +13,15 @@ use std::thread;
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-use crate::facility::EnergyMetering;
-use crate::io::Mapping;
-use crate::sw::PlatformSupport;
-use crate::testing::test::Response;
+use flexbed_common::facility::EnergyMetering;
+use flexbed_common::io::Mapping;
+use flexbed_common::sw::PlatformSupport;
+use flexbed_common::test::{Response, Test};
+use flexbed_common::trace;
+use flexbed_common::trace::SerialTrace;
 
 use super::Error;
 use super::evaluation::Evaluation;
-use super::test::Test;
-use super::trace;
-use super::trace::SerialTrace;
 
 type Result<T> = std::result::Result<T, Error>;
 

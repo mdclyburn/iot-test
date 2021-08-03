@@ -5,23 +5,24 @@ use std::fmt;
 use std::fmt::Display;
 use std::time::Duration;
 
-use crate::sw::instrument::Spec;
-
-use super::{Error, Result};
-use super::criteria::{
+use flexbed_common::criteria::{
     Criterion,
     GPIOCriterion,
     EnergyStat,
 };
-use super::test::{
+use flexbed_common::error::Error;
+use flexbed_common::sw::instrument::Spec;
+use flexbed_common::test::{
     Execution,
     Response,
     Test
 };
-use super::trace::{
+use flexbed_common::trace::{
     ParallelTrace,
     SerialTrace,
 };
+
+use super::Result;
 
 /// Summary of an `Evaluation`.
 #[allow(dead_code)]

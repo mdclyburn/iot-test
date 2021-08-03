@@ -5,6 +5,6 @@ pub mod error;
 pub mod evaluation;
 pub mod testbed;
 
-use error::Error;
+use flexbed_common::error::Error;
 
 type Result<T> = std::result::Result<T, Error>;

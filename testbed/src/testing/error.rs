@@ -5,11 +5,11 @@ use std::fmt;
 use std::fmt::Display;
 use std::sync::mpsc;
 
+use flexbed_common::io;
+use flexbed_common::sw;
 use rppal::gpio;
 use rppal::uart;
 
-use crate::io;
-use crate::sw;
 
 /// Test-related error.
 #[derive(Debug)]

@@ -10,13 +10,14 @@ use serde::Deserialize;
 use serde_json;
 use serde_json::Value as JSONValue;
 
-use crate::comm::{Direction,
+use flexbed_common::comm::{Direction,
                   Class as SignalClass};
-use crate::facility::EnergyMetering;
-use crate::hw;
-use crate::io::{Device, Mapping};
-use crate::sw::PlatformSupport;
-use crate::sw::platform;
+use flexbed_common::facility::EnergyMetering;
+use flexbed_common::hw;
+use flexbed_common::io::{Device, Mapping};
+use flexbed_common::sw::PlatformSupport;
+use flexbed_common::sw::platform;
+
 use crate::testing::testbed::Testbed;
 
 use super::{Result,

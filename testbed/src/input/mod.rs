@@ -3,8 +3,9 @@
 use std::fmt::Debug;
 use std::iter::Iterator;
 
+use flexbed_common::test::Test;
+
 use crate::testing::testbed::Testbed;
-use crate::testing::test::Test;
 
 pub mod error;
 pub mod hard_code;
