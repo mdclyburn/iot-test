@@ -7,8 +7,9 @@ use libloading::{Library, Symbol};
 #[derive(Debug)]
 pub struct LibraryTestProvider {
     library_path: PathBuf,
-    library: Library,
+    // Implicitly suggest dropping the test adapter before letting the library unload.
     test_adapter: Box<dyn TestConfigAdapter>,
+    library: Library,
 }
 
 impl LibraryTestProvider {
@@ -28,8 +29,8 @@ impl LibraryTestProvider {
 
         LibraryTestProvider {
             library_path: path.to_owned(),
-            library,
             test_adapter,
+            library,
         }
     }
 }
