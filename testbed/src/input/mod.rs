@@ -7,6 +7,7 @@ use crate::testing::testbed::Testbed;
 pub mod error;
 pub mod hard_code;
 pub mod json;
+pub mod shared_lib;
 
 type Result<T> = std::result::Result<T, error::Error>;
 

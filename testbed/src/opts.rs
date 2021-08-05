@@ -14,6 +14,7 @@ use crate::input::hard_code::{
     HardCodedTestbed,
     HardCodedTests,
 };
+use crate::input::shared_lib::LibraryTestProvider;
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -95,6 +96,7 @@ pub fn parse<'a>() -> Result<Configuration> {
 
     let cli_args: Vec<_> = env::args().collect();
     let matches = opts.parse(&cli_args[1..])?;
+    let mut free_args = matches.free.iter();
 
     if matches.opt_present("h") {
         let brief = format!("Usage: {} [ options ] <config-specific options>", &cli_args[0]);
@@ -110,7 +112,7 @@ pub fn parse<'a>() -> Result<Configuration> {
 
                 "json" => {
                     // Free arguments
-                    let testbed_config = matches.free.get(0)
+                    let testbed_config = free_args.next()
                         .ok_or(Error::ArgumentMissing("testbed config"))?;
 
                     let json_path = Path::new(testbed_config);
@@ -133,8 +135,15 @@ pub fn parse<'a>() -> Result<Configuration> {
             match test_format.as_str() {
                 "code" => {
                     // hard-coded test adapter
-                    Ok(Box::new(HardCodedTests::new()))
+                    Ok(Box::new(HardCodedTests::new()) as Box<dyn TestConfigAdapter>)
                 },
+
+                "lib" => {
+                    let library_path = free_args.next()
+                        .ok_or(Error::ArgumentMissing("library path"))?;
+                    let library_provider = LibraryTestProvider::new(Path::new(library_path));
+                    Ok(Box::new(library_provider) as Box<dyn TestConfigAdapter>)
+                }
 
                 _ => {
                     let msg = format!("{} is not a test format", test_format);
