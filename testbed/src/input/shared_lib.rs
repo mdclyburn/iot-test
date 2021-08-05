@@ -4,6 +4,13 @@ use flexbed_common::input::TestConfigAdapter;
 use flexbed_common::test::Test;
 use libloading::{Library, Symbol};
 
+/** Shared library test provider.
+
+`LibraryTestProvider` provides an implementor of [`TestConfigAdapter`] from a shared library.
+During the call to [`LibraryTestProvider::new()`] the application loads the shared library.
+Then, it loads the `get_test_adapter` symbol from the library.
+The `get_test_adapter` symbol must be a function which returns a `Box<dyn TestConfigAdapter>`.
+ */
 #[derive(Debug)]
 pub struct LibraryTestProvider {
     library_path: PathBuf,
