@@ -5,12 +5,10 @@ use std::fmt;
 use std::fmt::Display;
 use std::path::Path;
 
+use flexbed_common::input::TestConfigAdapter;
 use getopts::Options;
 
-use crate::input::{
-    TestbedConfigReader,
-    TestConfigAdapter,
-};
+use crate::input::TestbedConfigReader;
 use crate::input::json::JSONTestbedParser;
 use crate::input::hard_code::{
     HardCodedTestbed,

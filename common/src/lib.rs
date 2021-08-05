@@ -7,6 +7,7 @@ pub mod criteria;
 pub mod error;
 pub mod facility;
 pub mod hw;
+pub mod input;
 pub mod io;
 pub mod sw;
 pub mod test;

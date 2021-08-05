@@ -7,10 +7,6 @@ use std::time::Duration;
 use std::rc::Rc;
 
 use flexbed_common::comm::{Direction, Class as SignalClass};
-use flexbed_common::facility::EnergyMetering;
-use flexbed_common::hw::INA219;
-use flexbed_common::io;
-use flexbed_common::io::{Device, Mapping, DeviceInputs};
 #[allow(unused_imports)]
 use flexbed_common::criteria::{
     Criterion,
@@ -23,17 +19,18 @@ use flexbed_common::criteria::{
     SerialTraceCondition,
     SerialTraceCriterion,
 };
-use flexbed_common::test::{
-    Operation,
-    Test,
-};
+use flexbed_common::facility::EnergyMetering;
+use flexbed_common::hw::INA219;
+use flexbed_common::input::TestConfigAdapter;
+use flexbed_common::io;
+use flexbed_common::io::{Device, Mapping, DeviceInputs};
+use flexbed_common::test::{Operation, Test};
 
 use crate::sw::platform::Tock;
 use crate::testing::testbed::Testbed;
 
 use super::{Result,
-            TestbedConfigReader,
-            TestConfigAdapter};
+            TestbedConfigReader};
 
 /// Testbed created from code compiled into the binary.
 #[derive(Debug)]
