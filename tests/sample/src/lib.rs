@@ -3,24 +3,32 @@ use std::time::Duration;
 #[allow(unused_imports)]
 use flexbed_common::comm::{Direction, Class as SignalClass};
 #[allow(unused_imports)]
-use flexbed_common::criteria::{
-    Criterion,
-    GPIOCriterion,
-    EnergyCriterion,
-    EnergyStat,
-    Timing,
-    ParallelTraceCondition,
-    ParallelTraceCriterion,
-    SerialTraceCondition,
-    SerialTraceCriterion,
+use flexbed_common::{
+    criteria::{
+        Criterion,
+        GPIOCriterion,
+        EnergyCriterion,
+        EnergyStat,
+        Timing,
+        ParallelTraceCondition,
+        ParallelTraceCriterion,
+        SerialTraceCondition,
+        SerialTraceCriterion,
+    },
+    facility::EnergyMetering,
+    hw::INA219,
+    input::TestProvider,
+    io,
+    io::{
+        Device,
+        Mapping,
+        DeviceInputs,
+    },
+    test::{
+        Operation,
+        Test,
+    },
 };
-use flexbed_common::facility::EnergyMetering;
-use flexbed_common::hw::INA219;
-use flexbed_common::input::TestConfigAdapter;
-use flexbed_common::io;
-use flexbed_common::io::{Device, Mapping, DeviceInputs};
-use flexbed_common::test::{Operation, Test};
-
 
 #[derive(Debug)]
 pub struct SampleTestProvider {
@@ -79,7 +87,7 @@ impl SampleTestProvider {
     }
 }
 
-impl TestConfigAdapter for SampleTestProvider {
+impl TestProvider for SampleTestProvider {
     fn tests(&self) -> Box<dyn Iterator<Item = Test> + '_> {
         let it = self.tests.iter()
             .cloned();
@@ -88,6 +96,6 @@ impl TestConfigAdapter for SampleTestProvider {
 }
 
 #[no_mangle]
-pub fn get_test_adapter() -> Box<dyn TestConfigAdapter> {
+pub fn get_test_adapter() -> Box<dyn TestProvider> {
     Box::new(SampleTestProvider::new())
 }
