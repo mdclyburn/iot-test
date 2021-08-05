@@ -15,10 +15,6 @@ pub enum Error {
     IO(std::io::Error),
     /// Problem while working with external tools.
     Tool(Output),
-    /// Catch-all for other errors.
-    Other(String),
-    /// Application not defined.
-    App(String),
     /// Application not defined for platform.
     AppForPlatform(String, Platform),
     /// Unsupported operation.
@@ -39,8 +35,6 @@ impl Display for Error {
         match self {
             Error::IO(ref e) => write!(f, "I/O error: {}", e),
             Error::Tool(ref output) => write!(f, "could not load software (status: {})", output.status),
-            Error::Other(ref msg) => write!(f, "unexpected error: {}", msg),
-            Error::App(ref name) => write!(f, "no '{}' app defined", name),
             Error::AppForPlatform(ref name, platform) => write!(f, "no '{}' app defined for {}", name, platform),
             Error::Unsupported => write!(f, "requested operation is implemented for the platform"),
         }
