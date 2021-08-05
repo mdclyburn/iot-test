@@ -15,10 +15,11 @@ use std::time::Instant;
 
 use flexbed_common::facility::EnergyMetering;
 use flexbed_common::io::Mapping;
-use flexbed_common::sw::PlatformSupport;
 use flexbed_common::test::{Response, Test};
 use flexbed_common::trace;
 use flexbed_common::trace::SerialTrace;
+
+use crate::sw::PlatformSupport;
 
 use super::Error;
 use super::evaluation::Evaluation;

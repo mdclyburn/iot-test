@@ -11,7 +11,6 @@ use flexbed_common::facility::EnergyMetering;
 use flexbed_common::hw::INA219;
 use flexbed_common::io;
 use flexbed_common::io::{Device, Mapping, DeviceInputs};
-use flexbed_common::sw::platform::Tock;
 #[allow(unused_imports)]
 use flexbed_common::criteria::{
     Criterion,
@@ -29,6 +28,7 @@ use flexbed_common::test::{
     Test,
 };
 
+use crate::sw::platform::Tock;
 use crate::testing::testbed::Testbed;
 
 use super::{Result,

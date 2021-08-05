@@ -53,6 +53,7 @@ pub struct Operation {
 }
 
 impl Operation {
+    /// Specify the time for the Operation to occur.
     pub fn at(time: u64) -> Operation {
         Operation {
             time,
@@ -140,14 +141,17 @@ impl Response {
         }
     }
 
+    /// Returns the pin number the response occurred on.
     pub fn get_pin(&self) -> u8 {
         self.pin_no
     }
 
+    /// Returns the output signal of the response.
     pub fn get_output(&self) -> Signal {
         self.output
     }
 
+    /// Translates the pin numbering to the target-side numbering.
     pub fn remapped(&self, host_target_map: &HashMap<u8, u8>) -> Response {
         let target_pin = host_target_map.get(&self.pin_no)
             .expect("Cannot remap device response because pin mapping does not exist.");
@@ -439,6 +443,7 @@ impl Test {
         }
     }
 
+    /// Prepare structures for tracing.
     pub fn prep_tracing<'a>(&self,
                             uart: &mut Uart,
                             data_buffer: &'a mut Vec<u8>,
@@ -457,6 +462,7 @@ impl Test {
         Ok(())
     }
 
+    /// Perform the tracing specified by the test.
     pub fn trace(&self,
                  uart: &mut Uart,
                  buffer: &mut Vec<u8>,

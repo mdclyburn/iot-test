@@ -6,9 +6,6 @@ use std::fmt::Display;
 use std::fs::File;
 use std::path::Path;
 
-use super::Result;
-// use error::Error;
-
 use json;
 use json::JsonValue;
 
@@ -22,6 +19,7 @@ pub struct Spec {
 }
 
 impl Spec {
+    /// Create a new specification definition.
     pub fn new<'a, T>(trace_points: T) -> Spec
     where
         T: IntoIterator<Item = &'a str>
@@ -40,15 +38,18 @@ impl Spec {
         }
     }
 
+    /// Returns the value of the named trace point.
     pub fn trace_point_value(&self, name: &str) -> Option<u16> {
         self.name_value.get(name)
             .map(|val| *val)
     }
 
+    /// Returns the name of the trace point with the given value.
     pub fn trace_point_name(&self, value: u16) -> Option<&String> {
         self.value_name.get(&value)
     }
 
+    /// Returns the length of the ID portion of the trace.
     pub fn id_bit_length(&self) -> u8 {
         let allocated = self.name_value.len();
         for pow in 1..16 {
@@ -60,7 +61,8 @@ impl Spec {
         panic!("ID bit length too long.");
     }
 
-    pub fn write(&self, out_path: &Path) -> Result<()> {
+    /// Saves the trace specification to file.
+    pub fn write(&self, out_path: &Path) -> std::io::Result<()> {
         let points: Vec<JsonValue> = self.name_value.iter()
             .map(|(name, value)| json::object! { name: name.clone(), value: *value })
             .collect();
@@ -69,15 +71,11 @@ impl Spec {
             "trace-points": points,
         };
 
-        {
-            let mut file = File::create(out_path)?;
-            obj.write(&mut file)?;
+        let mut file = File::create(out_path)?;
+        obj.write(&mut file)?;
 
-            use std::io::Write;
-            file.flush()?;
-        }
-
-        Ok(())
+        use std::io::Write;
+        file.flush()
     }
 }
 

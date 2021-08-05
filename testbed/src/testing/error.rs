@@ -5,7 +5,9 @@ use std::fmt;
 use std::fmt::Display;
 
 use flexbed_common;
-use flexbed_common::{io, sw};
+use flexbed_common::io;
+
+use crate::sw;
 
 /// Test-related error.
 #[derive(Debug)]

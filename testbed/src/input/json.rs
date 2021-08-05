@@ -15,9 +15,9 @@ use flexbed_common::comm::{Direction,
 use flexbed_common::facility::EnergyMetering;
 use flexbed_common::hw;
 use flexbed_common::io::{Device, Mapping};
-use flexbed_common::sw::PlatformSupport;
-use flexbed_common::sw::platform;
 
+use crate::sw::platform;
+use crate::sw::PlatformSupport;
 use crate::testing::testbed::Testbed;
 
 use super::{Result,

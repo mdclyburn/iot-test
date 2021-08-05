@@ -6,8 +6,9 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
+use flexbed_common::sw::instrument::Spec;
+
 use super::error::Error;
-use super::instrument::Spec;
 use super::Platform;
 use super::PlatformSupport;
 use super::Result;

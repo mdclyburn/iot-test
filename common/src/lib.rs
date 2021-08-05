@@ -1,5 +1,7 @@
 //! Types and facilities common for defining tests and testbeds.
 
+#![deny(missing_docs)]
+
 pub mod comm;
 pub mod criteria;
 pub mod error;

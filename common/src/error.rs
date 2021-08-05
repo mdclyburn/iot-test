@@ -8,7 +8,6 @@ use rppal::gpio;
 use rppal::uart;
 
 use crate::io;
-use crate::sw;
 
 /// Test-related error.
 #[derive(Debug)]
@@ -21,8 +20,6 @@ pub enum Error {
     NoSuchMeter(String),
     /// Reset requested when [`io::Mapping`] does not specify one.
     Reset(io::Error),
-    /// Error originating from interacting with software ([`sw::error::Error`]).
-    Software(sw::error::Error),
     /// Error configuring UART hardware.
     UART(uart::Error),
 }
@@ -33,7 +30,6 @@ impl error::Error for Error {
             Error::GPIO(ref e) => Some(e),
             Error::IO(ref e) => Some(e),
             Error::Reset(ref e) => Some(e),
-            Error::Software(ref e) => Some(e),
             Error::UART(ref e) => Some(e),
             _ => None,
         }
@@ -52,12 +48,6 @@ impl From<gpio::Error> for Error {
     }
 }
 
-impl From<sw::error::Error> for Error {
-    fn from(e: sw::error::Error) -> Error {
-        Error::Software(e)
-    }
-}
-
 impl From<uart::Error> for Error {
     fn from(e: uart::Error) -> Error {
         Error::UART(e)
@@ -71,7 +61,6 @@ impl Display for Error {
             Error::IO(ref e) => write!(f, "I/O error: {}", e),
             Error::NoSuchMeter(ref id) => write!(f, "the meter '{}' does not exist", id),
             Error::Reset(ref e) => write!(f, "failed to reset device: {}", e),
-            Error::Software(ref e) => write!(f, "software interaction error: {}", e),
             Error::UART(ref e) => write!(f, "UART configuration error: {}", e),
         }
     }

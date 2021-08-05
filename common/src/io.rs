@@ -25,6 +25,7 @@ use crate::comm::{
     Direction,
 };
 
+/// Testbed I/O result type.
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Set of pins that provide input _to_ the device under test.
@@ -198,6 +199,7 @@ impl Device {
         }
     }
 
+    /// Define reset functionality for the device.
     pub fn with_reset(self, reset_fn: Rc<dyn Fn(&mut DeviceInputs) -> Result<()>>) -> Self
     {
         let reset_fn = Some(reset_fn);
@@ -392,6 +394,7 @@ impl Mapping {
         }
     }
 
+    /// Retrieves the UART interface.
     pub fn get_uart(&self) -> Result<Uart>
     {
         let uart_pins_mapped =

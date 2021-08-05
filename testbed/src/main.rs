@@ -4,6 +4,7 @@ use std::process;
 
 mod input;
 mod opts;
+mod sw;
 mod testing;
 
 fn main() {

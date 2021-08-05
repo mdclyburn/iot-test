@@ -8,6 +8,7 @@ use std::process::Output;
 
 use super::Platform;
 
+/// Software interaction errors.
 #[derive(Debug)]
 pub enum Error {
     /// A [`std::io`] error.
