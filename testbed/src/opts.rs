@@ -5,7 +5,7 @@ use std::fmt;
 use std::fmt::Display;
 use std::path::Path;
 
-use flexbed_common::input::TestConfigAdapter;
+use flexbed_common::input::TestProvider;
 use getopts::Options;
 
 use crate::input::TestbedConfigReader;
@@ -60,12 +60,12 @@ impl From<getopts::Fail> for Error {
 #[derive(Debug)]
 pub struct Configuration {
     testbed_reader: Box<dyn TestbedConfigReader>,
-    test_adapter: Box<dyn TestConfigAdapter>,
+    test_adapter: Box<dyn TestProvider>,
 }
 
 impl Configuration {
     fn new(testbed_reader: Box<dyn TestbedConfigReader>,
-           test_adapter: Box<dyn TestConfigAdapter>) -> Configuration
+           test_adapter: Box<dyn TestProvider>) -> Configuration
     {
         Configuration {
             testbed_reader,
@@ -77,7 +77,7 @@ impl Configuration {
         self.testbed_reader.as_ref()
     }
 
-    pub fn get_test_adapter(&self) -> &dyn TestConfigAdapter {
+    pub fn get_test_adapter(&self) -> &dyn TestProvider {
         self.test_adapter.as_ref()
     }
 }
@@ -129,20 +129,20 @@ pub fn parse<'a>() -> Result<Configuration> {
             Box::new(HardCodedTestbed::new())
         };
 
-        let test_adapter: Box<dyn TestConfigAdapter> = if matches.opt_present("test-format") {
+        let test_adapter: Box<dyn TestProvider> = if matches.opt_present("test-format") {
             let test_format = matches.opt_str("test-format")
                 .ok_or(Error::ArgumentMissing("test-format"))?;
             match test_format.as_str() {
                 "code" => {
                     // hard-coded test adapter
-                    Ok(Box::new(HardCodedTests::new()) as Box<dyn TestConfigAdapter>)
+                    Ok(Box::new(HardCodedTests::new()) as Box<dyn TestProvider>)
                 },
 
                 "lib" => {
                     let library_path = free_args.next()
                         .ok_or(Error::ArgumentMissing("library path"))?;
                     let library_provider = LibraryTestProvider::new(Path::new(library_path));
-                    Ok(Box::new(library_provider) as Box<dyn TestConfigAdapter>)
+                    Ok(Box::new(library_provider) as Box<dyn TestProvider>)
                 }
 
                 _ => {

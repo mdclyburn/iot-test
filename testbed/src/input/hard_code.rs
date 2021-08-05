@@ -21,7 +21,7 @@ use flexbed_common::criteria::{
 };
 use flexbed_common::facility::EnergyMetering;
 use flexbed_common::hw::INA219;
-use flexbed_common::input::TestConfigAdapter;
+use flexbed_common::input::TestProvider;
 use flexbed_common::io;
 use flexbed_common::io::{Device, Mapping, DeviceInputs};
 use flexbed_common::test::{Operation, Test};
@@ -164,7 +164,7 @@ impl HardCodedTests {
     }
 }
 
-impl TestConfigAdapter for HardCodedTests {
+impl TestProvider for HardCodedTests {
     fn tests(&self) -> Box<dyn Iterator<Item = Test> + '_>
     {
         let it = self.tests.iter()
