@@ -187,6 +187,26 @@ mod parse {
             CounterId::UpcallQueue(little_u32!(s[0], s[1], s[2], s[3]))
         })(input)
     }
+
+    pub fn grant_pointer_table(input: BitsInput) -> BitsResult<CounterId> {
+        counter_stream(3, 4, |s: &[u8]| {
+            CounterId::GrantPointerTable(little_u32!(s[0], s[1], s[2], s[3]))
+        })(input)
+    }
+
+    pub fn grant(input: BitsInput) -> BitsResult<CounterId> {
+        counter_stream(4, 8, |s: &[u8]| {
+            CounterId::Grant(
+                little_u32!(s[0], s[1], s[2], s[3]),
+                little_u32!(s[4], s[5], s[6], s[7]))
+        })(input)
+    }
+
+    pub fn custom_grant(input: BitsInput) -> BitsResult<CounterId> {
+        counter_stream(5, 4, |s: &[u8]| {
+            CounterId::CustomGrant(little_u32!(s[0], s[1], s[2], s[3]))
+        })(input)
+    }
 }
 
 #[cfg(test)]
@@ -239,6 +259,64 @@ pub mod tests {
         assert_eq!(r.is_ok(), true);
         assert_eq!(r.map(|(_i, c)| c).unwrap(),
                    CounterId::UpcallQueue((0b0001_0000 as u32) << (1)
+                                          | (0b0000_1000 as u32) << (1 + 8)
+                                          | (0b0000_0010 as u32) << (1 + 16)
+                                          | (0b0000_0001 as u32) << (1 + 24)));
+    }
+
+    #[test]
+    pub fn recognize_grant_pointer_table() {
+        let input = [3 << 1,
+                     0b0001_0000 << 1,
+                     0b0000_1000 << 1,
+                     0b0000_0010 << 1,
+                     0b0000_0001 << 1];
+        let r = parse::grant_pointer_table((&input, 0));
+
+        assert_eq!(r.is_ok(), true);
+        assert_eq!(r.map(|(_i, c)| c).unwrap(),
+                   CounterId::GrantPointerTable((0b0001_0000 as u32) << (1)
+                                                | (0b0000_1000 as u32) << (1 + 8)
+                                                | (0b0000_0010 as u32) << (1 + 16)
+                                                | (0b0000_0001 as u32) << (1 + 24)));
+    }
+
+    #[test]
+    pub fn recognize_grant() {
+        let input = [4 << 1,
+                     0b0001_0000 << 1,
+                     0b0000_1000 << 1,
+                     0b0000_0010 << 1,
+                     0b0000_0001 << 1,
+                     0b0001_0000 << 2,
+                     0b0000_1000 << 2,
+                     0b0000_0010 << 2,
+                     0b0000_0001 << 2];
+        let r = parse::grant((&input, 0));
+        assert_eq!(r.map(|(_i, c)| c).unwrap(),
+                   CounterId::Grant(
+                       (0b0001_0000 as u32) << (1)
+                           | (0b0000_1000 as u32) << (1 + 8)
+                           | (0b0000_0010 as u32) << (1 + 16)
+                           | (0b0000_0001 as u32) << (1 + 24),
+                       (0b0001_0000 as u32) << (2)
+                           | (0b0000_1000 as u32) << (2 + 8)
+                           | (0b0000_0010 as u32) << (2 + 16)
+                           | (0b0000_0001 as u32) << (2 + 24)));
+    }
+
+    #[test]
+    pub fn recognize_custom_grant() {
+        let input = [5 << 1,
+                     0b0001_0000 << 1,
+                     0b0000_1000 << 1,
+                     0b0000_0010 << 1,
+                     0b0000_0001 << 1];
+        let r = parse::custom_grant((&input, 0));
+
+        assert_eq!(r.is_ok(), true);
+        assert_eq!(r.map(|(_i, c)| c).unwrap(),
+                   CounterId::CustomGrant((0b0001_0000 as u32) << (1)
                                           | (0b0000_1000 as u32) << (1 + 8)
                                           | (0b0000_0010 as u32) << (1 + 16)
                                           | (0b0000_0001 as u32) << (1 + 24)));
