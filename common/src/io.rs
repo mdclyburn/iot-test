@@ -140,12 +140,12 @@ This iterator allows the pins that are iterated over to change state
 (e.g., set/clear interrupts or change logic state).
 
 # Examples
-```
+```ignore
 for p in &mut pins {
     println!("Pin #{:02}", p.pin());
-    p.set_high()?;
-    thread::sleep(500);
-    p.set_low()?;
+    let _res = p.set_high();
+    std::thread::sleep(500);
+    let _res = p.set_low();
 }
 ```
 */
@@ -278,7 +278,7 @@ impl Mapping {
     Returns and Ok(Mapping) or an error with the reason for the failure.
 
     # Examples
-    ```
+    ```ignore
     let mapping = Mapping::new(&device, &[(17, 23), (2, 13)]);
     ```
      */

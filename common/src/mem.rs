@@ -21,7 +21,7 @@ pub mod hil {
     use core::fmt::{self, Display};
 
     /// Memory statistic category
-    #[derive(Copy, Clone, Eq, PartialEq)]
+    #[derive(Copy, Clone, Debug, Eq, PartialEq)]
     pub enum CounterId {
         /// Total for allocated grant types.
         AllGrantStructures(u32),
@@ -106,5 +106,141 @@ impl TryFrom<&[u8]> for StreamOperation {
 
             _ => return Err(format!("invalid operation value: {}", op_val)),
         })
+    }
+}
+
+mod parse {
+    use nom::{
+        bits::bytes as make_bit_compatible,
+        bits::complete as bits,
+        bytes::complete as bytes,
+
+        branch,
+        combinator,
+        sequence,
+    };
+    use super::{
+        hil::CounterId,
+    };
+
+    #[allow(dead_code)]
+    type BitsInput<'a> = (&'a [u8], usize);
+    #[allow(dead_code)]
+    type BitsResult<'a, O> =
+        nom::IResult<(&'a [u8], usize),
+                     O,
+                     nom::error::Error<(&'a [u8], usize)>>;
+
+    #[derive(Debug, Eq, PartialEq)]
+    pub enum OpType { Add, Set }
+
+    pub fn stream_operation<'a>(input: BitsInput<'a>) -> BitsResult<OpType> {
+        branch::alt(
+            (combinator::map(bits::tag(0usize, 1usize), |_u| OpType::Add),
+             combinator::map(bits::tag(1usize, 1usize), |_u| OpType::Set)))
+            (input)
+    }
+
+    fn parse_little_u32<'a>(input: BitsInput<'a>) -> BitsResult<u32> {
+        type ByteError<'a> = nom::error::Error<&'a [u8]>;
+        combinator::map(
+            make_bit_compatible::<&'a [u8], _, ByteError<'a>, _, _>(bytes::take(4usize)),
+            |s: &[u8]| {
+                (s[0] as u32) << 0
+                    | (s[1] as u32) <<  8
+                    | (s[2] as u32) << 16
+                    | (s[3] as u32) << 24
+            })
+            (input)
+    }
+
+    fn counter_stream<'a>(id: usize,
+                          specific_byte_len: usize,
+                          construct: impl Fn(&'a [u8]) -> CounterId) -> impl FnMut(BitsInput<'a>) -> BitsResult<CounterId>
+    {
+        type ByteError<'a> = nom::error::Error<&'a [u8]>;
+
+        let f_get_data = sequence::preceded(
+            bits::tag(id, 7usize),
+            make_bit_compatible::<&[u8], _, ByteError<'a>, _, _>(bytes::take(specific_byte_len)));
+        combinator::map(f_get_data, construct)
+    }
+
+    macro_rules! little_u32 {
+        ($b0:expr, $b8:expr, $b16:expr, $b24:expr) => {{
+            let val = ((($b0) as u32) << 0
+                       | (($b8) as u32) << 8
+                       | (($b16) as u32) << 16
+                       | (($b24) as u32) << 24);
+            val
+        }}
+    }
+
+    pub fn pcb(input: BitsInput) -> BitsResult<CounterId> {
+        counter_stream(1, 4, |s: &[u8]| {
+            CounterId::PCB(little_u32!(s[0], s[1], s[2], s[3]))
+        })(input)
+    }
+
+    pub fn upcall_queue(input: BitsInput) -> BitsResult<CounterId> {
+        counter_stream(2, 4, |s: &[u8]| {
+            CounterId::UpcallQueue(little_u32!(s[0], s[1], s[2], s[3]))
+        })(input)
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+    use super::parse::OpType;
+
+    #[test]
+    pub fn recognize_add_operation() {
+        let input = [0b0000_0000];
+        let r = parse::stream_operation((&input, 0));
+        assert_eq!(r.map(|(_i, op)| op).unwrap(),
+                   OpType::Add);
+    }
+
+    #[test]
+    pub fn recognize_set_operation() {
+        let input = [0b1000_0000];
+        let r = parse::stream_operation((&input, 0));
+        assert_eq!(r.map(|(_i, op)| op).unwrap(),
+                   OpType::Set);
+    }
+
+    #[test]
+    pub fn recognize_pcb() {
+        let input = [0b0000_0001 << 1,
+                     0b0001_0000 << 1,
+                     0b0000_1000 << 1,
+                     0b0000_0010 << 1,
+                     0b0000_0001 << 1];
+        let r = parse::pcb((&input, 0));
+
+        assert_eq!(r.is_ok(), true);
+        assert_eq!(r.map(|(_i, c)| c).unwrap(),
+                   CounterId::PCB((0b0001_0000 as u32) << (1)
+                                  | (0b0000_1000 as u32) << (1 + 8)
+                                  | (0b0000_0010 as u32) << (1 + 16)
+                                  | (0b0000_0001 as u32) << (1 + 24)));
+    }
+
+    #[test]
+    pub fn recognize_upcall_queue() {
+        let input = [2 << 1,
+                     0b0001_0000 << 1,
+                     0b0000_1000 << 1,
+                     0b0000_0010 << 1,
+                     0b0000_0001 << 1];
+        let r = parse::upcall_queue((&input, 0));
+
+        assert_eq!(r.is_ok(), true);
+        assert_eq!(r.map(|(_i, c)| c).unwrap(),
+                   CounterId::UpcallQueue((0b0001_0000 as u32) << (1)
+                                          | (0b0000_1000 as u32) << (1 + 8)
+                                          | (0b0000_0010 as u32) << (1 + 16)
+                                          | (0b0000_0001 as u32) << (1 + 24)));
     }
 }

@@ -15,6 +15,7 @@ use std::time::Instant;
 
 use flexbed_common::facility::EnergyMetering;
 use flexbed_common::io::Mapping;
+use flexbed_common::mem::StreamOperation;
 use flexbed_common::test::{Response, Test};
 use flexbed_common::trace;
 use flexbed_common::trace::SerialTrace;
@@ -80,6 +81,9 @@ impl Testbed {
         let trace_thread = self.launch_tracing(Arc::clone(&current_test),
                                                Arc::clone(&barrier),
                                                trace_schannel);
+
+        // let (mem_schannel, mem_rchannel) = mpsc::sync_channel(0);
+        // let mem_thread =
 
         for test in tests {
             println!("executor: running '{}'", test.get_id());
@@ -396,6 +400,15 @@ impl Testbed {
             })
             .expect("Could not spawn tracing thread.")
     }
+
+    // fn launch_memory(
+    //     &self,
+    //     test_container: Arc<RwLock<Option<Test>>>,
+    //     barrier: Arc<Barrier>,
+    //     mem_schannel: SyncSender<Option<StreamOperation>>,
+    // ) -> JoinHandle<()> {
+    //     println!("Starting memory thread.");
+    // }
 
     /// Load specified applications onto the device.
     fn load_apps(&self, test: &Test) -> Result<()> {
