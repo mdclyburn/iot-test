@@ -131,13 +131,13 @@ mod parse {
                      O,
                      nom::error::Error<(&'a [u8], usize)>>;
 
-    #[derive(Debug, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub enum OpType { Add, Set }
 
     pub fn stream_operation<'a>(input: BitsInput<'a>) -> BitsResult<OpType> {
         branch::alt(
-            (combinator::map(bits::tag(0usize, 1usize), |_u| OpType::Add),
-             combinator::map(bits::tag(1usize, 1usize), |_u| OpType::Set)))
+            (combinator::value(OpType::Add, bits::tag(0usize, 1usize)),
+            (combinator::value(OpType::Set, bits::tag(1usize, 1usize)))))
             (input)
     }
 
