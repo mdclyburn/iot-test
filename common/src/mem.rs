@@ -39,6 +39,7 @@ pub mod hil {
 use self::hil::*;
 
 /// Operation to apply to aggregated memory statistic.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum StreamOperation {
     /// Add the contained value to the given statistic's counter.
     Add(CounterId, u32),
@@ -68,9 +69,7 @@ mod parse {
         StreamOperation,
     };
 
-    #[allow(dead_code)]
     type BitsInput<'a> = (&'a [u8], usize);
-    #[allow(dead_code)]
     type BitsResult<'a, O> =
         nom::IResult<(&'a [u8], usize),
                      O,
@@ -158,13 +157,9 @@ mod parse {
     }
 
     pub fn streamed_counter(input: BitsInput) -> BitsResult<StreamOperation> {
-        // Quick-n-dirty. Read a u32.
-        let extract_little_u32 = combinator::map(
-            make_bit_compatible::<&[u8], _, ByteError, _, _>(bytes::take(4usize)),
-            |s: &[u8]| little_u32!(s[0], s[1], s[2], s[3]));
         // Read the stream operation, the counter data, and the u32 at the end.
         let streamed_delta = sequence::tuple(
-            (stream_operation, counter, extract_little_u32));
+            (stream_operation, counter, parse_little_u32));
 
         // Build the final StreamOperation value.
         combinator::map(streamed_delta, |(op, counter, d)| {
@@ -295,5 +290,23 @@ pub mod tests {
                                           | (0b0000_1000 as u32) << (1 + 8)
                                           | (0b0000_0010 as u32) << (1 + 16)
                                           | (0b0000_0001 as u32) << (1 + 24)));
+    }
+
+    #[test]
+    pub fn streamed_pcb_counter() {
+        let input = [0b1000_0001,
+                     0b0000_0110,
+                     0b0000_0000,
+                     0b0000_0000,
+                     0b0000_0000,
+                     0b0000_1111,
+                     0b0000_0000,
+                     0b0000_0000,
+                     0b0000_0000];
+        let r = parse::streamed_counter((&input, 0));
+
+        assert!(r.is_ok());
+        assert_eq!(r.map(|(_i, c)| c).unwrap(),
+                  StreamOperation::Set(CounterId::PCB(6), 15));
     }
 }
