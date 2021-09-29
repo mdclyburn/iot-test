@@ -309,4 +309,42 @@ pub mod tests {
         assert_eq!(r.map(|(_i, c)| c).unwrap(),
                   StreamOperation::Set(CounterId::PCB(6), 15));
     }
+
+    #[test]
+    pub fn stream() {
+        let input = [0b1000_0100,
+                     0b0000_0101,
+                     0b0000_0000,
+                     0b0000_0000,
+                     0b0000_0000,
+                     0b0000_0000, // unused 4 bytes
+                     0b0000_0000,
+                     0b0000_0000,
+                     0b0000_0000,
+                     0b0010_0000,
+                     0b0000_0000,
+                     0b0000_0000,
+                     0b0000_0000,
+
+                     0b0000_0100,
+                     0b0000_0101,
+                     0b0000_0000,
+                     0b0000_0000,
+                     0b0000_0000,
+                     0b0000_0000, // unused 4 bytes
+                     0b0000_0000,
+                     0b0000_0000,
+                     0b0000_0000,
+                     0b0001_1100,
+                     0b0000_0000,
+                     0b0000_0000,
+                     0b0000_0000,];
+        let r = parse::stream(&input);
+
+        assert!(r.is_ok());
+        assert_eq!(r.as_ref().map(|stream| stream).unwrap()[0],
+                   StreamOperation::Set(CounterId::Grant(5, 0), 32));
+        assert_eq!(r.map(|stream| stream).as_ref().unwrap()[1],
+                   StreamOperation::Add(CounterId::Grant(5, 0), 28));
+    }
 }
