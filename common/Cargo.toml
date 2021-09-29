@@ -6,5 +6,8 @@ edition = "2018"
 
 [dependencies]
 json = "^0.12"
-nom = "^7"
 rppal = "^0.11"
+
+[dependencies.nom]
+version = "^7"
+features = ["alloc"]

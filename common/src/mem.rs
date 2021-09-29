@@ -1,23 +1,7 @@
 //! Aggregate memory statistics sent over the wire.
 
-use std::convert::TryFrom;
-
-fn extract_u32<I>(data: &mut I) -> Result<u32, String>
-where
-    I: Iterator<Item = u8>
-{
-    let (b0, b1, b2, b3) = (
-        data.next().ok_or("u32 ended at byte 0".to_string())?,
-        data.next().ok_or("u32 ended at byte 1".to_string())?,
-        data.next().ok_or("u32 ended at byte 2".to_string())?,
-        data.next().ok_or("u32 ended at byte 3".to_string())?);
-
-    Ok(b0 as u32 | (b1 as u32) << 8 | (b2 as u32) << 16 | (b3 as u32) << 24)
-}
-
 pub mod hil {
     //! Memory counter information to be used by the device under test.
-    use core::convert::TryFrom;
     use core::fmt::{self, Display};
 
     /// Memory statistic category
@@ -50,28 +34,6 @@ pub mod hil {
             }
         }
     }
-
-    impl TryFrom<(u8, &[u8])> for CounterId {
-        type Error = String;
-
-        fn try_from(val: (u8, &[u8])) -> Result<CounterId, String> {
-            let (counter_val, specifics) = val;
-            let mut stream_it = specifics.iter().copied();
-
-            use CounterId::*;
-            use super::extract_u32;
-            Ok(match counter_val {
-                1 => PCB(extract_u32(&mut stream_it)?),
-                2 => UpcallQueue(extract_u32(&mut stream_it)?),
-                3 => GrantPointerTable(extract_u32(&mut stream_it)?),
-                4 => Grant(extract_u32(&mut stream_it)?,
-                           extract_u32(&mut stream_it)?),
-                5 => CustomGrant(extract_u32(&mut stream_it)?),
-
-                _ => return Err(format!("counter not identified: {}", counter_val)),
-            })
-        }
-    }
 }
 
 use self::hil::*;
@@ -84,30 +46,11 @@ pub enum StreamOperation {
     Set(CounterId, u32),
 }
 
-impl TryFrom<&[u8]> for StreamOperation {
-    type Error = String;
-
-    fn try_from(val: &[u8]) -> Result<StreamOperation, String> {
-        let mut data_it = val.iter().copied();
-
-        // operation/counter ID
-        let op_counter = data_it.next().ok_or(
-            "no aggregate op-counter byte".to_string())?;
-        let op_val: u8 = (op_counter & 0b1000_0000) >> 7;
-        let counter_val: u8 = op_counter & 0b0111_1111;
-
-        let counter_data = &val[1..val.len().saturating_sub(4)];
-        let counter = CounterId::try_from((counter_val, counter_data))?;
-
-        use StreamOperation::*;
-        Ok(match op_val {
-            0 => Set(counter, extract_u32(&mut data_it)?),
-            1 => Add(counter, extract_u32(&mut data_it)?),
-
-            _ => return Err(format!("invalid operation value: {}", op_val)),
-        })
-    }
-}
+/// Recreate a sequence of stream operations from raw bytes.
+///
+/// Parses the provided sequence of bytes and returns a structured view of the streamed data.
+/// If the parsing fails, then this function returns an `Err` that describes the reason for the failure (in raw `nom` terms...).
+pub fn parse_stream(bytes: &[u8]) -> Result<Vec<StreamOperation>, String> { parse::stream(bytes) }
 
 mod parse {
     use nom::{
@@ -117,10 +60,12 @@ mod parse {
 
         branch,
         combinator,
+        multi,
         sequence,
     };
     use super::{
         hil::CounterId,
+        StreamOperation,
     };
 
     #[allow(dead_code)]
@@ -130,6 +75,7 @@ mod parse {
         nom::IResult<(&'a [u8], usize),
                      O,
                      nom::error::Error<(&'a [u8], usize)>>;
+    type ByteError<'a> = nom::error::Error<&'a [u8]>;
 
     #[derive(Clone, Debug, Eq, PartialEq)]
     pub enum OpType { Add, Set }
@@ -158,8 +104,6 @@ mod parse {
                           specific_byte_len: usize,
                           construct: impl Fn(&'a [u8]) -> CounterId) -> impl FnMut(BitsInput<'a>) -> BitsResult<CounterId>
     {
-        type ByteError<'a> = nom::error::Error<&'a [u8]>;
-
         let f_get_data = sequence::preceded(
             bits::tag(id, 7usize),
             make_bit_compatible::<&[u8], _, ByteError<'a>, _, _>(bytes::take(specific_byte_len)));
@@ -206,6 +150,37 @@ mod parse {
         counter_stream(5, 4, |s: &[u8]| {
             CounterId::CustomGrant(little_u32!(s[0], s[1], s[2], s[3]))
         })(input)
+    }
+
+    pub fn counter(input: BitsInput) -> BitsResult<CounterId> {
+        branch::alt((pcb, upcall_queue, grant_pointer_table, grant, custom_grant))
+            (input)
+    }
+
+    pub fn streamed_counter(input: BitsInput) -> BitsResult<StreamOperation> {
+        // Quick-n-dirty. Read a u32.
+        let extract_little_u32 = combinator::map(
+            make_bit_compatible::<&[u8], _, ByteError, _, _>(bytes::take(4usize)),
+            |s: &[u8]| little_u32!(s[0], s[1], s[2], s[3]));
+        // Read the stream operation, the counter data, and the u32 at the end.
+        let streamed_delta = sequence::tuple(
+            (stream_operation, counter, extract_little_u32));
+
+        // Build the final StreamOperation value.
+        combinator::map(streamed_delta, |(op, counter, d)| {
+            match op {
+                OpType::Add => StreamOperation::Add(counter, d),
+                OpType::Set => StreamOperation::Set(counter, d),
+            }
+        })
+            (input)
+    }
+
+    pub fn stream(input: &[u8]) -> Result<Vec<StreamOperation>, String> {
+        let input = (input, 0);
+        multi::many0(streamed_counter)(input)
+            .map(|(_input, ops)| ops)
+            .map_err(|e| format!("Memory stat stream parsing failed.\nNom error: {}", e))
     }
 }
 
