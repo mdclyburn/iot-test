@@ -23,7 +23,12 @@ use flexbed_common::facility::EnergyMetering;
 use flexbed_common::hw::INA219;
 use flexbed_common::input::TestProvider;
 use flexbed_common::io;
-use flexbed_common::io::{Device, Mapping, DeviceInputs};
+use flexbed_common::io::{
+    Device,
+    DeviceInputs,
+    Mapping,
+    UART,
+};
 use flexbed_common::test::{Operation, Test};
 
 use crate::sw::platform::Tock;
@@ -102,7 +107,7 @@ impl TestbedConfigReader for HardCodedTestbed {
             Box::new(platform),
             energy_meters,
             None,
-            None);
+            Some(UART::PL011));
 
         Ok(testbed)
     }

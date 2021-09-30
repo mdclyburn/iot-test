@@ -463,7 +463,7 @@ impl Testbed {
 
                     let mut uart = uart;
                     let mut buffer: Vec<u8> = Vec::new();
-                    let mut schedule: Vec<(Instant, MemoryTrace)> = Vec::new();
+                    let mut schedule: Vec<MemoryTrace> = Vec::new();
                     let mut bytes_remaining;
 
                     loop {
@@ -490,8 +490,8 @@ impl Testbed {
 
                         barrier.wait();
 
-                        for mem_event in schedule {
-                            mem_schannel.send(Some(mem_event)).unwrap();
+                        for mem_event in &schedule {
+                            mem_schannel.send(Some(mem_event.clone())).unwrap();
                         }
                         mem_schannel.send(None).unwrap(); // done communicating results
                     }
