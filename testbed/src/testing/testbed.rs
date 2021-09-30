@@ -72,7 +72,7 @@ impl Testbed {
     {
         let mut test_results = Vec::new();
 
-        let barrier = Arc::new(Barrier::new(4));
+        let barrier = Arc::new(Barrier::new(5));
         let current_test: Arc<RwLock<Option<Test>>> = Arc::new(RwLock::new(None));
 
         let (observer_schannel, observer_rchannel) = mpsc::sync_channel(0);
@@ -90,6 +90,12 @@ impl Testbed {
                                                Arc::clone(&barrier),
                                                trace_schannel,
                                                self.tracing_uart.as_ref());
+
+        let (mem_schannel, mem_rchannel) = mpsc::sync_channel(0);
+        let mem_thread = self.launch_memstat(Arc::clone(&current_test),
+                                             Arc::clone(&barrier),
+                                             mem_schannel,
+                                             self.memory_uart.as_ref());
 
         for test in tests {
             println!("executor: running '{}'", test.get_id());
@@ -358,7 +364,7 @@ impl Testbed {
         test_container: Arc<RwLock<Option<Test>>>,
         barrier: Arc<Barrier>,
         trace_schannel: SyncSender<Option<SerialTrace>>,
-        uart: Option<UART>,
+        uart: Option<&UART>,
     ) -> JoinHandle<()> {
 
         if let Some(uart) = uart {
@@ -436,7 +442,7 @@ impl Testbed {
         test_container: Arc<RwLock<Option<Test>>>,
         barrier: Arc<Barrier>,
         mem_schannel: SyncSender<Option<StreamOperation>>,
-        uart: Option<UART>,
+        uart: Option<&UART>,
     ) -> JoinHandle<()> {
         if let Some(uart) = uart {
             println!("Starting memory tracking thread.");

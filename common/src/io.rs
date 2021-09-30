@@ -417,10 +417,10 @@ impl Mapping {
     /// Retrieves the UART interface.
     ///
     /// If using the UART built into the Raspberry Pi, `which_uart` must be `UART::PL011` to do pin mapping checking.
-    pub fn get_uart(&self, which_uart: UART) -> Result<Uart>
+    pub fn get_uart(&self, which_uart: &UART) -> Result<Uart>
     {
         // Must check the pins that this UART uses.
-        if which_uart == UART::PL011
+        if *which_uart == UART::PL011
             && (self.numbering.contains_key(&14) || self.numbering.contains_key(&15))
         {
             Err(Error::UARTUnavailable)
