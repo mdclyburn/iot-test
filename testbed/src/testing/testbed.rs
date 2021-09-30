@@ -457,7 +457,7 @@ impl Testbed {
                     let mut uart = uart;
                     let mut buffer: Vec<u8> = Vec::new();
                     let mut schedule: Vec<(Instant, StreamOperation)> = Vec::new();
-                    let mut bytes_rx;
+                    let mut bytes_remaining;
 
                     loop {
                         // wait for next test
@@ -467,11 +467,15 @@ impl Testbed {
                             test.prep_memtrack(&mut uart, &mut buffer, &mut schedule).unwrap();
 
                             barrier.wait();
-                            bytes_rx = test.memtrack(
+                            bytes_remaining = test.memtrack(
                                 &mut uart,
                                 &mut buffer,
                                 &mut schedule).unwrap();
-                            println!("memtrack: received {} bytes over UART", bytes_rx);
+                            if bytes_remaining > 0 {
+                                println!("memtrack: {} bytes of unprocessed data!", bytes_remaining);
+                            } else {
+                                println!("memtrack: all data processed");
+                            }
                         } else {
                             // no more tests to run
                             break;
@@ -479,13 +483,9 @@ impl Testbed {
 
                         barrier.wait();
 
-                        // let serial_traces = trace::reconstruct_serial(
-                        //     &buffer.as_slice()[0..bytes_rx],
-                        //     &schedule);
-                        // communicate results back
-                        // for trace in serial_traces {
-                        //     mem_schannel.send(Some(trace)).unwrap();
-                        // }
+                        for mem_event in schedule {
+                            mem_schannel.send(Some(mem_event)).unwrap();
+                        }
                         mem_schannel.send(None).unwrap(); // done communicating results
                     }
                 })

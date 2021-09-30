@@ -14,10 +14,29 @@ use flexbed_shared::mem::CounterId;
 /// Operation to apply to aggregated memory statistic.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum StreamOperation {
-    /// Add the contained value to the given statistic's counter.
-    Add(CounterId, u32),
-    /// Set the counter for the given statistic to the given value.
-    Set(CounterId, u32),
+    /// Add to a statistic counter.
+    Add,
+    /// Set a statistic counter to a value.
+    Set,
+}
+
+/// Memory counter update event.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MemoryTrace {
+    op: StreamOperation,
+    counter: CounterId,
+}
+
+impl MemoryTrace {
+    /// How the trace event changes the counter.
+    pub fn operation(&self) -> StreamOperation {
+        self.op
+    }
+
+    /// Counter change data.
+    pub fn counter(&self) -> &CounterId {
+        &self.counter
+    }
 }
 
 type BitsInput<'a> = (&'a [u8], usize);
@@ -27,26 +46,10 @@ type BitsResult<'a, O> =
                  nom::error::Error<(&'a [u8], usize)>>;
 type ByteError<'a> = nom::error::Error<&'a [u8]>;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-enum OpType { Add, Set }
-
-fn stream_operation_op<'a>(input: BitsInput<'a>) -> BitsResult<OpType> {
+fn stream_operation_op<'a>(input: BitsInput<'a>) -> BitsResult<StreamOperation> {
     branch::alt(
-        (combinator::value(OpType::Add, bits::tag(0usize, 1usize)),
-         (combinator::value(OpType::Set, bits::tag(1usize, 1usize)))))
-        (input)
-}
-
-fn parse_little_u32<'a>(input: BitsInput<'a>) -> BitsResult<u32> {
-    type ByteError<'a> = nom::error::Error<&'a [u8]>;
-    combinator::map(
-        make_bit_compatible::<&'a [u8], _, ByteError<'a>, _, _>(bytes::take(4usize)),
-        |s: &[u8]| {
-            (s[0] as u32) << 0
-                | (s[1] as u32) <<  8
-                | (s[2] as u32) << 16
-                | (s[3] as u32) << 24
-        })
+        (combinator::value(StreamOperation::Add, bits::tag(0usize, 1usize)),
+         (combinator::value(StreamOperation::Set, bits::tag(1usize, 1usize)))))
         (input)
 }
 
@@ -107,16 +110,15 @@ fn counter(input: BitsInput) -> BitsResult<CounterId> {
         (input)
 }
 
-fn streamed_counter(input: BitsInput) -> BitsResult<StreamOperation> {
+fn streamed_counter(input: BitsInput) -> BitsResult<MemoryTrace> {
     // Read the stream operation, the counter data, and the u32 at the end.
-    let streamed_delta = sequence::tuple(
-        (stream_operation_op, counter, parse_little_u32));
+    let streamed_delta = sequence::pair(stream_operation_op, counter);
 
     // Build the final StreamOperation value.
-    combinator::map(streamed_delta, |(op, counter, d)| {
-        match op {
-            OpType::Add => StreamOperation::Add(counter, d),
-            OpType::Set => StreamOperation::Set(counter, d),
+    combinator::map(streamed_delta, |(op, counter)| {
+        MemoryTrace {
+            op: op,
+            counter: counter,
         }
     })
         (input)
@@ -126,21 +128,21 @@ fn streamed_counter(input: BitsInput) -> BitsResult<StreamOperation> {
 ///
 /// Parses the provided sequence of bytes and returns a structured view of the stream operation.
 /// If the parsing fails, then this function returns an `Err` that describes the reason for the failure (in raw `nom` terms...).
-pub fn parse_counter(input: &[u8]) -> BitsResult<StreamOperation> {
+pub fn parse_counter(input: &[u8]) -> BitsResult<MemoryTrace> {
     streamed_counter((input, 0))
 }
 
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use super::OpType;
+    use super::StreamOperation;
 
     #[test]
     pub fn recognize_add_operation() {
         let input = [0b0000_0000];
         let r = stream_operation_op((&input, 0));
         assert_eq!(r.map(|(_i, op)| op).unwrap(),
-                   OpType::Add);
+                   StreamOperation::Add);
     }
 
     #[test]
@@ -148,7 +150,7 @@ pub mod tests {
         let input = [0b1000_0000];
         let r = stream_operation_op((&input, 0));
         assert_eq!(r.map(|(_i, op)| op).unwrap(),
-                   OpType::Set);
+                   StreamOperation::Set);
     }
 
     #[test]
@@ -246,11 +248,8 @@ pub mod tests {
     #[test]
     pub fn streamed_pcb_counter() {
         let input = [0b1000_0001,
+
                      0b0000_0110,
-                     0b0000_0000,
-                     0b0000_0000,
-                     0b0000_0000,
-                     0b0000_1111,
                      0b0000_0000,
                      0b0000_0000,
                      0b0000_0000];
@@ -258,6 +257,9 @@ pub mod tests {
 
         assert!(r.is_ok());
         assert_eq!(r.map(|(_i, c)| c).unwrap(),
-                   StreamOperation::Set(CounterId::PCB(6), 15));
+                   MemoryTrace {
+                       op: StreamOperation::Set,
+                       counter: CounterId::PCB(6)
+                   });
     }
 }

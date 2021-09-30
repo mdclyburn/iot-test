@@ -23,7 +23,7 @@ use crate::criteria::{
 };
 use crate::facility::EnergyMetering;
 use crate::io::{DeviceInputs, DeviceOutputs};
-use crate::mem::StreamOperation;
+use crate::mem::MemoryTrace;
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -492,7 +492,7 @@ impl Test {
     pub fn prep_memtrack(&self,
                          uart: &mut Uart,
                          buffer: &mut Vec<u8>,
-                         schedule: &mut Vec<(Instant, StreamOperation)>) -> Result<()>
+                         schedule: &mut Vec<(Instant, MemoryTrace)>) -> Result<()>
     {
         // Again, timeout is arbitrary.
         uart.set_read_mode(0, Duration::from_millis(100))?;
@@ -511,7 +511,7 @@ impl Test {
     pub fn memtrack(&self,
                     uart: &mut Uart,
                     buffer: &mut Vec<u8>,
-                    schedule: &mut Vec<(Instant, StreamOperation)>) -> Result<usize>
+                    schedule: &mut Vec<(Instant, MemoryTrace)>) -> Result<usize>
     {
         let buffer: &mut [u8] = buffer.as_mut_slice();
         let mut bytes_read = 0;
