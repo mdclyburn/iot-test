@@ -133,12 +133,12 @@ pub fn parse_counter(input: &[u8]) -> BitsResult<StreamOperation> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use super::parse::OpType;
+    use super::OpType;
 
     #[test]
     pub fn recognize_add_operation() {
         let input = [0b0000_0000];
-        let r = parse::stream_operation((&input, 0));
+        let r = stream_operation_op((&input, 0));
         assert_eq!(r.map(|(_i, op)| op).unwrap(),
                    OpType::Add);
     }
@@ -146,7 +146,7 @@ pub mod tests {
     #[test]
     pub fn recognize_set_operation() {
         let input = [0b1000_0000];
-        let r = parse::stream_operation((&input, 0));
+        let r = stream_operation_op((&input, 0));
         assert_eq!(r.map(|(_i, op)| op).unwrap(),
                    OpType::Set);
     }
@@ -158,7 +158,7 @@ pub mod tests {
                      0b0000_1000 << 1,
                      0b0000_0010 << 1,
                      0b0000_0001 << 1];
-        let r = parse::pcb((&input, 0));
+        let r = pcb((&input, 0));
 
         assert_eq!(r.is_ok(), true);
         assert_eq!(r.map(|(_i, c)| c).unwrap(),
@@ -175,7 +175,7 @@ pub mod tests {
                      0b0000_1000 << 1,
                      0b0000_0010 << 1,
                      0b0000_0001 << 1];
-        let r = parse::upcall_queue((&input, 0));
+        let r = upcall_queue((&input, 0));
 
         assert_eq!(r.is_ok(), true);
         assert_eq!(r.map(|(_i, c)| c).unwrap(),
@@ -192,7 +192,7 @@ pub mod tests {
                      0b0000_1000 << 1,
                      0b0000_0010 << 1,
                      0b0000_0001 << 1];
-        let r = parse::grant_pointer_table((&input, 0));
+        let r = grant_pointer_table((&input, 0));
 
         assert_eq!(r.is_ok(), true);
         assert_eq!(r.map(|(_i, c)| c).unwrap(),
@@ -213,7 +213,7 @@ pub mod tests {
                      0b0000_1000 << 2,
                      0b0000_0010 << 2,
                      0b0000_0001 << 2];
-        let r = parse::grant((&input, 0));
+        let r = grant((&input, 0));
         assert_eq!(r.map(|(_i, c)| c).unwrap(),
                    CounterId::Grant(
                        (0b0001_0000 as u32) << (1)
@@ -233,7 +233,7 @@ pub mod tests {
                      0b0000_1000 << 1,
                      0b0000_0010 << 1,
                      0b0000_0001 << 1];
-        let r = parse::custom_grant((&input, 0));
+        let r = custom_grant((&input, 0));
 
         assert_eq!(r.is_ok(), true);
         assert_eq!(r.map(|(_i, c)| c).unwrap(),
@@ -254,48 +254,10 @@ pub mod tests {
                      0b0000_0000,
                      0b0000_0000,
                      0b0000_0000];
-        let r = parse::streamed_counter((&input, 0));
+        let r = streamed_counter((&input, 0));
 
         assert!(r.is_ok());
         assert_eq!(r.map(|(_i, c)| c).unwrap(),
                    StreamOperation::Set(CounterId::PCB(6), 15));
-    }
-
-    #[test]
-    pub fn stream() {
-        let input = [0b1000_0100,
-                     0b0000_0101,
-                     0b0000_0000,
-                     0b0000_0000,
-                     0b0000_0000,
-                     0b0000_0000, // unused 4 bytes
-                     0b0000_0000,
-                     0b0000_0000,
-                     0b0000_0000,
-                     0b0010_0000,
-                     0b0000_0000,
-                     0b0000_0000,
-                     0b0000_0000,
-
-                     0b0000_0100,
-                     0b0000_0101,
-                     0b0000_0000,
-                     0b0000_0000,
-                     0b0000_0000,
-                     0b0000_0000, // unused 4 bytes
-                     0b0000_0000,
-                     0b0000_0000,
-                     0b0000_0000,
-                     0b0001_1100,
-                     0b0000_0000,
-                     0b0000_0000,
-                     0b0000_0000,];
-        let r = parse::stream(&input);
-
-        assert!(r.is_ok());
-        assert_eq!(r.as_ref().map(|stream| stream).unwrap()[0],
-                   StreamOperation::Set(CounterId::Grant(5, 0), 32));
-        assert_eq!(r.map(|stream| stream).as_ref().unwrap()[1],
-                   StreamOperation::Add(CounterId::Grant(5, 0), 28));
     }
 }
