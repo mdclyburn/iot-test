@@ -9,4 +9,4 @@ name = "sample"
 crate_type = ["dylib"]
 
 [dependencies]
-flexbed-common = { path = "../../common" }
+flexbed_common = { path = "../../common" }

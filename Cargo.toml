@@ -2,6 +2,7 @@
 members = [
   "testbed",
   "common",
+  "shared",
 
   "tests/sample",
 ]

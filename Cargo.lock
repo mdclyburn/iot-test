@@ -9,19 +9,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
-name = "flexbed-common"
-version = "0.1.0"
-dependencies = [
- "json",
- "nom",
- "rppal",
-]
-
-[[package]]
 name = "flexbed-testbed"
 version = "0.1.0"
 dependencies = [
- "flexbed-common",
+ "flexbed_common",
  "getopts",
  "json",
  "libloading",
@@ -29,6 +20,20 @@ dependencies = [
  "serde",
  "serde_json",
 ]
+
+[[package]]
+name = "flexbed_common"
+version = "0.1.0"
+dependencies = [
+ "flexbed_shared",
+ "json",
+ "nom",
+ "rppal",
+]
+
+[[package]]
+name = "flexbed_shared"
+version = "0.1.0"
 
 [[package]]
 name = "getopts"
@@ -134,7 +139,7 @@ checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
 name = "sample"
 version = "0.1.0"
 dependencies = [
- "flexbed-common",
+ "flexbed_common",
 ]
 
 [[package]]

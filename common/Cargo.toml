@@ -1,10 +1,11 @@
 [package]
-name = "flexbed-common"
+name = "flexbed_common"
 version = "0.1.0"
 authors = ["Marshall Clyburn <mardev2013@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+flexbed_shared = { path = "../shared" }
 json = "^0.12"
 rppal = "^0.11"
 
