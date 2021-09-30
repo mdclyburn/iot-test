@@ -268,6 +268,17 @@ pub enum UART {
     Custom(String),
 }
 
+impl UART {
+    /// Path to the UART the variant refers to.
+    pub fn path(&self) -> &str {
+        use UART::*;
+        match self {
+            PL011 => "/dev/ttyAMA0",
+            Custom(ref path) => path.as_ref(),
+        }
+    }
+}
+
 /** Interface to I/O between the testbed and the device under test.
 
 `Mapping` defines the interface between the testbed and the device under test.
@@ -414,14 +425,9 @@ impl Mapping {
         {
             Err(Error::UARTUnavailable)
         } else {
-            let path = match which_uart {
-                UART::PL011 => "/dev/ttyAMA0".to_string(),
-                UART::Custom(path) => path,
-            };
-
             // Use hard-coded values here to avoid complexity
             // in code wanting to use the UART.
-            let mut uart = Uart::with_path(path, 115_200, UARTParity::Even, 8, 1)?;
+            let mut uart = Uart::with_path(which_uart.path(), 115_200, UARTParity::Even, 8, 1)?;
             uart.set_hardware_flow_control(false)?;
             Ok(uart)
         }

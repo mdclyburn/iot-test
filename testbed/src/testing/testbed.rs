@@ -89,7 +89,7 @@ impl Testbed {
         let trace_thread = self.launch_tracing(Arc::clone(&current_test),
                                                Arc::clone(&barrier),
                                                trace_schannel,
-                                               self.tracing_uart);
+                                               self.tracing_uart.as_ref());
 
         for test in tests {
             println!("executor: running '{}'", test.get_id());
@@ -436,6 +436,7 @@ impl Testbed {
         test_container: Arc<RwLock<Option<Test>>>,
         barrier: Arc<Barrier>,
         mem_schannel: SyncSender<Option<StreamOperation>>,
+        uart: Option<UART>,
     ) -> JoinHandle<()> {
         if let Some(uart) = uart {
             println!("Starting memory tracking thread.");
