@@ -14,8 +14,7 @@ use std::thread::JoinHandle;
 use std::time::Instant;
 
 use flexbed_common::facility::EnergyMetering;
-use flexbed_common::io::Mapping;
-use flexbed_common::mem::StreamOperation;
+use flexbed_common::io::{Mapping, UART};
 use flexbed_common::test::{Response, Test};
 use flexbed_common::trace;
 use flexbed_common::trace::SerialTrace;
@@ -33,18 +32,26 @@ pub struct Testbed {
     pin_mapping: Mapping,
     platform_support: Box<dyn PlatformSupport>,
     energy_meters: Arc<Mutex<HashMap<String, Box<dyn EnergyMetering>>>>,
+    tracing_uart: Option<UART>,
+    memory_uart: Option<UART>,
 }
 
 impl Testbed {
     /// Create a new `Testbed`.
-    pub fn new(pin_mapping: Mapping,
-               platform_support: Box<dyn PlatformSupport>,
-               energy_meters: HashMap<String, Box<dyn EnergyMetering>>) -> Testbed
+    pub fn new(
+        pin_mapping: Mapping,
+        platform_support: Box<dyn PlatformSupport>,
+        energy_meters: HashMap<String, Box<dyn EnergyMetering>>,
+        tracing_uart: Option<UART>,
+        memory_uart: Option<UART>,
+    ) -> Testbed
     {
         Testbed {
             pin_mapping,
             platform_support,
             energy_meters: Arc::new(Mutex::new(energy_meters)),
+            tracing_uart,
+            memory_uart,
         }
     }
 
@@ -80,10 +87,8 @@ impl Testbed {
         let (trace_schannel, trace_rchannel) = mpsc::sync_channel(0);
         let trace_thread = self.launch_tracing(Arc::clone(&current_test),
                                                Arc::clone(&barrier),
-                                               trace_schannel);
-
-        // let (mem_schannel, mem_rchannel) = mpsc::sync_channel(0);
-        // let mem_thread =
+                                               trace_schannel,
+                                               self.tracing_uart);
 
         for test in tests {
             println!("executor: running '{}'", test.get_id());
@@ -352,53 +357,77 @@ impl Testbed {
         test_container: Arc<RwLock<Option<Test>>>,
         barrier: Arc<Barrier>,
         trace_schannel: SyncSender<Option<SerialTrace>>,
+        uart: Option<UART>,
     ) -> JoinHandle<()> {
-        println!("Starting tracing thread.");
 
-        let uart = self.pin_mapping.get_uart()
-            .expect("Could not obtain UART from tracing thread.");
+        if let Some(uart) = uart {
+            println!("Starting tracing thread.");
+            let uart = self.pin_mapping.get_uart(uart)
+                .expect("Could not obtain UART from tracing thread.");
 
-        thread::Builder::new()
-            .name("test-stracing".to_string())
-            .spawn(move || {
-                println!("stracing: started.");
+            thread::Builder::new()
+                .name("test-stracing".to_string())
+                .spawn(move || {
+                    println!("stracing: started.");
 
-                let mut uart = uart;
-                let mut buffer: Vec<u8> = Vec::new();
-                let mut schedule: Vec<(Instant, usize)> = Vec::new();
-                let mut bytes_rx;
+                    let mut uart = uart;
+                    let mut buffer: Vec<u8> = Vec::new();
+                    let mut schedule: Vec<(Instant, usize)> = Vec::new();
+                    let mut bytes_rx;
 
-                loop {
-                    // wait for next test
-                    barrier.wait();
+                    loop {
+                        // wait for next test
+                        barrier.wait();
 
-                    if let Some(ref test) = *test_container.read().unwrap() {
-                        test.prep_tracing(&mut uart, &mut buffer, &mut schedule).unwrap();
+                        if let Some(ref test) = *test_container.read().unwrap() {
+                            test.prep_tracing(&mut uart, &mut buffer, &mut schedule).unwrap();
+
+                            barrier.wait();
+                            bytes_rx = test.trace(
+                                &mut uart,
+                                &mut buffer,
+                                &mut schedule).unwrap();
+                            println!("stracing: received {} bytes over UART", bytes_rx);
+                        } else {
+                            // no more tests to run
+                            break;
+                        }
 
                         barrier.wait();
-                        bytes_rx = test.trace(
-                            &mut uart,
-                            &mut buffer,
-                            &mut schedule).unwrap();
-                        println!("stracing: received {} bytes over UART", bytes_rx);
-                    } else {
-                        // no more tests to run
-                        break;
-                    }
 
-                    barrier.wait();
-
-                    let serial_traces = trace::reconstruct_serial(
-                        &buffer.as_slice()[0..bytes_rx],
-                        &schedule);
-                    // communicate results back
-                    for trace in serial_traces {
-                        trace_schannel.send(Some(trace)).unwrap();
+                        let serial_traces = trace::reconstruct_serial(
+                            &buffer.as_slice()[0..bytes_rx],
+                            &schedule);
+                        // communicate results back
+                        for trace in serial_traces {
+                            trace_schannel.send(Some(trace)).unwrap();
+                        }
+                        trace_schannel.send(None).unwrap(); // done communicating results
                     }
-                    trace_schannel.send(None).unwrap(); // done communicating results
-                }
-            })
-            .expect("Could not spawn tracing thread.")
+                })
+                .expect("Could not spawn tracing thread.")
+        } else {
+            println!("No UART for serial tracing; will idle.");
+
+            thread::Builder::new()
+                .name("test-stracing".to_string())
+                .spawn(move || {
+
+                    loop {
+                        // wait for next test
+                        barrier.wait();
+                        if let Some(ref _test) = *test_container.read().unwrap() {
+                            barrier.wait();
+                        } else {
+                            // no more tests to run
+                            break;
+                        }
+                        barrier.wait();
+                        trace_schannel.send(None).unwrap(); // done communicating results
+                    }
+                })
+                .expect("Could not spawn tracing thread.")
+        }
     }
 
     // fn launch_memory(

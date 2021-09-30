@@ -100,7 +100,9 @@ impl TestbedConfigReader for HardCodedTestbed {
         let testbed = Testbed::new(
             mapping,
             Box::new(platform),
-            energy_meters);
+            energy_meters,
+            None,
+            None);
 
         Ok(testbed)
     }

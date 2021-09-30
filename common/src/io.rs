@@ -259,6 +259,15 @@ impl fmt::Debug for Device {
     }
 }
 
+/// Defined UART interfaces.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum UART {
+    /// Full UART built into the Raspberry Pi.
+    PL011,
+    /// Other UART connected to the Raspberry Pi.
+    Custom(String),
+}
+
 /** Interface to I/O between the testbed and the device under test.
 
 `Mapping` defines the interface between the testbed and the device under test.
@@ -395,19 +404,25 @@ impl Mapping {
     }
 
     /// Retrieves the UART interface.
-    pub fn get_uart(&self) -> Result<Uart>
+    ///
+    /// If using the UART built into the Raspberry Pi, `which_uart` must be `UART::PL011` to do pin mapping checking.
+    pub fn get_uart(&self, which_uart: UART) -> Result<Uart>
     {
-        let uart_pins_mapped =
-            self.numbering.contains_key(&14)
-            || self.numbering.contains_key(&15);
-        if uart_pins_mapped {
+        // Must check the pins that this UART uses.
+        if which_uart == UART::PL011
+            && (self.numbering.contains_key(&14) || self.numbering.contains_key(&15))
+        {
             Err(Error::UARTUnavailable)
         } else {
+            let path = match which_uart {
+                UART::PL011 => "/dev/ttyAMA0".to_string(),
+                UART::Custom(path) => path,
+            };
+
             // Use hard-coded values here to avoid complexity
             // in code wanting to use the UART.
-            let mut uart = Uart::with_path("/dev/ttyAMA0", 115_200, UARTParity::Even, 8, 1)?;
+            let mut uart = Uart::with_path(path, 115_200, UARTParity::Even, 8, 1)?;
             uart.set_hardware_flow_control(false)?;
-
             Ok(uart)
         }
     }

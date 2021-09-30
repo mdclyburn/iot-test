@@ -116,7 +116,9 @@ impl TestbedConfigReader for JSONTestbedParser {
         let testbed = Testbed::new(
             mapping,
             platform_support,
-            energy_meters);
+            energy_meters,
+            None,
+            None);
 
         Ok(testbed)
     }
