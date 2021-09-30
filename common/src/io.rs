@@ -427,6 +427,7 @@ impl Mapping {
         } else {
             // Use hard-coded values here to avoid complexity
             // in code wanting to use the UART.
+            println!("Opening UART: {}", which_uart.path());
             let mut uart = Uart::with_path(which_uart.path(), 115_200, UARTParity::Even, 8, 1)?;
             uart.set_hardware_flow_control(false)?;
             Ok(uart)

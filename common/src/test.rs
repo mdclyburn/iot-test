@@ -503,6 +503,7 @@ impl Test {
         buffer.reserve_exact(buffer_alloc);
         // Arbitrary estimation...
         schedule.reserve_exact(buffer_alloc / 10);
+        while buffer.len() < buffer_alloc { buffer.push(0); }
 
         Ok(())
     }
@@ -586,6 +587,7 @@ impl Test {
             }
         }
 
+        println!("memtrack: bytes rx: {}, bytes parsed: {}", bytes_read, bytes_parsed);
         Ok(bytes_read - bytes_parsed)
     }
 

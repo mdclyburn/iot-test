@@ -138,6 +138,7 @@ impl Testbed {
             barrier.wait();
 
             if test.get_reset_on_start() {
+                println!("Resetting device...");
                 let reset_res = self.pin_mapping.get_device().reset(&mut inputs);
                 if let Err(e) = reset_res {
                     test_results.push(
@@ -147,17 +148,12 @@ impl Testbed {
                             Error::Reset(e)));
                     continue;
                 }
+                println!("Reset complete.");
             }
 
             // wait for test to begin
             barrier.wait();
             println!("executor: starting test '{}'", test.get_id());
-
-            // if test.get_reset_on_start() {
-            //     let reset_pin_no = self.pin_mapping.get_reset_pin().unwrap();
-            //     inputs.get_pin_mut(reset_pin_no).unwrap()
-            //         .set_high();
-            // }
 
             let exec_result = test.execute(Instant::now(), &mut inputs)
                 .map_err(|e| Error::Execution(e));
@@ -212,6 +208,7 @@ impl Testbed {
             println!("executor: receiving memory data");
             let mut mem_traces: Vec<MemoryTrace> = Vec::new();
             while let Some(mem_event) = mem_rchannel.recv().unwrap() {
+                println!("Memory event: {:?}", mem_event);
                 mem_traces.push(mem_event);
             }
 
@@ -242,6 +239,9 @@ impl Testbed {
         });
         trace_thread.join().unwrap_or_else(|_e| {
             println!("executor: failed to join with tracing thread");
+        });
+        mem_thread.join().unwrap_or_else(|_e| {
+            println!("executore: failed to join with memory thread");
         });
 
         Ok(test_results)
