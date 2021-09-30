@@ -1,0 +1,12 @@
+[package]
+name = "memory_simple"
+version = "0.1.0"
+authors = ["Marshall Clyburn <mardev2013@gmail.com>"]
+edition = "2018"
+
+[lib]
+name = "memory_simple"
+crate_type = ["dylib"]
+
+[dependencies]
+flexbed_common = { path = "../../common" }
