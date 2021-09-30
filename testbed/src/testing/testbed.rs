@@ -15,7 +15,7 @@ use std::time::Instant;
 
 use flexbed_common::facility::EnergyMetering;
 use flexbed_common::io::{Mapping, UART};
-use flexbed_common::mem::StreamOperation;
+use flexbed_common::mem::MemoryTrace;
 use flexbed_common::test::{Response, Test};
 use flexbed_common::trace;
 use flexbed_common::trace::SerialTrace;
@@ -206,6 +206,13 @@ impl Testbed {
             let mut serial_traces: Vec<SerialTrace> = Vec::new();
             while let Some(trace) = trace_rchannel.recv().unwrap() {
                 serial_traces.push(trace);
+            }
+
+            // get memory data
+            println!("executor: receiving memory data");
+            let mut mem_traces: Vec<MemoryTrace> = Vec::new();
+            while let Some(mem_event) = mem_rchannel.recv().unwrap() {
+                mem_traces.push(mem_event);
             }
 
             let evaluation = Evaluation::new(
@@ -441,7 +448,7 @@ impl Testbed {
         &self,
         test_container: Arc<RwLock<Option<Test>>>,
         barrier: Arc<Barrier>,
-        mem_schannel: SyncSender<Option<StreamOperation>>,
+        mem_schannel: SyncSender<Option<MemoryTrace>>,
         uart: Option<&UART>,
     ) -> JoinHandle<()> {
         if let Some(uart) = uart {
@@ -456,7 +463,7 @@ impl Testbed {
 
                     let mut uart = uart;
                     let mut buffer: Vec<u8> = Vec::new();
-                    let mut schedule: Vec<(Instant, StreamOperation)> = Vec::new();
+                    let mut schedule: Vec<(Instant, MemoryTrace)> = Vec::new();
                     let mut bytes_remaining;
 
                     loop {

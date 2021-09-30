@@ -492,7 +492,7 @@ impl Test {
     pub fn prep_memtrack(&self,
                          uart: &mut Uart,
                          buffer: &mut Vec<u8>,
-                         schedule: &mut Vec<(Instant, MemoryTrace)>) -> Result<()>
+                         schedule: &mut Vec<MemoryTrace>) -> Result<()>
     {
         // Again, timeout is arbitrary.
         uart.set_read_mode(0, Duration::from_millis(100))?;
@@ -511,7 +511,7 @@ impl Test {
     pub fn memtrack(&self,
                     uart: &mut Uart,
                     buffer: &mut Vec<u8>,
-                    schedule: &mut Vec<(Instant, MemoryTrace)>) -> Result<usize>
+                    schedule: &mut Vec<MemoryTrace>) -> Result<usize>
     {
         let buffer: &mut [u8] = buffer.as_mut_slice();
         let mut bytes_read = 0;
@@ -563,11 +563,11 @@ impl Test {
 
                     // The data that needs parsing.
                     let to_parse = &buffer[bytes_parsed..bytes_read];
-                    match parse_mem_counter(to_parse) {
+                    match parse_mem_counter(to_parse, buffered_now) {
                         // Parser successfully read a stream operation.
                         // We advance our bytes_parsed marker forward by the number of bytes we parsed.
                         Ok(((unparsed, _bit_offset), op)) => {
-                            schedule.push((buffered_now, op));
+                            schedule.push(op);
                             bytes_parsed += to_parse.len() - unparsed.len();
                         }
                         Err(ref nom_error) => match nom_error {

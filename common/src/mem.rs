@@ -1,5 +1,7 @@
 //! Aggregate memory statistics sent over the wire.
 
+use std::time::Instant;
+
 use nom::{
     bits::bytes as make_bit_compatible,
     bits::streaming as bits,
@@ -23,11 +25,17 @@ pub enum StreamOperation {
 /// Memory counter update event.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MemoryTrace {
+    time: Instant,
     op: StreamOperation,
     counter: CounterId,
 }
 
 impl MemoryTrace {
+    /// When the event occurred.
+    pub fn time(&self) -> Instant {
+        self.time
+    }
+
     /// How the trace event changes the counter.
     pub fn operation(&self) -> StreamOperation {
         self.op
@@ -110,13 +118,14 @@ fn counter(input: BitsInput) -> BitsResult<CounterId> {
         (input)
 }
 
-fn streamed_counter(input: BitsInput) -> BitsResult<MemoryTrace> {
+fn streamed_counter(input: BitsInput, time: Instant) -> BitsResult<MemoryTrace> {
     // Read the stream operation, the counter data, and the u32 at the end.
     let streamed_delta = sequence::pair(stream_operation_op, counter);
 
     // Build the final StreamOperation value.
     combinator::map(streamed_delta, |(op, counter)| {
         MemoryTrace {
+            time,
             op: op,
             counter: counter,
         }
@@ -128,8 +137,8 @@ fn streamed_counter(input: BitsInput) -> BitsResult<MemoryTrace> {
 ///
 /// Parses the provided sequence of bytes and returns a structured view of the stream operation.
 /// If the parsing fails, then this function returns an `Err` that describes the reason for the failure (in raw `nom` terms...).
-pub fn parse_counter(input: &[u8]) -> BitsResult<MemoryTrace> {
-    streamed_counter((input, 0))
+pub fn parse_counter(input: &[u8], time: Instant) -> BitsResult<MemoryTrace> {
+    streamed_counter((input, 0), time)
 }
 
 #[cfg(test)]
@@ -253,13 +262,16 @@ pub mod tests {
                      0b0000_0000,
                      0b0000_0000,
                      0b0000_0000];
-        let r = streamed_counter((&input, 0));
+        let now = Instant::now();
+        let r = streamed_counter((&input, 0), now);
 
         assert!(r.is_ok());
-        assert_eq!(r.map(|(_i, c)| c).unwrap(),
-                   MemoryTrace {
-                       op: StreamOperation::Set,
-                       counter: CounterId::PCB(6)
-                   });
+        assert_eq!(
+            r.map(|(_i, c)| c).unwrap(),
+            MemoryTrace {
+                time: now,
+                op: StreamOperation::Set,
+                counter: CounterId::PCB(6)
+            });
     }
 }
