@@ -15,6 +15,7 @@ use std::time::Instant;
 
 use flexbed_common::facility::EnergyMetering;
 use flexbed_common::io::{Mapping, UART};
+use flexbed_common::mem::StreamOperation;
 use flexbed_common::test::{Response, Test};
 use flexbed_common::trace;
 use flexbed_common::trace::SerialTrace;
@@ -430,14 +431,81 @@ impl Testbed {
         }
     }
 
-    // fn launch_memory(
-    //     &self,
-    //     test_container: Arc<RwLock<Option<Test>>>,
-    //     barrier: Arc<Barrier>,
-    //     mem_schannel: SyncSender<Option<StreamOperation>>,
-    // ) -> JoinHandle<()> {
-    //     println!("Starting memory thread.");
-    // }
+    fn launch_memstat(
+        &self,
+        test_container: Arc<RwLock<Option<Test>>>,
+        barrier: Arc<Barrier>,
+        mem_schannel: SyncSender<Option<StreamOperation>>,
+    ) -> JoinHandle<()> {
+        if let Some(uart) = uart {
+            println!("Starting memory tracking thread.");
+            let uart = self.pin_mapping.get_uart(uart)
+                .expect("Could not obtain UART from tracing thread.");
+
+            thread::Builder::new()
+                .name("test-memtrack".to_string())
+                .spawn(move || {
+                    println!("memtrack: started.");
+
+                    let mut uart = uart;
+                    let mut buffer: Vec<u8> = Vec::new();
+                    let mut schedule: Vec<(Instant, StreamOperation)> = Vec::new();
+                    let mut bytes_rx;
+
+                    loop {
+                        // wait for next test
+                        barrier.wait();
+
+                        if let Some(ref test) = *test_container.read().unwrap() {
+                            test.prep_memtrack(&mut uart, &mut buffer, &mut schedule).unwrap();
+
+                            barrier.wait();
+                            bytes_rx = test.memtrack(
+                                &mut uart,
+                                &mut buffer,
+                                &mut schedule).unwrap();
+                            println!("memtrack: received {} bytes over UART", bytes_rx);
+                        } else {
+                            // no more tests to run
+                            break;
+                        }
+
+                        barrier.wait();
+
+                        // let serial_traces = trace::reconstruct_serial(
+                        //     &buffer.as_slice()[0..bytes_rx],
+                        //     &schedule);
+                        // communicate results back
+                        // for trace in serial_traces {
+                        //     mem_schannel.send(Some(trace)).unwrap();
+                        // }
+                        mem_schannel.send(None).unwrap(); // done communicating results
+                    }
+                })
+                .expect("Could not spawn memory tracking thread.")
+        } else {
+            println!("No UART for memory tracking; will idle.");
+
+            thread::Builder::new()
+                .name("test-memtrack".to_string())
+                .spawn(move || {
+
+                    loop {
+                        // wait for next test
+                        barrier.wait();
+                        if let Some(ref _test) = *test_container.read().unwrap() {
+                            barrier.wait();
+                        } else {
+                            // no more tests to run
+                            break;
+                        }
+                        barrier.wait();
+                        mem_schannel.send(None).unwrap(); // done communicating results
+                    }
+                })
+                .expect("Could not spawn tracing thread.")
+        }
+    }
 
     /// Load specified applications onto the device.
     fn load_apps(&self, test: &Test) -> Result<()> {

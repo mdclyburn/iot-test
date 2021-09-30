@@ -2,12 +2,11 @@
 
 use nom::{
     bits::bytes as make_bit_compatible,
-    bits::complete as bits,
-    bytes::complete as bytes,
+    bits::streaming as bits,
+    bytes::streaming as bytes,
 
     branch,
     combinator,
-    multi,
     sequence,
 };
 use flexbed_shared::mem::CounterId;
@@ -31,7 +30,7 @@ type ByteError<'a> = nom::error::Error<&'a [u8]>;
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum OpType { Add, Set }
 
-fn stream_operation<'a>(input: BitsInput<'a>) -> BitsResult<OpType> {
+fn stream_operation_op<'a>(input: BitsInput<'a>) -> BitsResult<OpType> {
     branch::alt(
         (combinator::value(OpType::Add, bits::tag(0usize, 1usize)),
          (combinator::value(OpType::Set, bits::tag(1usize, 1usize)))))
@@ -111,7 +110,7 @@ fn counter(input: BitsInput) -> BitsResult<CounterId> {
 fn streamed_counter(input: BitsInput) -> BitsResult<StreamOperation> {
     // Read the stream operation, the counter data, and the u32 at the end.
     let streamed_delta = sequence::tuple(
-        (stream_operation, counter, parse_little_u32));
+        (stream_operation_op, counter, parse_little_u32));
 
     // Build the final StreamOperation value.
     combinator::map(streamed_delta, |(op, counter, d)| {
@@ -123,16 +122,12 @@ fn streamed_counter(input: BitsInput) -> BitsResult<StreamOperation> {
         (input)
 }
 
-
-/// Recreate a sequence of stream operations from raw bytes.
+/// Recreate stream operation from raw bytes.
 ///
-/// Parses the provided sequence of bytes and returns a structured view of the streamed data.
+/// Parses the provided sequence of bytes and returns a structured view of the stream operation.
 /// If the parsing fails, then this function returns an `Err` that describes the reason for the failure (in raw `nom` terms...).
-pub fn parse_stream(input: &[u8]) -> Result<Vec<StreamOperation>, String> {
-    let input = (input, 0);
-    multi::many0(streamed_counter)(input)
-        .map(|(_input, ops)| ops)
-        .map_err(|e| format!("Memory stat stream parsing failed.\nNom error: {}", e))
+pub fn parse_counter(input: &[u8]) -> BitsResult<StreamOperation> {
+    streamed_counter((input, 0))
 }
 
 #[cfg(test)]

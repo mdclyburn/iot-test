@@ -23,6 +23,7 @@ use crate::criteria::{
 };
 use crate::facility::EnergyMetering;
 use crate::io::{DeviceInputs, DeviceOutputs};
+use crate::mem::StreamOperation;
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -485,6 +486,107 @@ impl Test {
         }
 
         Ok(bytes_read)
+    }
+
+    /// Prepare structures for memory tracking.
+    pub fn prep_memtrack(&self,
+                         uart: &mut Uart,
+                         buffer: &mut Vec<u8>,
+                         schedule: &mut Vec<(Instant, StreamOperation)>) -> Result<()>
+    {
+        // Again, timeout is arbitrary.
+        uart.set_read_mode(0, Duration::from_millis(100))?;
+
+        schedule.clear();
+
+        let buffer_alloc = 1 * 1024 * 1024;
+        buffer.reserve_exact(buffer_alloc);
+        // Arbitrary estimation...
+        schedule.reserve_exact(buffer_alloc / 10);
+
+        Ok(())
+    }
+
+    /// Perform memory tracking.
+    pub fn memtrack(&self,
+                    uart: &mut Uart,
+                    buffer: &mut Vec<u8>,
+                    schedule: &mut Vec<(Instant, StreamOperation)>) -> Result<usize>
+    {
+        let buffer: &mut [u8] = buffer.as_mut_slice();
+        let mut bytes_read = 0;
+
+        let max_runtime = self.get_max_runtime();
+        let start = Instant::now();
+
+        let mut buffered_now = start;
+        let mut bytes_parsed = 0;
+
+        /* Strategy:
+        Read bytes received over UART into buffer.
+        Upon reception of data, always note the Instant the data is received.
+        Then, try to parse the data into one or more StreamOperations.
+        If successful, place the StreamOperation into the schedule vector
+        along with the noted time of reception of the first byte.
+        Repeat this process until the buffer is fully parsed
+        or this strategy yields no more StreamOperations.
+        If there is no data remaining in the buffer, then the noted Instant is considered as 'expired'.
+        It will not be used for the next sequence of data received.
+        If there is data remaining in the buffer, there is a StreamOperation that hasn't finished traversing the wire
+        and we must hold the prior noted Instant to attach to this incoming StreamOperation.
+         */
+
+        loop {
+            let now = Instant::now();
+            if now - start >= max_runtime { break; }
+
+            // Check if we still have data we must parse.
+            // If we do, we cannot discard the buffered Instant yet
+            // because we still have data received around that time.
+            //
+            // Not updating the buffered Instant does mean that data
+            // can appear to arrive earlier than it really did.
+            // This is a drawback of parsing these on-demand instead of
+            // afterwards.
+            if bytes_parsed < bytes_read {
+                buffered_now = now;
+            }
+
+            let read = uart.read(&mut buffer[bytes_read..])?;
+            if read > 0 {
+                bytes_read += read;
+
+                // Try to parse the stream operations.
+                while bytes_parsed < bytes_read {
+                    use crate::mem::parse_counter as parse_mem_counter;
+                    use nom::Err as NomError;
+
+                    // The data that needs parsing.
+                    let to_parse = &buffer[bytes_parsed..bytes_read];
+                    match parse_mem_counter(to_parse) {
+                        // Parser successfully read a stream operation.
+                        // We advance our bytes_parsed marker forward by the number of bytes we parsed.
+                        Ok(((unparsed, _bit_offset), op)) => {
+                            schedule.push((buffered_now, op));
+                            bytes_parsed += to_parse.len() - unparsed.len();
+                        }
+                        Err(ref nom_error) => match nom_error {
+                            // Parser ran out of bytes in the middle of parsing.
+                            // This is fine and expected to happen at times.
+                            // We break out of this loop and try to read more data from UART.
+                            NomError::Incomplete(_need) => break,
+                            // Parser tried to parse data and it didn't understand.
+                            // We can't recover from this at this level (yet).
+                            NomError::Failure(_parse_error) => return Err(Error::Protocol),
+                            // Parser should not return an Error to us.
+                            NomError::Error(_parse_error) => panic!("Did not expect a temporary parser error!"),
+                        }
+                    };
+                }
+            }
+        }
+
+        Ok(bytes_read - bytes_parsed)
     }
 
     /// Return the maximum length of time the test can run.

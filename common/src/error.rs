@@ -18,6 +18,8 @@ pub enum Error {
     IO(io::Error),
     /// Energy meter does not exist.
     NoSuchMeter(String),
+    /// Invalid test protocol data received.
+    Protocol,
     /// Reset requested when [`io::Mapping`] does not specify one.
     Reset(io::Error),
     /// Error configuring UART hardware.
@@ -29,6 +31,7 @@ impl error::Error for Error {
         match self {
             Error::GPIO(ref e) => Some(e),
             Error::IO(ref e) => Some(e),
+            Error::Protocol => None,
             Error::Reset(ref e) => Some(e),
             Error::UART(ref e) => Some(e),
             _ => None,
@@ -60,6 +63,7 @@ impl Display for Error {
             Error::GPIO(ref e) => write!(f, "GPIO error while testing: {}", e),
             Error::IO(ref e) => write!(f, "I/O error: {}", e),
             Error::NoSuchMeter(ref id) => write!(f, "the meter '{}' does not exist", id),
+            Error::Protocol => write!(f, "testbed/DUT test protocol mismatch"),
             Error::Reset(ref e) => write!(f, "failed to reset device: {}", e),
             Error::UART(ref e) => write!(f, "UART configuration error: {}", e),
         }
