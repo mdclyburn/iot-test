@@ -274,4 +274,18 @@ pub mod tests {
                 counter: CounterId::PCB(6)
             });
     }
+
+    #[test]
+    pub fn incomplete_counter() {
+        let input = [0b1000_0001,
+
+                     0b0000_0110];
+
+        let now = Instant::now();
+
+        let r = streamed_counter((&input, 0), now);
+        println!("counter: {:?}", r);
+
+        assert!(r.is_ok());
+    }
 }
