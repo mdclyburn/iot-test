@@ -582,7 +582,7 @@ impl Test {
                             // Parser should not return an Error to us.
                             NomError::Error(parse_error) => {
                                 let mut msg: String = "Temporary parser error surfaced to test loop.\nThis is a bug.\nBuffer:\n".to_string();
-                                for (col, byte) in (0..7).cycle().zip(&buffer[0..bytes_read]) {
+                                for (col, byte) in (0..8).cycle().zip(&buffer[0..bytes_read]) {
                                     msg.push_str(&format!("{:#04X}{}", byte, if col == 7 { '\n' } else { ' ' }));
                                 }
                                 panic!("{}\nError: {:?}", msg, parse_error);
