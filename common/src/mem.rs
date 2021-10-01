@@ -1,6 +1,7 @@
 //! Aggregate memory statistics sent over the wire.
 
 use std::time::Instant;
+use std::fmt::{self, Display};
 
 use nom::{
     bits::bytes as make_bit_compatible,
@@ -50,6 +51,13 @@ impl MemoryTrace {
     /// Counter value.
     pub fn value(&self) -> u32 {
         self.value
+    }
+}
+
+impl Display for MemoryTrace {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "operation: {:?}, counter: {:35}, value: {}",
+               self.op, self.counter, self.value)
     }
 }
 

@@ -207,8 +207,15 @@ impl Testbed {
             // get memory data
             println!("executor: receiving memory data");
             let mut mem_traces: Vec<MemoryTrace> = Vec::new();
+            println!("| {:^15} | op. | {:^35} | {:^6} |", "offset", "counter", "value");
             while let Some(mem_event) = mem_rchannel.recv().unwrap() {
-                println!("Memory event: {:?}", mem_event);
+                let offset = format!("@{:?}", mem_event.time() - *exec_result.as_ref().unwrap().get_start());
+                let counter = format!("{}", mem_event.counter());
+                println!("| {:>15} | {:^5?} | {:^35} | {:>6} |",
+                         offset,
+                         mem_event.operation(),
+                         counter,
+                         mem_event.value());
                 mem_traces.push(mem_event);
             }
 
