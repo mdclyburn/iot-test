@@ -28,6 +28,7 @@ pub struct MemoryTrace {
     time: Instant,
     op: StreamOperation,
     counter: CounterId,
+    value: u32,
 }
 
 impl MemoryTrace {
@@ -41,9 +42,14 @@ impl MemoryTrace {
         self.op
     }
 
-    /// Counter change data.
+    /// Counter identification data.
     pub fn counter(&self) -> &CounterId {
         &self.counter
+    }
+
+    /// Counter value.
+    pub fn value(&self) -> u32 {
+        self.value
     }
 }
 
@@ -118,16 +124,20 @@ fn counter(input: BitsInput) -> BitsResult<CounterId> {
         (input)
 }
 
-fn streamed_counter(input: BitsInput, time: Instant) -> BitsResult<MemoryTrace> {
+fn streamed_counter<'a>(input: BitsInput<'a>, time: Instant) -> BitsResult<MemoryTrace> {
     // Read the stream operation, the counter data, and the u32 at the end.
-    let streamed_delta = sequence::pair(stream_operation_op, counter);
+    let streamed_delta = sequence::tuple(
+        (stream_operation_op,
+         counter,
+         make_bit_compatible::<&[u8], _, ByteError<'a>, _, _>(bytes::take(4usize))));
 
     // Build the final StreamOperation value.
-    combinator::map(streamed_delta, |(op, counter)| {
+    combinator::map(streamed_delta, |(op, counter, vb)| {
         MemoryTrace {
             time,
             op: op,
             counter: counter,
+            value: little_u32!(vb[0], vb[1], vb[2], vb[3]),
         }
     })
         (input)

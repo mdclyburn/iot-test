@@ -20,6 +20,30 @@ pub enum CounterId {
     UpcallQueue(u32),
 }
 
+impl CounterId {
+    /// Translate type to a format suitable for transmission over the wire.
+    pub fn serialize(&self, buffer: &mut [u8]) -> usize {
+        let mut written = 1;
+
+        buffer[0] = u8::from(*self) ^ 0b1000_0000;
+
+        use CounterId::*;
+        let buffer = &mut buffer[1..];
+        match self {
+            CustomGrant(val)
+                | GrantPointerTable(val)
+                | PCB(val)
+                | UpcallQueue(val) => written += serialize_u32(*val, buffer),
+            Grant(grant_no, val) => {
+                written += serialize_u32(*grant_no, buffer);
+                written += serialize_u32(*val, &mut buffer[4..]);
+            },
+        };
+
+        written
+    }
+}
+
 impl Display for CounterId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use CounterId::*;
@@ -43,4 +67,14 @@ impl From<CounterId> for u8 {
             CounterId::CustomGrant(_) => 5,
         }
     }
+}
+
+/// Place a 32-bit unsigned integer into a buffer.
+pub fn serialize_u32(n: u32, buffer: &mut [u8]) -> usize {
+    buffer[0] = (n & 0xFF) as u8;
+    buffer[1] = ((n >> 8) & 0xFF) as u8;
+    buffer[2] = ((n >> 16) & 0xFF) as u8;
+    buffer[3] = ((n >> 24) & 0xFF) as u8;
+
+    4
 }

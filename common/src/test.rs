@@ -568,6 +568,7 @@ impl Test {
                         // Parser successfully read a stream operation.
                         // We advance our bytes_parsed marker forward by the number of bytes we parsed.
                         Ok(((unparsed, _bit_offset), op)) => {
+                            println!("memtrack: received memstat ({:?})", op);
                             schedule.push(op);
                             bytes_parsed += to_parse.len() - unparsed.len();
                         }
@@ -575,13 +576,17 @@ impl Test {
                             // Parser ran out of bytes in the middle of parsing.
                             // This is fine and expected to happen at times.
                             // We break out of this loop and try to read more data from UART.
-                            NomError::Incomplete(_need) => break,
+                            NomError::Incomplete(_need) => {
+                                println!("memtrack: finished parsing for now; {} bytes left over", bytes_read - bytes_parsed);
+                                break;
+                            },
                             // Parser tried to parse data and it didn't understand.
                             // We can't recover from this at this level (yet).
                             NomError::Failure(_parse_error) => return Err(Error::Protocol),
                             // Parser should not return an Error to us.
                             NomError::Error(parse_error) => {
-                                let mut msg: String = "Temporary parser error surfaced to test loop.\nThis is a bug.\nBuffer:\n".to_string();
+                                let mut msg: String = format!("Temporary parser error surfaced to test loop.\nThis is a bug. Check byte {}. Buffer:\n",
+                                                              bytes_parsed);
                                 for (col, byte) in (0..8).cycle().zip(&buffer[0..bytes_read]) {
                                     msg.push_str(&format!("{:#04X}{}", byte, if col == 7 { '\n' } else { ' ' }));
                                 }
