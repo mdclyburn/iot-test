@@ -5,18 +5,18 @@ use std::fmt;
 use std::fmt::Display;
 use std::time::Duration;
 
-use flexbed_common::criteria::{
+use clockwise_common::criteria::{
     Criterion,
     GPIOCriterion,
     EnergyStat,
 };
-use flexbed_common::sw::instrument::Spec;
-use flexbed_common::test::{
+use clockwise_common::sw::instrument::Spec;
+use clockwise_common::test::{
     Execution,
     Response,
     Test
 };
-use flexbed_common::trace::{
+use clockwise_common::trace::{
     ParallelTrace,
     SerialTrace,
 };

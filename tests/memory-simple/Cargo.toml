@@ -9,4 +9,4 @@ name = "memory_simple"
 crate_type = ["dylib"]
 
 [dependencies]
-flexbed_common = { path = "../../common" }
+clockwise_common = { path = "../../common" }

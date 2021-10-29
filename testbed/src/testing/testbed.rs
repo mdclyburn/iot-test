@@ -13,12 +13,12 @@ use std::thread;
 use std::thread::JoinHandle;
 use std::time::Instant;
 
-use flexbed_common::facility::EnergyMetering;
-use flexbed_common::io::{Mapping, UART};
-use flexbed_common::mem::MemoryTrace;
-use flexbed_common::test::{Response, Test};
-use flexbed_common::trace;
-use flexbed_common::trace::SerialTrace;
+use clockwise_common::facility::EnergyMetering;
+use clockwise_common::io::{Mapping, UART};
+use clockwise_common::mem::MemoryTrace;
+use clockwise_common::test::{Response, Test};
+use clockwise_common::trace;
+use clockwise_common::trace::SerialTrace;
 
 use crate::sw::PlatformSupport;
 

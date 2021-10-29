@@ -10,11 +10,11 @@ use serde::Deserialize;
 use serde_json;
 use serde_json::Value as JSONValue;
 
-use flexbed_common::comm::{Direction,
+use clockwise_common::comm::{Direction,
                   Class as SignalClass};
-use flexbed_common::facility::EnergyMetering;
-use flexbed_common::hw;
-use flexbed_common::io::{Device, Mapping};
+use clockwise_common::facility::EnergyMetering;
+use clockwise_common::hw;
+use clockwise_common::io::{Device, Mapping};
 
 use crate::sw::platform;
 use crate::sw::PlatformSupport;

@@ -12,7 +12,7 @@ use nom::{
     combinator,
     sequence,
 };
-use flexbed_shared::mem::CounterId;
+use clockwise_shared::mem::CounterId;
 
 /// Operation to apply to aggregated memory statistic.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

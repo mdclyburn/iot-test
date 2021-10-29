@@ -9,10 +9,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
-name = "flexbed-testbed"
+name = "clockwise-testbed"
 version = "0.1.0"
 dependencies = [
- "flexbed_common",
+ "clockwise_common",
  "getopts",
  "json",
  "libloading",
@@ -22,17 +22,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "flexbed_common"
+name = "clockwise_common"
 version = "0.1.0"
 dependencies = [
- "flexbed_shared",
+ "clockwise_shared",
  "json",
  "nom",
  "rppal",
 ]
 
 [[package]]
-name = "flexbed_shared"
+name = "clockwise_shared"
 version = "0.1.0"
 
 [[package]]
@@ -88,7 +88,7 @@ checksum = "308cc39be01b73d0d18f82a0e7b2a3df85245f84af96fdddc5d202d27e47b86a"
 name = "memory_simple"
 version = "0.1.0"
 dependencies = [
- "flexbed_common",
+ "clockwise_common",
 ]
 
 [[package]]
@@ -146,7 +146,7 @@ checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
 name = "sample"
 version = "0.1.0"
 dependencies = [
- "flexbed_common",
+ "clockwise_common",
 ]
 
 [[package]]

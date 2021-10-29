@@ -1,9 +1,9 @@
 use std::time::Duration;
 
 #[allow(unused_imports)]
-use flexbed_common::comm::{Direction, Class as SignalClass};
+use clockwise_common::comm::{Direction, Class as SignalClass};
 #[allow(unused_imports)]
-use flexbed_common::{
+use clockwise_common::{
     criteria::{
         Criterion,
         GPIOCriterion,

@@ -4,8 +4,8 @@ use std::error;
 use std::fmt;
 use std::fmt::Display;
 
-use flexbed_common;
-use flexbed_common::io;
+use clockwise_common;
+use clockwise_common::io;
 
 use crate::sw;
 
@@ -13,8 +13,8 @@ use crate::sw;
 #[derive(Debug)]
 pub enum Error {
     /// A problem occured while executing a test.
-    Execution(flexbed_common::error::Error),
-    /// Reset requested when [`flexbed_common::io::Mapping`] does not specify one.
+    Execution(clockwise_common::error::Error),
+    /// Reset requested when [`clockwise_common::io::Mapping`] does not specify one.
     Reset(io::Error),
     /// Error originating from interacting with software ([`sw::error::Error`]).
     Software(sw::error::Error),
@@ -30,8 +30,8 @@ impl error::Error for Error {
     }
 }
 
-impl From<flexbed_common::error::Error> for Error {
-    fn from(e: flexbed_common::error::Error) -> Self {
+impl From<clockwise_common::error::Error> for Error {
+    fn from(e: clockwise_common::error::Error) -> Self {
         Error::Execution(e)
     }
 }

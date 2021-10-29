@@ -5,7 +5,7 @@ use std::fmt;
 use std::fmt::Display;
 use std::path::Path;
 
-use flexbed_common::input::TestProvider;
+use clockwise_common::input::TestProvider;
 use getopts::Options;
 
 use crate::input::TestbedConfigReader;

@@ -1,11 +1,11 @@
 [package]
-name = "flexbed-testbed"
+name = "clockwise-testbed"
 version = "0.1.0"
 authors = ["Marshall Clyburn"]
 edition = "2018"
 
 [dependencies]
-flexbed_common = { path = "../common" }
+clockwise_common = { path = "../common" }
 
 getopts = "^0.2"
 json = "^0.12"

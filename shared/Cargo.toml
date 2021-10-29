@@ -1,5 +1,5 @@
 [package]
-name = "flexbed_shared"
+name = "clockwise_shared"
 version = "0.1.0"
 edition = "2018"
 

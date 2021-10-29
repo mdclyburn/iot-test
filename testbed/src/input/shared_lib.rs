@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use flexbed_common::input::TestProvider;
-use flexbed_common::test::Test;
+use clockwise_common::input::TestProvider;
+use clockwise_common::test::Test;
 use libloading::{Library, Symbol};
 
 /** Shared library test provider.

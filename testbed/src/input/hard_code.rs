@@ -6,9 +6,9 @@ use std::thread;
 use std::time::Duration;
 use std::rc::Rc;
 
-use flexbed_common::comm::{Direction, Class as SignalClass};
+use clockwise_common::comm::{Direction, Class as SignalClass};
 #[allow(unused_imports)]
-use flexbed_common::criteria::{
+use clockwise_common::criteria::{
     Criterion,
     GPIOCriterion,
     EnergyCriterion,
@@ -19,17 +19,17 @@ use flexbed_common::criteria::{
     SerialTraceCondition,
     SerialTraceCriterion,
 };
-use flexbed_common::facility::EnergyMetering;
-use flexbed_common::hw::INA219;
-use flexbed_common::input::TestProvider;
-use flexbed_common::io;
-use flexbed_common::io::{
+use clockwise_common::facility::EnergyMetering;
+use clockwise_common::hw::INA219;
+use clockwise_common::input::TestProvider;
+use clockwise_common::io;
+use clockwise_common::io::{
     Device,
     DeviceInputs,
     Mapping,
     UART,
 };
-use flexbed_common::test::{Operation, Test};
+use clockwise_common::test::{Operation, Test};
 
 use crate::sw::platform::Tock;
 use crate::testing::testbed::Testbed;

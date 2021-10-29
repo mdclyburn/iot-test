@@ -10,7 +10,7 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::fmt::{Debug, Display};
 
-use flexbed_common::sw::instrument::Spec;
+use clockwise_common::sw::instrument::Spec;
 
 use error::Error;
 

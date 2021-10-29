@@ -5,7 +5,7 @@ use std::error;
 use std::fmt;
 use std::fmt::Display;
 
-use flexbed_common::io as hw_io;
+use clockwise_common::io as hw_io;
 
 /// Errors from creating testbeds and tests from provided input.
 #[derive(Debug)]
