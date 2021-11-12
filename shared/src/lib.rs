@@ -1,4 +1,4 @@
-/*! Code shared between Flexbed and embedded environments.
+/*! Code shared between Clockwise and embedded environments.
 */
 
 #![no_std]

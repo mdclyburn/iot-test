@@ -1,7 +1,5 @@
 //! Memory stat tracking.
 
-//! Memory counter information to be used by the device under test.
-
 use core::convert::From;
 use core::fmt::{self, Display};
 
