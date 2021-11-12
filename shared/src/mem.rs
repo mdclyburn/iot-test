@@ -3,6 +3,8 @@
 use core::convert::From;
 use core::fmt::{self, Display};
 
+use crate::serialize;
+
 /// Memory statistic category.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum CounterId {
@@ -31,10 +33,10 @@ impl CounterId {
             CustomGrant(val)
                 | GrantPointerTable(val)
                 | PCB(val)
-                | UpcallQueue(val) => written += serialize_u32(*val, buffer),
+                | UpcallQueue(val) => written += serialize::serialize_u32(*val, buffer),
             Grant(grant_no, val) => {
-                written += serialize_u32(*grant_no, buffer);
-                written += serialize_u32(*val, &mut buffer[4..]);
+                written += serialize::serialize_u32(*grant_no, buffer);
+                written += serialize::serialize_u32(*val, &mut buffer[4..]);
             },
         };
 
@@ -65,14 +67,4 @@ impl From<CounterId> for u8 {
             CounterId::CustomGrant(_) => 5,
         }
     }
-}
-
-/// Place a 32-bit unsigned integer into a buffer.
-pub fn serialize_u32(n: u32, buffer: &mut [u8]) -> usize {
-    buffer[0] = (n & 0xFF) as u8;
-    buffer[1] = ((n >> 8) & 0xFF) as u8;
-    buffer[2] = ((n >> 16) & 0xFF) as u8;
-    buffer[3] = ((n >> 24) & 0xFF) as u8;
-
-    4
 }
