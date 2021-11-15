@@ -58,19 +58,26 @@ impl TestbedConfigReader for HardCodedTestbed {
             (23, (Direction::In, SignalClass::Digital)),  // reset
         ];
 
-        // reset fn
-        let reset_fn: Rc<dyn Fn(&mut DeviceInputs) -> io::Result<()>> = Rc::new(
+        // reset functions
+        let hold_reset_fn: Rc<dyn Fn(&mut DeviceInputs) -> io::Result<()>> = Rc::new(
             |to_device| {
                 let reset_pin = to_device.get_pin_mut(23)?;
                 reset_pin.set_low();
-                thread::sleep(Duration::from_millis(100));
+                thread::sleep(Duration::from_millis(10));
+
+                Ok(())
+            });
+
+        let release_reset_fn: Rc<dyn Fn(&mut DeviceInputs) -> io::Result<()>> = Rc::new(
+            |to_device| {
+                let reset_pin = to_device.get_pin_mut(23)?;
                 reset_pin.set_high();
 
                 Ok(())
             });
 
         let device = Device::new(&host_to_device_pins)
-            .with_reset(reset_fn.clone());
+            .with_reset(hold_reset_fn.clone(), release_reset_fn.clone());
 
         let mapping = Mapping::new(
             device,

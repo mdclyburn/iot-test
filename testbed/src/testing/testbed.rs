@@ -137,9 +137,10 @@ impl Testbed {
             // wait for observer, metering thread to be ready
             barrier.wait();
 
-            if test.get_reset_on_start() {
-                println!("Resetting device...");
-                let reset_res = self.pin_mapping.get_device().reset(&mut inputs);
+            let use_reset = test.get_reset_on_start();
+            if use_reset {
+                println!("Placing device in reset.");
+                let reset_res = self.pin_mapping.get_device().hold_in_reset(&mut inputs);
                 if let Err(e) = reset_res {
                     test_results.push(
                         Evaluation::failed(
@@ -148,13 +149,18 @@ impl Testbed {
                             Error::Reset(e)));
                     continue;
                 }
-                println!("Reset complete.");
             }
 
             // wait for test to begin
             barrier.wait();
             println!("executor: starting test '{}'", test.get_id());
 
+            // make sure testing has _just_ started before releasing reset
+            if use_reset {
+                self.pin_mapping.get_device().release_from_reset(&mut inputs)
+                    // failed to release reset, no point in continuing
+                    .expect("failed to release device from reset");
+            }
             let exec_result = test.execute(Instant::now(), &mut inputs)
                 .map_err(|e| Error::Execution(e));
 

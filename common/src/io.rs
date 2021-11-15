@@ -182,7 +182,8 @@ impl<'a, T> IntoIterator for &'a mut Pins<T> {
 /// Properties of a device under test.
 pub struct Device {
     io: HashMap<u8, (Direction, SignalClass)>,
-    reset_fn: Option<Rc<dyn Fn(&mut DeviceInputs) -> Result<()>>>,
+    hold_reset: Option<Rc<dyn Fn(&mut DeviceInputs) -> Result<()>>>,
+    release_reset: Option<Rc<dyn Fn(&mut DeviceInputs) -> Result<()>>>,
 }
 
 impl Device {
@@ -195,16 +196,23 @@ impl Device {
         T: IntoIterator<Item = &'b (u8, (Direction, SignalClass))> {
         Device {
             io: pin_map.into_iter().map(|x| *x).collect(),
-            reset_fn: None,
+            hold_reset: None,
+            release_reset: None,
         }
     }
 
     /// Define reset functionality for the device.
-    pub fn with_reset(self, reset_fn: Rc<dyn Fn(&mut DeviceInputs) -> Result<()>>) -> Self
+    pub fn with_reset(self,
+                      hold_reset: Rc<dyn Fn(&mut DeviceInputs) -> Result<()>>,
+                      release_reset: Rc<dyn Fn(&mut DeviceInputs) -> Result<()>>)
+                      -> Self
     {
-        let reset_fn = Some(reset_fn);
+        let (hold_reset, release_reset) = (Some(hold_reset),
+                                           Some(release_reset));
+
         Self {
-            reset_fn,
+            hold_reset,
+            release_reset,
             ..self
         }
     }
@@ -246,10 +254,16 @@ impl Device {
             .ok_or(Error::UndefinedPin(pin))
     }
 
-    /// Perform a reset of the device.
-    pub fn reset(&self, inputs: &mut DeviceInputs) -> Result<()> {
-        let reset = &*self.reset_fn.as_ref().ok_or(Error::NoReset)?;
-        reset(inputs)
+    /// Place the device in reset.
+    pub fn hold_in_reset(&self, inputs: &mut DeviceInputs) -> Result<()> {
+        let hold_reset = &*self.hold_reset.as_ref().ok_or(Error::NoReset)?;
+        hold_reset(inputs)
+    }
+
+    /// Release the device from reset.
+    pub fn release_from_reset(&self, inputs: &mut DeviceInputs) -> Result<()> {
+        let release_reset = &*self.release_reset.as_ref().ok_or(Error::NoReset)?;
+        release_reset(inputs)
     }
 }
 
