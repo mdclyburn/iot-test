@@ -14,8 +14,6 @@ use clockwise_common::criteria::{
     EnergyCriterion,
     EnergyStat,
     Timing,
-    ParallelTraceCondition,
-    ParallelTraceCriterion,
     SerialTraceCondition,
     SerialTraceCriterion,
 };
@@ -83,14 +81,7 @@ impl TestbedConfigReader for HardCodedTestbed {
             device,
             // Host to device-under-test pin mapping.
             &[(17, 23), // Reset
-
-              // (14, 13), // Parallel tracing pin 0
-              // (15, 14), // Parallel tracing pin 1
-              // (18, 19), // Parallel tracing pin 2
-              // (23, 20), // Parallel tracing pin 3
             ],
-            // Parallel tracing pins (by device pin number).
-            &[],
             Some(23),
         ).unwrap();
 
@@ -153,10 +144,6 @@ impl HardCodedTests {
                 //     (&["capsule/led/command/on", "capsule/led/command/off"]).into_iter().copied(),
                 //     &[Operation { time: 0, pin_no: 23, input: Signal::Digital(false) },
                 //       Operation { time: 3000, pin_no: 23, input: Signal::Digital(true) }],
-                //     &[Criterion::ParallelTrace(ParallelTraceCriterion::new(&[ParallelTraceCondition::new(2).with_extra_data(1),
-                //                                                              ParallelTraceCondition::new(1).with_timing(Timing::Relative(Duration::from_millis(50)),
-                //                                                                                                         Duration::from_millis(5))
-                //                                                              .with_extra_data(1)]))]),
 
                 Test::new(
                     "serial-blink-trace",

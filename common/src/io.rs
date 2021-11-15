@@ -302,7 +302,6 @@ Creating a mapping with [`Mapping::new`] ensures a valid testbed-device configur
 pub struct Mapping {
     device: Device,
     numbering: HashMap<u8, u8>,
-    trace_pins: Vec<u8>,
     reset_pin: Option<u8>,
 }
 
@@ -316,33 +315,25 @@ impl Mapping {
     let mapping = Mapping::new(&device, &[(17, 23), (2, 13)]);
     ```
      */
-    pub fn new<'b, T, U>(device: Device,
-                         host_target_map: T,
-                         trace_pins: U,
-                         reset_pin: Option<u8>) -> Result<Mapping>
+    pub fn new<'b, T>(device: Device,
+                      host_target_map: T,
+                      reset_pin: Option<u8>) -> Result<Mapping>
     where
         T: IntoIterator<Item = &'b (u8, u8)>,
-        U: IntoIterator<Item = &'b u8>,
     {
         let numbering: HashMap<u8, u8> = host_target_map.into_iter()
             .map(|(h_pin, t_pin)| (*h_pin, *t_pin))
-            .collect();
-        let trace_pins: Vec<u8> = trace_pins.into_iter()
-            .copied()
             .collect();
         let reset_pin_v = if let Some(pin) = reset_pin { vec![pin] } else { Vec::new() };
 
         let used_device_pins = numbering.iter()
             .map(|(_h, t)| *t)
-            .chain(trace_pins.iter().copied())
             .chain(reset_pin_v.into_iter());
-        // device.has_pins(numbering.iter().map(|(_h, t)| *t))?;
         device.has_pins(used_device_pins)?;
 
         Ok(Mapping {
             device,
             numbering,
-            trace_pins,
             reset_pin,
         })
     }
@@ -400,15 +391,6 @@ impl Mapping {
         }
 
         Ok(DeviceOutputs::new(outputs))
-    }
-
-    /** Return the numbering of the _device_ pins that output traces.
-
-    The order of the pin numbers returned is in the order in which they were specified to [`Mapping::new`].
-    That is, from least significant (2^0) to the most significant.
-     */
-    pub fn get_trace_pin_nos(&self) -> &Vec<u8> {
-        &self.trace_pins
     }
 
     /** Configures and returns the I2C interface.

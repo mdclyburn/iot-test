@@ -169,31 +169,11 @@ impl Testbed {
             barrier.wait();
 
             // get GPIO responses
-            let (parallel_traces, gpio_activity) = {
-                let mut responses = Vec::new();
-                while let Some(response) = observer_rchannel.recv().unwrap() {
-                    let response = response.remapped(self.pin_mapping.get_mapping());
-                    responses.push(response);
-                }
-
-                // Filter for trace responses.
-                // Map pin_no -> significance
-                let trace_pins: HashMap<u8, u16> = self.pin_mapping.get_trace_pin_nos().iter()
-                    .copied()
-                    .zip(0..) // bit significance
-                    .collect();
-                let (traces, all_other): (Vec<Response>, _) = responses.into_iter()
-                    .partition(|r| trace_pins.contains_key(&r.get_pin()));
-                for r in &traces {
-                    println!("TRACE RESPONSE: {} - {:?}",
-                             r,
-                             r.get_offset(exec_result.as_ref().unwrap().get_start()));
-                }
-                let traces = trace::reconstruct_parallel(
-                    &traces, &platform_spec, &trace_pins);
-
-                (traces, all_other)
-            };
+            let mut gpio_activity = Vec::new();
+            while let Some(response) = observer_rchannel.recv().unwrap() {
+                let response = response.remapped(self.pin_mapping.get_mapping());
+                gpio_activity.push(response);
+            }
 
             // get energy data
             let mut energy_data = HashMap::new();
@@ -235,7 +215,6 @@ impl Testbed {
                 &platform_spec,
                 exec_result,
                 gpio_activity,
-                parallel_traces,
                 serial_traces,
                 energy_data);
             test_results.push(evaluation);
@@ -273,7 +252,6 @@ impl Testbed {
     ) -> JoinHandle<()> {
         let mut outputs = self.pin_mapping.get_gpio_outputs()
             .expect("Could not obtain GPIO outputs from observer thread.");
-        let trace_pins = self.pin_mapping.get_trace_pin_nos().clone();
 
         thread::Builder::new()
             .name("test-observer".to_string())
@@ -288,7 +266,7 @@ impl Testbed {
 
                     // set up to watch for responses according to criteria
                     if let Some(ref test) = *test_container.read().unwrap() {
-                        let interrupt_pin_nos = test.prep_observe(&mut outputs, &trace_pins)
+                        let interrupt_pin_nos = test.prep_observe(&mut outputs)
                             .unwrap(); // <-- communicate back?
                         let interrupt_pins = interrupt_pin_nos.into_iter()
                             .map(|pin_no| outputs.get_pin(pin_no).unwrap())

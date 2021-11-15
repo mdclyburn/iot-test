@@ -16,10 +16,7 @@ use clockwise_common::test::{
     Response,
     Test
 };
-use clockwise_common::trace::{
-    ParallelTrace,
-    SerialTrace,
-};
+use clockwise_common::trace::SerialTrace;
 
 use super::{Error, Result};
 
@@ -54,7 +51,6 @@ pub struct Evaluation {
     spec: Option<Spec>,
     exec_result: Result<Execution>,
     device_responses: Vec<Response>,
-    parallel_traces: Vec<ParallelTrace>,
     serial_traces: Vec<SerialTrace>,
     energy_metrics: HashMap<String, Vec<f32>>,
 }
@@ -64,7 +60,6 @@ impl Evaluation {
                spec: &Spec,
                exec_result: Result<Execution>,
                device_responses: Vec<Response>,
-               parallel_traces: Vec<ParallelTrace>,
                serial_traces: Vec<SerialTrace>,
                energy_metrics: HashMap<String, Vec<f32>>) -> Evaluation
     {
@@ -73,7 +68,6 @@ impl Evaluation {
             spec: Some(spec.clone()),
             exec_result,
             device_responses,
-            parallel_traces,
             serial_traces,
             energy_metrics,
         }
@@ -86,7 +80,6 @@ impl Evaluation {
             spec: spec.map(|s| s.clone()),
             exec_result: Err(error),
             device_responses: Vec::new(),
-            parallel_traces: Vec::new(),
             serial_traces: Vec::new(),
             energy_metrics: HashMap::new(),
         }
@@ -214,29 +207,6 @@ impl Evaluation {
                 }
             },
 
-            Criterion::ParallelTrace(trace_criterion) => {
-                let execution_t0 = self.exec_result
-                    .as_ref()
-                    // Evaluation results are only relevant when the exec_result is Ok(...).
-                    .expect("Attempted to evaluate criterion when execution result failed")
-                    .get_start();
-                if let Some(aligned_traces) = trace_criterion.align(execution_t0, self.parallel_traces.as_slice()) {
-                    let count = aligned_traces.len();
-                    let mut message = "Satisfied by: ".to_string();
-                    let it = aligned_traces.into_iter()
-                        .map(|t| format!("@{:?}", t.get_time() - execution_t0));
-                    for (msg, no) in it.zip(1..) {
-                        message.push_str(&msg);
-                        if no < count {
-                            message.push_str(" → ");
-                        }
-                    }
-                    (Status::Pass, Some(message))
-                } else {
-                    (Status::Fail, None)
-                }
-            },
-
             Criterion::SerialTrace(trace_criterion) => {
                 let execution_t0 = self.exec_result
                     .as_ref()
@@ -287,24 +257,6 @@ impl Display for Evaluation {
                 write!(f, "  Energy metering:\n")?;
                 for (meter_id, samples) in &self.energy_metrics {
                     write!(f, "    {:<10} ({} samples)\n", meter_id, samples.len())?;
-                }
-            }
-
-            if self.parallel_traces.len() > 0 {
-                write!(f, "  Traces:\n")?;
-                for trace in &self.parallel_traces {
-                    let spec = self.spec.as_ref().unwrap();
-                    let trace_point_name = spec.trace_point_name(trace.get_id())
-                        .map(|s| s.as_str())
-                        .unwrap_or("UNTRACKED?");
-                    write!(f, "    {}\t(data: {})\t@{:?}\n",
-                           trace_point_name,
-                           trace.get_extra(),
-                           trace.get_offset(execution.get_start()))?;
-
-                    if spec.trace_point_name(trace.get_id()).is_none() {
-                        write!(f, "{}\n", trace)?;
-                    }
                 }
             }
 

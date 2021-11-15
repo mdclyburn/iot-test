@@ -294,8 +294,7 @@ impl Test {
 
     /// Set up to record test inputs.
     pub fn prep_observe(&self,
-                        pins: &mut DeviceOutputs,
-                        trace_pins: &Vec<u8>) -> Result<Vec<u8>>
+                        pins: &mut DeviceOutputs) -> Result<Vec<u8>>
     {
         let mut interrupt_pins: Vec<u8> = Vec::new();
 
@@ -316,34 +315,6 @@ impl Test {
                     interrupt_pins.push(*pin_no);
                 },
             };
-        }
-
-        // Configure interrupts on the trace pins differently if specified.
-        let contains_trace_criterion = self.criteria.iter()
-            .find(|c| match c {
-                Criterion::ParallelTrace(_) => true,
-                _ => false,
-            })
-            .is_some();
-        if contains_trace_criterion {
-            for pin_no in trace_pins {
-                // Last pin triggers on both to signal final trace pin change.
-                let trigger = if *pin_no == trace_pins[trace_pins.len()-1] {
-                    Trigger::Both
-                } else {
-                    Trigger::RisingEdge
-                };
-
-                println!("observer: configuring trace pin {}", pin_no);
-                pins.get_pin_mut(*pin_no)?
-                    .set_interrupt(trigger)?;
-            }
-        }
-
-        // Always check trace pins first in their provided order.
-        let trace_ins = trace_pins.into_iter().zip(0..);
-        for (&pin_no, pos) in trace_ins {
-            interrupt_pins.insert(pos, pin_no);
         }
 
         Ok(interrupt_pins)

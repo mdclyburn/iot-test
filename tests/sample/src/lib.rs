@@ -10,8 +10,6 @@ use clockwise_common::{
         EnergyCriterion,
         EnergyStat,
         Timing,
-        ParallelTraceCondition,
-        ParallelTraceCriterion,
         SerialTraceCondition,
         SerialTraceCriterion,
     },

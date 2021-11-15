@@ -5,10 +5,7 @@ use std::fmt;
 use std::fmt::Display;
 use std::time::{Duration, Instant};
 
-use super::trace::{
-    ParallelTrace,
-    SerialTrace,
-};
+use super::trace::SerialTrace;
 
 /** Defined response to look for from the device under test.
 
@@ -21,8 +18,6 @@ pub enum Criterion {
     GPIO(GPIOCriterion),
     /// Energy consumption.
     Energy(EnergyCriterion),
-    /// GPIO-based activity tracing.
-    ParallelTrace(ParallelTraceCriterion),
     /// Serial-based activity tracing.
     SerialTrace(SerialTraceCriterion),
 }
@@ -32,7 +27,6 @@ impl Display for Criterion {
         match self {
             Criterion::GPIO(ref c) => write!(f, "GPIO activity: {}", c),
             Criterion::Energy(ref c) => write!(f, "Energy: {}", c),
-            Criterion::ParallelTrace(ref c) => write!(f, "Parallel trace: {}", c),
             Criterion::SerialTrace(ref c) => write!(f, "Serial trace: {}", c),
         }
     }
@@ -81,217 +75,6 @@ impl Display for Timing {
             Relative(_) => "previous event",
         };
         write!(f, "{:?} from {}", self.get_offset(), ref_point)
-    }
-}
-
-/// Component condition of a [`ParallelTraceCriterion`].
-#[derive(Copy, Clone, Debug)]
-pub struct ParallelTraceCondition {
-    id: u16,
-    extra: Option<u16>,
-    timing: Option<(Timing, Duration)>,
-}
-
-impl ParallelTraceCondition {
-    /// Create a new tracing requirement.
-    pub fn new(id: u16) -> ParallelTraceCondition {
-        ParallelTraceCondition {
-            id,
-            extra: None,
-            timing: None,
-        }
-    }
-
-    /// Returns the ID that would satisfy the trace condition.
-    #[allow(dead_code)]
-    pub fn get_id(&self) -> u16 {
-        self.id
-    }
-
-    /// Returns the extra data that would satisfy the trace condition.
-    #[allow(dead_code)]
-    pub fn get_extra_data(&self) -> Option<u16> {
-        self.extra
-    }
-
-    /// If provided, returns the necessary time offset to satisfy the trace condition.
-    #[allow(dead_code)]
-    pub fn get_offset(&self) -> Option<Timing> {
-        self.timing.as_ref()
-            .map(|(timing, _tolerance)| *timing)
-    }
-
-    /// If provided, returns the timing tolerance to satisfy the trace condition.
-    #[allow(dead_code)]
-    pub fn get_tolerance(&self) -> Option<Duration> {
-        self.timing.as_ref()
-            .map(|(_timing, tolerance)| *tolerance)
-    }
-
-    /// Construct a trace condition with the specified extra data.
-    ///
-    /// This is a convenience function for test that may later be removed.
-    #[allow(dead_code)]
-    pub fn with_extra_data(self, extra: u16) -> Self {
-        Self {
-            extra: Some(extra),
-            ..self
-        }
-    }
-
-    /// Construct a trace condition with the specified timing.
-    ///
-    /// This is a convenience function for test that may later be removed.
-    #[allow(dead_code)]
-    pub fn with_timing(self, time: Timing, tolerance: Duration) -> Self {
-        Self {
-            timing: Some((time, tolerance)),
-            ..self
-        }
-    }
-
-    /// Returns true if the provided trace's ID and extra data satisfy the condition.
-    ///
-    /// Because the required timing of the condition is dependent on whether the timing is relative to the
-    /// previous Trace or absolute (relative to the beginning of the test), this function does not check timing.
-    fn satisfied_by(&self, event: &ParallelTrace) -> bool {
-        event.get_id() == self.id
-            && self.extra.map_or(true, |extra| event.get_extra() == extra)
-    }
-}
-
-impl Display for ParallelTraceCondition {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Trace point with ID {}", self.get_id())?;
-
-        if let Some(extra) = self.get_extra_data() {
-            write!(f, ", extra data {}", extra)?;
-        }
-
-        if let Some(timing) = self.get_offset() {
-            write!(f, ", {} (tol: {:?})", timing, self.get_tolerance().unwrap())?;
-        }
-
-        Ok(())
-    }
-}
-
-/// Parallel tracing criterion specification details.
-#[derive(Clone, Debug)]
-pub struct ParallelTraceCriterion {
-    conditions: Vec<ParallelTraceCondition>,
-}
-
-impl ParallelTraceCriterion {
-    /// Create a new trace criterion.
-    pub fn new<'a, T>(conditions: T) -> ParallelTraceCriterion
-    where
-        T: IntoIterator<Item = &'a ParallelTraceCondition>
-    {
-        ParallelTraceCriterion {
-            conditions: conditions.into_iter()
-                .copied()
-                .collect(),
-        }
-    }
-
-    /// Returns the [`ParallelTrace`]s satisfying the criterion.
-    pub fn align<'a>(&self, t0: Instant, traces: &'a [ParallelTrace]) -> Option<Vec<&'a ParallelTrace>> {
-        ParallelTraceCriterion::rec_align(
-            t0, t0, self.conditions.as_slice(), traces)
-    }
-
-
-    /** Attempt to satisfy conditions with the provided [`ParallelTrace`]s.
-
-    # Algorithm overview
-
-    Advances through:
-    - ordering of trace conditions
-    - sequence of trace events captured during the test
-
-    For each trace condition, advances through the trace events to find a matching trace event.
-    Upon finding a matching trace condition, the function advances to the next trace condition.
-    If a trace condition fails to find a matching trace event, then we back out to the previous trace condition.
-    The previous trace condition seeks another matching trace event.
-    If a trace condition advances to the last trace event and does not find a match, then the function returns false.
-     */
-    fn rec_align<'a>(t0: Instant,
-                     tp: Instant,
-                     conditions: &[ParallelTraceCondition],
-                     events: &'a [ParallelTrace]) -> Option<Vec<&'a ParallelTrace>>
-    {
-        let mut matches = Vec::new();
-
-        if conditions.len() > 0 {
-            let condition = &conditions[0];
-            for (event, idx) in events.iter().zip(0..) {
-                // Check the timing of the trace event as that cannot be determined
-                // within the context of the TraceCondition alone, especially if the
-                // timing is relative to other conditions.
-                if condition.satisfied_by(event) {
-                    let timing_matches: bool = {
-                        if let Some(timing) = condition.get_offset() {
-                            // println!("Checking timing for trace event.");
-                            // Calculate the time point test the trace condition
-                            // specifies the trace should occur at.
-                            let t_req = match timing {
-                                Timing::Absolute(d) => t0 + d,
-                                Timing::Relative(d) => tp + d,
-                            };
-                            // Difference between the actual event occurrence time and the specification's time point.
-                            let since = t_req.max(event.get_time()) - t_req.min(event.get_time());
-                            // println!("  req. offset: {:?}, tolerance: {:?}", since, condition.get_tolerance().unwrap());
-                            // println!("  since time offset: {:?}", since);
-                            since < condition.get_tolerance().unwrap()
-                        } else {
-                            true
-                        }
-                    };
-                    // If the rest of the events in the condition chain are satisfied, then
-                    // the criterion is satisfied. If not, we continue skimming over events.
-                    if timing_matches {
-                        let rest = ParallelTraceCriterion::rec_align(
-                            t0, event.get_time(), &conditions[1..], &events[idx+1..]);
-                        if let Some(rest) = rest {
-                            matches.push(event);
-                            matches.extend(rest.into_iter());
-
-                            return Some(matches);
-                        }
-                    }
-                }
-            }
-
-            // No more events to match. Game over.
-            None
-        } else {
-            // No more conditions to try to match. We're finished.
-            Some(Vec::new())
-        }
-    }
-}
-
-impl Display for ParallelTraceCriterion {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for condition in &self.conditions {
-            write!(f, "\n   → ID: {}, data: {}{}",
-                   condition.get_id(),
-                   condition.get_extra_data().map(|x| x.to_string()).unwrap_or("none".to_string()),
-                   if let Some(timing) = condition.get_offset() {
-                       format!(" @ {:?}±{:?} from {}",
-                               timing.get_offset(),
-                               condition.get_tolerance().unwrap(),
-                               match timing {
-                                   Timing::Absolute(_) => "test start",
-                                   Timing::Relative(_) => "last event",
-                               })
-                   } else {
-                       "".to_string()
-                   })?;
-        }
-
-        Ok(())
     }
 }
 
@@ -494,8 +277,17 @@ impl SerialTraceCriterion {
 
     /** Attempt to satisfy conditions with the provided [`SerialTrace`]s.
 
-    This function is the serial parallel to the parallel tracing implementation.
-    See [`ParallelTraceCriterion::rec_align`] for more information.
+    # Algorithm overview
+
+    Advances through:
+    - ordering of trace conditions
+    - sequence of trace events captured during the test
+
+    For each trace condition, advances through the trace events to find a matching trace event.
+    Upon finding a matching trace condition, the function advances to the next trace condition.
+    If a trace condition fails to find a matching trace event, then we back out to the previous trace condition.
+    The previous trace condition seeks another matching trace event.
+    If a trace condition advances to the last trace event and does not find a match, then the function returns false.
      */
     fn rec_align<'a>(t0: Instant,
                      tp: Instant,
