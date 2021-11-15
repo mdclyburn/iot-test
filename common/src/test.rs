@@ -451,7 +451,7 @@ impl Test {
                             schedule: &'a mut Vec<(Instant, usize)>) -> Result<()> {
         // Timeout is a bit arbitrary here.
         // Don't want the thread hanging the test unnecessarily.
-        uart.set_read_mode(0, Duration::from_millis(100))?;
+        uart.set_read_mode(0, Duration::from_millis(50))?;
 
         schedule.clear();
 
@@ -459,6 +459,8 @@ impl Test {
         data_buffer.reserve_exact(buffer_alloc);
         schedule.reserve_exact(buffer_alloc);
         while data_buffer.len() < buffer_alloc { data_buffer.push(0); }
+        // Clear out any early data that arrives before the reset.
+        uart.flush(rppal::uart::Queue::Input)?;
 
         Ok(())
     }
