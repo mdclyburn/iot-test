@@ -187,8 +187,8 @@ impl Execution {
     }
 
     /// Return the point in time the test execution started.
-    pub fn get_start(&self) -> &Instant {
-        &self.started_at
+    pub fn get_start(&self) -> Instant {
+        self.started_at
     }
 
     /// Return the length of time the test ran for.

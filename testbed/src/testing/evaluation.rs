@@ -220,11 +220,11 @@ impl Evaluation {
                     // Evaluation results are only relevant when the exec_result is Ok(...).
                     .expect("Attempted to evaluate criterion when execution result failed")
                     .get_start();
-                if let Some(aligned_traces) = trace_criterion.align(*execution_t0, self.parallel_traces.as_slice()) {
+                if let Some(aligned_traces) = trace_criterion.align(execution_t0, self.parallel_traces.as_slice()) {
                     let count = aligned_traces.len();
                     let mut message = "Satisfied by: ".to_string();
                     let it = aligned_traces.into_iter()
-                        .map(|t| format!("@{:?}", t.get_time() - *execution_t0));
+                        .map(|t| format!("@{:?}", t.get_time() - execution_t0));
                     for (msg, no) in it.zip(1..) {
                         message.push_str(&msg);
                         if no < count {
@@ -242,11 +242,11 @@ impl Evaluation {
                     .as_ref()
                     .expect("Attempted to evaluate serial tracing criterion when execution result failed")
                     .get_start();
-                if let Some(aligned_traces) = trace_criterion.align(*execution_t0, self.serial_traces.as_slice()) {
+                if let Some(aligned_traces) = trace_criterion.align(execution_t0, self.serial_traces.as_slice()) {
                     let count = aligned_traces.len();
                     let mut message = "Satisfied by: ".to_string();
                     let it = aligned_traces.into_iter()
-                        .map(|t| format!("@{:?}", t.get_offset(*execution_t0)));
+                        .map(|t| format!("@{:?}", t.get_offset(execution_t0)));
                     for (msg, no) in it.zip(1..) {
                         message.push_str(&msg);
                         if no < count {
@@ -279,7 +279,7 @@ impl Display for Evaluation {
             if self.device_responses.len() > 0 {
                 write!(f, "  IO responses:\n")?;
                 for response in &self.device_responses {
-                    write!(f, "    @{:?}\t{}\n", response.get_offset(*execution.get_start()), response)?
+                    write!(f, "    @{:?}\t{}\n", response.get_offset(execution.get_start()), response)?
                 }
             }
 
@@ -300,7 +300,7 @@ impl Display for Evaluation {
                     write!(f, "    {}\t(data: {})\t@{:?}\n",
                            trace_point_name,
                            trace.get_extra(),
-                           trace.get_offset(*execution.get_start()))?;
+                           trace.get_offset(execution.get_start()))?;
 
                     if spec.trace_point_name(trace.get_id()).is_none() {
                         write!(f, "{}\n", trace)?;

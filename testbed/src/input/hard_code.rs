@@ -113,8 +113,8 @@ impl TestbedConfigReader for HardCodedTestbed {
             mapping,
             Box::new(platform),
             energy_meters,
-            None,
-            Some(UART::PL011));
+            Some(UART::PL011),
+            None);
 
         Ok(testbed)
     }

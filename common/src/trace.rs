@@ -185,7 +185,7 @@ impl Display for SerialTrace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "[ ")?;
         for byte in &self.raw_data {
-            write!(f, "{:2X} ", byte)?;
+            write!(f, "{:#02X} ", byte)?;
         }
         write!(f, "]")?;
 
@@ -198,28 +198,14 @@ pub fn reconstruct_serial<'a, T>(raw_data: &[u8], timings: T) -> Vec<SerialTrace
 where
     T: IntoIterator<Item = &'a (Instant, usize)>
 {
-    // Create a flattened array of Instants the bytes were received over UART.
-    // This makes it easier to find out when a particular byte arrived.
-    let times: Vec<Instant> = timings.into_iter()
-        .flat_map(|(time, len)| vec![*time; *len])
-        .collect();
-
-    let mut data_it = raw_data.into_iter()
-        .copied()
-        .zip(0..);
     let mut traces: Vec<SerialTrace> = Vec::new();
+    let mut byte_no = 0;
+    let timings = timings.into_iter().copied();
 
-    loop {
-        if let Some((len, byte_no)) = data_it.next() {
-            let trace = SerialTrace::new(
-                times[byte_no],
-                &raw_data[byte_no+1..byte_no+1+(len as usize)]);
-            traces.push(trace);
-            // TODO: replace with .advance_by() when stabilized?
-            for _ in 0..len { let _ = data_it.next(); }
-        } else {
-            break;
-        }
+    for (t_recv, no_bytes) in timings {
+        let trace = SerialTrace::new(t_recv, &raw_data[byte_no..byte_no+no_bytes]);
+        traces.push(trace);
+        byte_no += 1;
     }
 
     traces

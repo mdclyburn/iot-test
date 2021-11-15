@@ -187,7 +187,7 @@ impl Testbed {
                 for r in &traces {
                     println!("TRACE RESPONSE: {} - {:?}",
                              r,
-                             r.get_offset(*exec_result.as_ref().unwrap().get_start()));
+                             r.get_offset(exec_result.as_ref().unwrap().get_start()));
                 }
                 let traces = trace::reconstruct_parallel(
                     &traces, &platform_spec, &trace_pins);
@@ -210,12 +210,17 @@ impl Testbed {
                 serial_traces.push(trace);
             }
 
+            let start = exec_result.as_ref().map(|exec| exec.get_start()).unwrap();
+            for trace in &serial_traces {
+                println!("{} @ {:?}", trace, trace.get_offset(start));
+            }
+
             // get memory data
             println!("executor: receiving memory data");
             let mut mem_traces: Vec<MemoryTrace> = Vec::new();
             println!("| {:^15} | op. | {:^35} | {:^6} |", "offset", "counter", "value");
             while let Some(mem_event) = mem_rchannel.recv().unwrap() {
-                let offset = format!("@{:?}", mem_event.time() - *exec_result.as_ref().unwrap().get_start());
+                let offset = format!("@{:?}", mem_event.time() - exec_result.as_ref().unwrap().get_start());
                 let counter = format!("{}", mem_event.counter());
                 println!("| {:>15} | {:^5?} | {:^35} | {:>6} |",
                          offset,
