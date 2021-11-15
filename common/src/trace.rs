@@ -205,7 +205,7 @@ where
     for (t_recv, no_bytes) in timings {
         let trace = SerialTrace::new(t_recv, &raw_data[byte_no..byte_no+no_bytes]);
         traces.push(trace);
-        byte_no += 1;
+        byte_no += no_bytes;
     }
 
     traces
