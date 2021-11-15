@@ -218,10 +218,11 @@ impl Testbed {
             }
 
             // save data
-            if let Some(writer) = self.data_writer.as_ref() {
+            if let (Some(writer), Ok(execution)) = (self.data_writer.as_ref(), exec_result.as_ref()) {
                 println!("executor: sending test data to writer");
                 writer.save_output(
-                    test.get_id(),
+                    &test,
+                    execution,
                     &gpio_activity,
                     &serial_traces,
                     &energy_data)
