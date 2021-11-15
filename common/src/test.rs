@@ -363,7 +363,7 @@ impl Test {
     /// [`Test::meter`] should be called when running the test.
     pub fn prep_meter(&self,
                       meters: &HashMap<String, Box<dyn EnergyMetering>>,
-                      out: &mut HashMap<String, Vec<f32>>,
+                      out: &mut HashMap<String, Vec<(Instant, f32)>>,
     ) -> Result<bool> {
         // only care about meters defined in the criteria
         out.clear();
@@ -394,7 +394,10 @@ impl Test {
     /// Perform energy metering.
     ///
     /// The `out` parameter should be the same `out` passed to [`Test::prep_meter`].
-    pub fn meter(&self, meters: &HashMap<String, Box<dyn EnergyMetering>>, out: &mut HashMap<String, Vec<f32>>) {
+    pub fn meter(&self,
+                 meters: &HashMap<String, Box<dyn EnergyMetering>>,
+                 out: &mut HashMap<String, Vec<(Instant, f32)>>)
+    {
         let start = Instant::now();
         let runtime = self.get_max_runtime();
 
@@ -406,11 +409,12 @@ impl Test {
         // self.energy_sampling_rate = 10ms given a test that executes for
         // 1000ms. 1000ms / 10.5ms/samples = 95.238 samples.
         loop {
-            if Instant::now() - start >= runtime { break; }
+            let now = Instant::now();
+            if now - start >= runtime { break; }
 
             for (id, buf) in &mut *out {
                 let meter = meters.get(id).unwrap();
-                buf.push(meter.power());
+                buf.push((now, meter.power()));
             }
         }
     }

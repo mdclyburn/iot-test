@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Display;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use clockwise_common::criteria::{
     Criterion,
@@ -52,7 +52,7 @@ pub struct Evaluation {
     exec_result: Result<Execution>,
     device_responses: Vec<Response>,
     serial_traces: Vec<SerialTrace>,
-    energy_metrics: HashMap<String, Vec<f32>>,
+    energy_metrics: HashMap<String, Vec<(Instant, f32)>>,
 }
 
 impl Evaluation {
@@ -61,7 +61,7 @@ impl Evaluation {
                exec_result: Result<Execution>,
                device_responses: Vec<Response>,
                serial_traces: Vec<SerialTrace>,
-               energy_metrics: HashMap<String, Vec<f32>>) -> Evaluation
+               energy_metrics: HashMap<String, Vec<(Instant, f32)>>) -> Evaluation
     {
         Evaluation {
             test: test.clone(),
@@ -127,7 +127,7 @@ impl Evaluation {
                             / Duration::from_secs(1).as_micros() as f64;
 
                         let mut total = 0f64;
-                        for sample in samples.iter().copied() {
+                        for sample in samples.iter().map(|(_t, s)| s).copied() {
                             // mJ/s * fraction of the second the sample accounts for
                             total += sample as f64 * rate_to_total_factor;
                         }
@@ -148,7 +148,7 @@ impl Evaluation {
                     EnergyStat::Average => {
                         let samples = self.energy_metrics.get(criterion.get_meter()).unwrap();
                         // ASSUMPTION: timer intervals represented by all samples are equal.
-                        let avg: f32 = samples.iter().sum::<f32>() / samples.len() as f32;
+                        let avg: f32 = samples.iter().map(|(_t, s)| s).sum::<f32>() / samples.len() as f32;
 
                         let status = if let Some(violated) = criterion.violated(avg as f32) {
                             if violated {
@@ -166,6 +166,7 @@ impl Evaluation {
                     EnergyStat::Max => {
                         let samples = self.energy_metrics.get(criterion.get_meter()).unwrap();
                         let max = samples.iter()
+                            .map(|(_t, sample)| sample)
                             .copied()
                             .fold(0f32, |curr, n| if n > curr { n } else { curr });
 
@@ -186,6 +187,7 @@ impl Evaluation {
                         let samples = self.energy_metrics.get(criterion.get_meter()).unwrap();
                         let min = if samples.len() > 0 {
                             samples.iter()
+                                .map(|(_t, sample)| sample)
                                 .copied()
                                 .fold(f32::MAX, |curr, n| if n < curr { n } else { curr })
                         } else {

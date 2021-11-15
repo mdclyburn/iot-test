@@ -184,10 +184,10 @@ impl Testbed {
 
             // get energy data
             let mut energy_data = HashMap::new();
-            while let Some((meter_id, sample)) = energy_rchannel.recv().unwrap() {
+            while let Some((meter_id, (t, sample))) = energy_rchannel.recv().unwrap() {
                 energy_data.entry(meter_id)
                     .or_insert(Vec::new())
-                    .push(sample);
+                    .push((t, sample));
             }
 
             // get tracing data
@@ -325,7 +325,7 @@ impl Testbed {
         &self,
         test_container: Arc<RwLock<Option<Test>>>,
         barrier: Arc<Barrier>,
-        energy_schannel: SyncSender<Option<(String, f32)>>,
+        energy_schannel: SyncSender<Option<(String, (Instant, f32))>>,
     ) -> JoinHandle<()> {
         println!("Starting energy metering thread.");
 
@@ -337,7 +337,7 @@ impl Testbed {
                 println!("metering: started.");
 
                 let meters = meters.lock().unwrap();
-                let mut samples: HashMap<String, Vec<f32>> = meters.keys()
+                let mut samples: HashMap<String, Vec<(Instant, f32)>> = meters.keys()
                     .map(|meter_id| { (meter_id.clone(), Vec::new()) })
                     .collect();
 
