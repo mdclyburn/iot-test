@@ -16,6 +16,7 @@ use std::time::Instant;
 use clockwise_common::facility::EnergyMetering;
 use clockwise_common::io::{Mapping, UART};
 use clockwise_common::mem::MemoryTrace;
+use clockwise_common::output::DataWriter;
 use clockwise_common::test::{Response, Test};
 use clockwise_common::trace;
 use clockwise_common::trace::SerialTrace;
@@ -35,6 +36,7 @@ pub struct Testbed {
     energy_meters: Arc<Mutex<HashMap<String, Box<dyn EnergyMetering>>>>,
     tracing_uart: Option<UART>,
     memory_uart: Option<UART>,
+    data_writer: Option<Box<dyn DataWriter>>,
 }
 
 impl Testbed {
@@ -53,7 +55,12 @@ impl Testbed {
             energy_meters: Arc::new(Mutex::new(energy_meters)),
             tracing_uart,
             memory_uart,
+            data_writer: None,
         }
+    }
+
+    pub fn save_results_with(&mut self, formatter: Box<dyn DataWriter>) {
+        self.data_writer = Some(formatter);
     }
 
     /** Run tests.
@@ -208,6 +215,17 @@ impl Testbed {
                          counter,
                          mem_event.value());
                 mem_traces.push(mem_event);
+            }
+
+            // save data
+            if let Some(writer) = self.data_writer.as_ref() {
+                println!("executor: sending test data to writer");
+                writer.save_output(
+                    test.get_id(),
+                    &gpio_activity,
+                    &serial_traces,
+                    &energy_data)
+                    .expect("failed to save test data");
             }
 
             let evaluation = Evaluation::new(

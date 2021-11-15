@@ -10,6 +10,7 @@ pub mod hw;
 pub mod input;
 pub mod io;
 pub mod mem;
+pub mod output;
 pub mod sw;
 pub mod test;
 pub mod trace;

@@ -29,6 +29,7 @@ use clockwise_common::io::{
 };
 use clockwise_common::test::{Operation, Test};
 
+use crate::output::csv::CSVDataWriter;
 use crate::sw::platform::Tock;
 use crate::testing::testbed::Testbed;
 
@@ -100,12 +101,15 @@ impl TestbedConfigReader for HardCodedTestbed {
             Path::new("/home/ubuntu/work/tock"),
             Path::new("/home/ubuntu/work/apps/tock"));
 
-        let testbed = Testbed::new(
+        let mut testbed = Testbed::new(
             mapping,
             Box::new(platform),
             energy_meters,
             Some(UART::PL011),
             None);
+
+        let data_writer = CSVDataWriter::new(Path::new("/tmp/clockwise-data"));
+        testbed.save_results_with(Box::new(data_writer));
 
         Ok(testbed)
     }
