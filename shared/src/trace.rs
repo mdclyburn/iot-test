@@ -8,22 +8,20 @@ use crate::serialize::serialize_u32 as ser_u32;
 #[derive(Copy, Clone, Debug)]
 pub enum TraceData {
     /// Number of active processes
-    ActiveProcesses(u32),
-    /// Chip is entering a low-power state.
-    ChipSleep,
+    KernelWork(u32),
+    /// A process has suspended execution.
+    ProcessSuspended(u32),
 }
 
 impl TraceData {
     pub fn serialize(&self, buffer: &mut [u8]) -> usize {
         buffer[0] = u8::from(self);
-        let mut written = 1;
         let buffer = &mut buffer[1..];
 
         use TraceData::*;
-        written + match *self {
-            ActiveProcesses(no_procs) => ser_u32(no_procs, buffer),
-            // No extra bytes written.
-            _ => 0,
+        1 + match *self {
+            KernelWork(no_procs) => ser_u32(no_procs, buffer),
+            ProcessSuspended(executed_for_us) => ser_u32(executed_for_us, buffer),
         }
     }
 }
@@ -32,8 +30,8 @@ impl From<&TraceData> for u8 {
     fn from(counter: &TraceData) -> u8 {
         use TraceData::*;
         match counter {
-            ActiveProcesses(_) => 1,
-            ChipSleep => 2,
+            KernelWork(_) => 1,
+            ProcessSuspended(_) => 2,
         }
     }
 }
