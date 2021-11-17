@@ -1,6 +1,7 @@
 //! CSV output formatting for data.
 
 use std::cell::Cell;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fs::{DirBuilder, File};
 use std::io::{BufWriter, Write};
@@ -10,6 +11,7 @@ use std::time::{self, Instant, SystemTime};
 use clockwise_common::output::DataWriter;
 use clockwise_common::trace::SerialTrace;
 use clockwise_common::test::{Execution, Response, Test};
+use clockwise_shared::trace::TraceData;
 
 struct Point {
     field: u8,
@@ -100,7 +102,13 @@ impl DataWriter for CSVDataWriter {
             BufWriter::new(file)
         };
 
-        let columns = vec!["time", "energy_mw"];
+        let columns = vec![
+            "time",
+            "energy_mw",
+            "kernel_work",
+            // "process_suspended",
+            // "interrupt_serviced",
+        ];
         self.write_header(&mut csv_writer, &columns)?;
 
         /* Coalescing data streams...
@@ -108,6 +116,8 @@ impl DataWriter for CSVDataWriter {
         - For the most part, only one stat changes at a time then; update all stats that change at that time.
         - Record their values at that state, 0 if not defined yet. */
         let mut points = Vec::new();
+
+        // add the energy samples
         let samples: &Vec<_> = energy.get("system").unwrap();
         for (t, val) in samples.iter().copied() {
             points.push(Point {
@@ -117,13 +127,60 @@ impl DataWriter for CSVDataWriter {
             });
         }
 
+        // add the kernel work samples
+        // first, we get them into a single slice-like...
+        let mut trace_data_timeline: Vec<(Instant, u8)> = Vec::new();
+        for trace in traces {
+            let t = trace.get_time();
+            let data = trace.get_data();
+            let timepoint = &[t];
+            let t_data_it = timepoint.into_iter().cycle().zip(data);
+            trace_data_timeline.extend(t_data_it.map(|(a, b)| (*a, *b)));
+        }
+        let raw_trace: Vec<_> = trace_data_timeline.iter()
+            .map(|(_t, data)| data)
+            .copied()
+            .collect();
+        let timeline: Vec<_> = trace_data_timeline.iter()
+            .map(|(t, _data)| t)
+            .copied()
+            .collect();
+
+        // recreate the TraceData, but we also know the Instant they arrived
+        let mut byte_no = 0;
+        while byte_no < raw_trace.len() {
+            // transform the raw data back into a trace
+            let (trace, raw_size) = TraceData::deserialize(&raw_trace[byte_no..])
+                .map_err(|_e| "failed to deserialize trace data".to_string())?;
+
+            // add the trace(s) to the points
+            let t = timeline[byte_no];
+            points.extend(match trace {
+                TraceData::KernelWork(count) =>
+                    vec![Point { field: 2, t, raw: format!("{}", count) }],
+                _ => vec![]
+            });
+
+            byte_no += raw_size;
+        }
+
+        // sort the points by their time
+        points.as_mut_slice().sort_by(|a, b| {
+            if a.t < b.t {
+                Ordering::Less
+            } else if a.t > b.t {
+                Ordering::Greater
+            } else {
+                Ordering::Equal
+            }
+        });
+
         // get the number of fields
         let no_fields = points.iter()
             .map(|p| p.field)
             .max()
             .unwrap();
 
-        let point_idx = 0;
         let mut row = vec![None; no_fields as usize + 1];
         let mut all_valid = false;
         // set all fields that have a valid initial value

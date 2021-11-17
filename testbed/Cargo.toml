@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 clockwise_common = { path = "../common" }
+clockwise_shared = { path = "../shared" }
 
 getopts = "^0.2"
 json = "^0.12"

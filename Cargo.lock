@@ -13,6 +13,7 @@ name = "clockwise-testbed"
 version = "0.1.0"
 dependencies = [
  "clockwise_common",
+ "clockwise_shared",
  "getopts",
  "json",
  "libloading",
