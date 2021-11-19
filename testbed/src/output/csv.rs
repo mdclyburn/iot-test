@@ -85,7 +85,7 @@ impl DataWriter for CSVDataWriter {
     fn save_output(&self,
                    test: &Test,
                    execution: &Execution,
-                   responses: &[Response],
+                   _responses: &[Response],
                    traces: &[SerialTrace],
                    energy: &HashMap<String, Vec<(Instant, f32)>>)
                    -> Result<(), String>
