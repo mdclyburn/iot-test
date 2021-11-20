@@ -14,8 +14,8 @@ pub enum TraceData {
     KernelWork(u32),
     /// A process has suspended execution.
     ProcessSuspended(u32),
-    /// The kernel has gotten around to servicing an interrupt.
-    InterruptServiced(u32),
+    /// The kernel has gotten around to servicing an upcall.
+    UpcallServiced(u32),
     /// Number of active processes has changed.
     ActiveProcesses(u32),
 }
@@ -29,7 +29,7 @@ impl TraceData {
         1 + match *self {
             KernelWork(no_procs) => ser_u32(no_procs, buffer),
             ProcessSuspended(executed_for_us) => ser_u32(executed_for_us, buffer),
-            InterruptServiced(interrupt_no) => ser_u32(interrupt_no, buffer),
+            UpcallServiced(t) => ser_u32(t, buffer),
             ActiveProcesses(no_procs) => ser_u32(no_procs, buffer),
         }
     }
@@ -45,7 +45,7 @@ impl TraceData {
             let (trace, consumed) = match header {
                 1 => (KernelWork(deser_u32(&buffer)?), 4),
                 2 => (ProcessSuspended(deser_u32(&buffer)?), 4),
-                3 => (InterruptServiced(deser_u32(&buffer)?), 4),
+                3 => (UpcallServiced(deser_u32(&buffer)?), 4),
                 4 => (ActiveProcesses(deser_u32(&buffer)?), 4),
                 _ => Err(())?,
             };
@@ -61,7 +61,7 @@ impl From<&TraceData> for u8 {
         match counter {
             KernelWork(_) => 1,
             ProcessSuspended(_) => 2,
-            InterruptServiced(_) => 3,
+            UpcallServiced(_) => 3,
             ActiveProcesses(_) => 4,
         }
     }
