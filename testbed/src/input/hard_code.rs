@@ -50,7 +50,7 @@ impl TestbedConfigReader for HardCodedTestbed {
     fn create(&self) -> Result<Testbed> {
         // physical mapping
         let host_to_device_pins = [
-            // (13, (Direction::Out, SignalClass::Digital)), // D0
+            (13, (Direction::In, SignalClass::Digital)), // D0
             // (14, (Direction::Out, SignalClass::Digital)), // D1
             // (19, (Direction::Out, SignalClass::Digital)), // D6
             // (20, (Direction::Out, SignalClass::Digital)), // D7
@@ -82,6 +82,7 @@ impl TestbedConfigReader for HardCodedTestbed {
             device,
             // Host to device-under-test pin mapping.
             &[(17, 23), // Reset
+              (20, 13),
             ],
             Some(23),
         ).unwrap();

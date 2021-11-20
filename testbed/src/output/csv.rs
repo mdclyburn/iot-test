@@ -107,7 +107,8 @@ impl DataWriter for CSVDataWriter {
             "energy_mw",
             "kernel_work",
             // "process_suspended",
-            // "interrupt_serviced",
+            "upcall_service_time",
+            "active_procs",
         ];
         self.write_header(&mut csv_writer, &columns)?;
 
@@ -127,7 +128,7 @@ impl DataWriter for CSVDataWriter {
             });
         }
 
-        // add the kernel work samples
+        // add the trace data
         // first, we get them into a single slice-like...
         let mut trace_data_timeline: Vec<(Instant, u8)> = Vec::new();
         for trace in traces {
@@ -150,14 +151,24 @@ impl DataWriter for CSVDataWriter {
         let mut byte_no = 0;
         while byte_no < raw_trace.len() {
             // transform the raw data back into a trace
-            let (trace, raw_size) = TraceData::deserialize(&raw_trace[byte_no..])
-                .map_err(|_e| "failed to deserialize trace data".to_string())?;
+            let deserialize_result = TraceData::deserialize(&raw_trace[byte_no..]);
+            if let Err(e) = deserialize_result {
+                println!("failed to deserialize data; only parsed {} of {} bytes",
+                         byte_no+1,
+                         raw_trace.len());
+                break;
+            }
+            let (trace, raw_size) = deserialize_result.unwrap();
 
             // add the trace(s) to the points
             let t = timeline[byte_no];
             points.extend(match trace {
                 TraceData::KernelWork(count) =>
                     vec![Point { field: 2, t, raw: format!("{}", count) }],
+                TraceData::UpcallServiced(time_to_service) =>
+                    vec![Point { field: 3, t, raw: format!("{}", time_to_service) }],
+                TraceData::ActiveProcesses(count) =>
+                    vec![Point { field: 4, t, raw: format!("{}", count) }],
                 _ => vec![]
             });
 
@@ -203,6 +214,10 @@ impl DataWriter for CSVDataWriter {
                 // write the fields, we know they are all valid now
                 let row_vals: Vec<_> = row.iter().map(|o| o.as_ref().unwrap().as_str()).collect();
                 self.write_columns(&mut csv_writer, row_vals.as_slice())?;
+
+                // throw away any fields necessary
+                row[3] = None;
+                all_valid = false;
             }
         }
 
