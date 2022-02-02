@@ -10,16 +10,16 @@ use clockwise_common::criteria::{
     GPIOCriterion,
     EnergyStat,
 };
-use clockwise_common::testbed::Error;
 use clockwise_common::sw::instrument::Spec;
 use clockwise_common::test::{
     Execution,
     Response,
     Test
 };
+use clockwise_common::testbed::TestbedError;
 use clockwise_common::trace::SerialTrace;
 
-type Result<T> = std::result::Result<T, Error>;
+type Result<T> = std::result::Result<T, TestbedError>;
 
 /// Summary of an `Evaluation`.
 #[derive(Copy, Clone, Debug)]
@@ -75,7 +75,7 @@ impl Evaluation {
     }
 
     /// Create an evaluation that fails due to an error during testing.
-    pub fn failed(test: &Test, spec: Option<&Spec>, error: Error) -> Evaluation {
+    pub fn failed(test: &Test, spec: Option<&Spec>, error: TestbedError) -> Evaluation {
         Evaluation {
             test: test.clone(),
             spec: spec.map(|s| s.clone()),

@@ -24,11 +24,12 @@ use crate::test::{Execution, Response, Test};
 use crate::trace;
 use crate::trace::SerialTrace;
 
-type Result<T> = std::result::Result<T, Error>;
+// Errors that originate within the testbed code should map to a relevant TestbedError.
+type Result<T> = std::result::Result<T, TestbedError>;
 
-/// Test-related error.
+/// Errors that occur while the testbed is running.
 #[derive(Debug)]
-pub enum Error {
+pub enum TestbedError {
     /// A problem occured while executing a test.
     Execution(crate::error::Error),
     /// Reset requested when [`clockwise_common::io::Mapping`] does not specify one.
@@ -37,34 +38,36 @@ pub enum Error {
     Software(sw::error::Error),
 }
 
-impl error::Error for Error {
+impl error::Error for TestbedError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        use TestbedError::*;
         match self {
-            Error::Execution(ref e) => Some(e),
-            Error::Reset(ref e) => Some(e),
-            Error::Software(ref e) => Some(e),
+            Execution(ref e) => Some(e),
+            Reset(ref e) => Some(e),
+            Software(ref e) => Some(e),
         }
     }
 }
 
-impl From<crate::error::Error> for Error {
+impl From<crate::error::Error> for TestbedError {
     fn from(e: crate::error::Error) -> Self {
-        Error::Execution(e)
+        TestbedError::Execution(e)
     }
 }
 
-impl From<sw::error::Error> for Error {
-    fn from(e: sw::error::Error) -> Error {
-        Error::Software(e)
+impl From<sw::error::Error> for TestbedError {
+    fn from(e: sw::error::Error) -> TestbedError {
+        TestbedError::Software(e)
     }
 }
 
-impl Display for Error {
+impl Display for TestbedError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use TestbedError::*;
         match self {
-            Error::Execution(ref e) => write!(f, "test execution error: {}", e),
-            Error::Reset(ref e) => write!(f, "failed to reset device: {}", e),
-            Error::Software(ref e) => write!(f, "software interaction error: {}", e),
+            Execution(ref e) => write!(f, "test execution error: {}", e),
+            Reset(ref e) => write!(f, "failed to reset device: {}", e),
+            Software(ref e) => write!(f, "software interaction error: {}", e),
         }
     }
 }
@@ -162,7 +165,7 @@ impl Testbed {
                     ExecutionData {
                         test,
                         spec: None,
-                        exec_result: Err(Error::Software(reconfig_err)),
+                        exec_result: Err(TestbedError::Software(reconfig_err)),
                         device_responses: Vec::new(),
                         serial_traces: Vec::new(),
                         energy_metrics: HashMap::new(),
@@ -205,7 +208,7 @@ impl Testbed {
                         ExecutionData {
                             test,
                             spec: Some(platform_spec),
-                            exec_result: Err(Error::Reset(e)),
+                            exec_result: Err(TestbedError::Reset(e)),
                             device_responses: Vec::new(),
                             serial_traces: Vec::new(),
                             energy_metrics: HashMap::new(),
@@ -226,7 +229,7 @@ impl Testbed {
                     .expect("failed to release device from reset");
             }
             let exec_result = test.execute(Instant::now(), &mut inputs)
-                .map_err(|e| Error::Execution(e));
+                .map_err(|e| TestbedError::Execution(e));
 
             // release observer thread
             println!("executor: test execution complete");
@@ -609,7 +612,7 @@ impl Testbed {
             if !currently_loaded.contains(app_name) {
                 println!("executor: loading '{}'", app_name);
                 self.platform_support.load(app_name)
-                    .map_err(|e| Error::Software(e))?;
+                    .map_err(|e| TestbedError::Software(e))?;
             }
         }
 
