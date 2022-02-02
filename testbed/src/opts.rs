@@ -9,7 +9,6 @@ use clockwise_common::input::TestProvider;
 use getopts::Options;
 
 use crate::input::TestbedConfigReader;
-use crate::input::json::JSONTestbedParser;
 use crate::input::hard_code::{
     HardCodedTestbed,
     HardCodedTests,
@@ -108,15 +107,6 @@ pub fn parse<'a>() -> Result<Configuration> {
             match format.as_str() {
                 "code" => {
                     Ok(Box::new(HardCodedTestbed::new()) as Box<dyn TestbedConfigReader>)
-                },
-
-                "json" => {
-                    // Free arguments
-                    let testbed_config = free_args.next()
-                        .ok_or(Error::ArgumentMissing("testbed config"))?;
-
-                    let json_path = Path::new(testbed_config);
-                    Ok(Box::new(JSONTestbedParser::new(json_path)) as Box<dyn TestbedConfigReader>)
                 },
 
                 _ => {
