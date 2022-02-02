@@ -34,7 +34,7 @@ use crate::sw::platform::Tock;
 use crate::testing::testbed::Testbed;
 
 use super::{Result,
-            TestbedConfigReader};
+            TestbedProvider};
 
 /// Testbed created from code compiled into the binary.
 #[derive(Debug)]
@@ -46,7 +46,7 @@ impl HardCodedTestbed {
     }
 }
 
-impl TestbedConfigReader for HardCodedTestbed {
+impl TestbedProvider for HardCodedTestbed {
     fn create(&self) -> Result<Testbed> {
         // physical mapping
         let host_to_device_pins = [

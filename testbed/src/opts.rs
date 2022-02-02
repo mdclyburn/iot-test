@@ -8,7 +8,7 @@ use std::path::Path;
 use clockwise_common::input::TestProvider;
 use getopts::Options;
 
-use crate::input::TestbedConfigReader;
+use crate::input::TestbedProvider;
 use crate::input::hard_code::{
     HardCodedTestbed,
     HardCodedTests,
@@ -58,12 +58,12 @@ impl From<getopts::Fail> for Error {
 
 #[derive(Debug)]
 pub struct Configuration {
-    testbed_reader: Box<dyn TestbedConfigReader>,
+    testbed_reader: Box<dyn TestbedProvider>,
     test_adapter: Box<dyn TestProvider>,
 }
 
 impl Configuration {
-    fn new(testbed_reader: Box<dyn TestbedConfigReader>,
+    fn new(testbed_reader: Box<dyn TestbedProvider>,
            test_adapter: Box<dyn TestProvider>) -> Configuration
     {
         Configuration {
@@ -72,7 +72,7 @@ impl Configuration {
         }
     }
 
-    pub fn get_testbed_reader(&self) -> &dyn TestbedConfigReader {
+    pub fn get_testbed_reader(&self) -> &dyn TestbedProvider {
         self.testbed_reader.as_ref()
     }
 
@@ -101,12 +101,12 @@ pub fn parse<'a>() -> Result<Configuration> {
         let brief = format!("Usage: {} [ options ] <config-specific options>", &cli_args[0]);
         Err(Error::Help(opts.usage(&brief)))
     } else {
-        let testbed_reader: Box<dyn TestbedConfigReader> = if matches.opt_present("testbed-format") {
+        let testbed_reader: Box<dyn TestbedProvider> = if matches.opt_present("testbed-format") {
             let format = matches.opt_str("testbed-format")
                 .ok_or(Error::ArgumentMissing("testbed-format"))?;
             match format.as_str() {
                 "code" => {
-                    Ok(Box::new(HardCodedTestbed::new()) as Box<dyn TestbedConfigReader>)
+                    Ok(Box::new(HardCodedTestbed::new()) as Box<dyn TestbedProvider>)
                 },
 
                 _ => {

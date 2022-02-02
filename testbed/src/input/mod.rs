@@ -10,8 +10,8 @@ pub mod shared_lib;
 
 type Result<T> = std::result::Result<T, error::Error>;
 
-/// Configuration reader producing a configured testbed from an input source.
-pub trait TestbedConfigReader: Debug {
+/// Adapter producing a testbed from some input source.
+pub trait TestbedProvider: Debug {
     /// Create a configured testbed ready to run tests.
     fn create(&self) -> Result<Testbed>;
 }
