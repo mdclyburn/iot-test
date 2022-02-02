@@ -13,6 +13,7 @@ pub mod mem;
 pub mod output;
 pub mod sw;
 pub mod test;
+pub mod testbed;
 pub mod trace;
 
 type Error = error::Error;

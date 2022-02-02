@@ -5,15 +5,17 @@ use std::fmt;
 use std::fmt::Display;
 use std::path::Path;
 
-use clockwise_common::input::TestProvider;
+use clockwise_common::input::{TestProvider, TestbedProvider};
 use getopts::Options;
 
-use crate::input::TestbedProvider;
 use crate::input::hard_code::{
     HardCodedTestbed,
     HardCodedTests,
 };
-use crate::input::shared_lib::LibraryTestProvider;
+use crate::input::shared_lib::{
+    LibraryTestProvider,
+    LibraryTestbedProvider,
+};
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -107,6 +109,12 @@ pub fn parse<'a>() -> Result<Configuration> {
             match format.as_str() {
                 "code" => {
                     Ok(Box::new(HardCodedTestbed::new()) as Box<dyn TestbedProvider>)
+                },
+
+                "lib" => {
+                    let library_path = free_args.next()
+                        .ok_or(Error::ArgumentMissing("testbed library path"))?;
+                    Ok(Box::new(LibraryTestbedProvider::new(Path::new(library_path))) as Box<dyn TestbedProvider>)
                 },
 
                 _ => {

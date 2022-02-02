@@ -10,6 +10,7 @@ use clockwise_common::criteria::{
     GPIOCriterion,
     EnergyStat,
 };
+use clockwise_common::testbed::Error;
 use clockwise_common::sw::instrument::Spec;
 use clockwise_common::test::{
     Execution,
@@ -18,7 +19,7 @@ use clockwise_common::test::{
 };
 use clockwise_common::trace::SerialTrace;
 
-use super::{Error, Result};
+type Result<T> = std::result::Result<T, Error>;
 
 /// Summary of an `Evaluation`.
 #[derive(Copy, Clone, Debug)]

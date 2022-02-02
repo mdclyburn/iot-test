@@ -1,6 +1,7 @@
 //! Configure and execute tests.
 
 use std::collections::HashMap;
+use std::error;
 use std::fmt;
 use std::fmt::Display;
 use std::sync::mpsc;
@@ -13,20 +14,60 @@ use std::thread;
 use std::thread::JoinHandle;
 use std::time::Instant;
 
-use clockwise_common::facility::EnergyMetering;
-use clockwise_common::io::{Mapping, UART};
-use clockwise_common::mem::MemoryTrace;
-use clockwise_common::output::DataWriter;
-use clockwise_common::test::{Response, Test};
-use clockwise_common::trace;
-use clockwise_common::trace::SerialTrace;
-
-use crate::sw::PlatformSupport;
-
-use super::Error;
-use super::evaluation::Evaluation;
+use crate::facility::EnergyMetering;
+use crate::io::{self, Mapping, UART};
+use crate::mem::MemoryTrace;
+use crate::output::DataWriter;
+use crate::sw::{self, PlatformSupport};
+use crate::sw::instrument::Spec;
+use crate::test::{Execution, Response, Test};
+use crate::trace;
+use crate::trace::SerialTrace;
 
 type Result<T> = std::result::Result<T, Error>;
+
+/// Test-related error.
+#[derive(Debug)]
+pub enum Error {
+    /// A problem occured while executing a test.
+    Execution(crate::error::Error),
+    /// Reset requested when [`clockwise_common::io::Mapping`] does not specify one.
+    Reset(io::Error),
+    /// Error originating from interacting with software ([`sw::error::Error`]).
+    Software(sw::error::Error),
+}
+
+impl error::Error for Error {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match self {
+            Error::Execution(ref e) => Some(e),
+            Error::Reset(ref e) => Some(e),
+            Error::Software(ref e) => Some(e),
+        }
+    }
+}
+
+impl From<crate::error::Error> for Error {
+    fn from(e: crate::error::Error) -> Self {
+        Error::Execution(e)
+    }
+}
+
+impl From<sw::error::Error> for Error {
+    fn from(e: sw::error::Error) -> Error {
+        Error::Software(e)
+    }
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Error::Execution(ref e) => write!(f, "test execution error: {}", e),
+            Error::Reset(ref e) => write!(f, "failed to reset device: {}", e),
+            Error::Software(ref e) => write!(f, "software interaction error: {}", e),
+        }
+    }
+}
 
 /// Test suite executor
 #[derive(Debug)]
@@ -59,6 +100,7 @@ impl Testbed {
         }
     }
 
+    /// Define a write for testing data.
     pub fn save_results_with(&mut self, formatter: Box<dyn DataWriter>) {
         self.data_writer = Some(formatter);
     }
@@ -73,7 +115,7 @@ impl Testbed {
     testbed.execute(&[test], &mut results);
     ```
      */
-    pub fn execute<'b, T>(&self, tests: &mut T) -> Result<Vec<Evaluation>>
+    pub fn execute<'b, T>(&self, tests: &mut T) -> Result<Vec<ExecutionData>>
     where
         T: Iterator<Item = Test>,
     {
@@ -116,11 +158,16 @@ impl Testbed {
                 .collect();
             let res = self.platform_support.reconfigure(&trace_points);
             if let Err(reconfig_err) = res {
-                let eval = Evaluation::failed(
-                    &test,
-                    None,
-                    Error::Software(reconfig_err));
-                test_results.push(eval);
+                test_results.push(
+                    ExecutionData {
+                        test,
+                        spec: None,
+                        exec_result: Err(Error::Software(reconfig_err)),
+                        device_responses: Vec::new(),
+                        serial_traces: Vec::new(),
+                        energy_metrics: HashMap::new(),
+                    }
+                );
                 continue;
             }
             let platform_spec = res.unwrap();
@@ -128,11 +175,16 @@ impl Testbed {
             // Load application(s) if necessary.
             if let Err(load_err) = self.load_apps(&test) {
                 println!("executor: error loading/removing application(s)");
-                let eval = Evaluation::failed(
-                    &test,
-                    Some(&platform_spec),
-                    load_err);
-                test_results.push(eval);
+                test_results.push(
+                    ExecutionData {
+                        test,
+                        spec: Some(platform_spec),
+                        exec_result: Err(load_err),
+                        device_responses: Vec::new(),
+                        serial_traces: Vec::new(),
+                        energy_metrics: HashMap::new(),
+                    }
+                );
                 continue;
             }
 
@@ -150,10 +202,15 @@ impl Testbed {
                 let reset_res = self.pin_mapping.get_device().hold_in_reset(&mut inputs);
                 if let Err(e) = reset_res {
                     test_results.push(
-                        Evaluation::failed(
-                            &test,
-                            Some(&platform_spec),
-                            Error::Reset(e)));
+                        ExecutionData {
+                            test,
+                            spec: Some(platform_spec),
+                            exec_result: Err(Error::Reset(e)),
+                            device_responses: Vec::new(),
+                            serial_traces: Vec::new(),
+                            energy_metrics: HashMap::new(),
+                        }
+                    );
                     continue;
                 }
             }
@@ -229,14 +286,15 @@ impl Testbed {
                     .expect("failed to save test data");
             }
 
-            let evaluation = Evaluation::new(
-                &test,
-                &platform_spec,
+            let data = ExecutionData {
+                test,
+                spec: Some(platform_spec),
                 exec_result,
-                gpio_activity,
+                device_responses: gpio_activity,
                 serial_traces,
-                energy_data);
-            test_results.push(evaluation);
+                energy_metrics: energy_data,
+            };
+            test_results.push(data);
             println!("executor: test finished.");
         }
 
@@ -574,4 +632,21 @@ impl Display for Testbed {
 
         Ok(())
     }
+}
+
+/// Result of running a test definition
+#[derive(Debug)]
+pub struct ExecutionData {
+    /// Test that produced the data.
+    pub test: Test,
+    /// Software configuration information.
+    pub spec: Option<Spec>,
+    /// Execution stats for the test run.
+    pub exec_result: Result<Execution>,
+    /// DUT GPIO responses.
+    pub device_responses: Vec<Response>,
+    /// DUT serial traces the testbed detected.
+    pub serial_traces: Vec<SerialTrace>,
+    /// Energy usage statistics.
+    pub energy_metrics: HashMap<String, Vec<(Instant, f32)>>,
 }

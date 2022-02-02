@@ -19,7 +19,7 @@ use clockwise_common::criteria::{
 };
 use clockwise_common::facility::EnergyMetering;
 use clockwise_common::hw::INA219;
-use clockwise_common::input::TestProvider;
+use clockwise_common::input::{self, TestProvider, TestbedProvider};
 use clockwise_common::io;
 use clockwise_common::io::{
     Device,
@@ -27,14 +27,11 @@ use clockwise_common::io::{
     Mapping,
     UART,
 };
+use clockwise_common::sw::platform::Tock;
 use clockwise_common::test::{Operation, Test};
+use clockwise_common::testbed::Testbed;
 
 use crate::output::csv::CSVDataWriter;
-use crate::sw::platform::Tock;
-use crate::testing::testbed::Testbed;
-
-use super::{Result,
-            TestbedProvider};
 
 /// Testbed created from code compiled into the binary.
 #[derive(Debug)]
@@ -47,7 +44,7 @@ impl HardCodedTestbed {
 }
 
 impl TestbedProvider for HardCodedTestbed {
-    fn create(&self) -> Result<Testbed> {
+    fn create(&self) -> Result<Testbed, String> {
         // physical mapping
         let host_to_device_pins = [
             (13, (Direction::In, SignalClass::Digital)), // D0
