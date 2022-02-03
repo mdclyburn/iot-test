@@ -2,30 +2,94 @@
 
 use std::cmp::{Ord, Ordering, PartialOrd, Reverse};
 use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::error;
 use std::fmt;
 use std::fmt::Display;
 use std::iter::IntoIterator;
 use std::time::{Duration, Instant};
 
 use rppal::gpio::{
+    self,
     Gpio,
     InputPin,
     Level,
     Trigger,
 };
-use rppal::uart::Uart;
+use rppal::uart::{self, Uart};
 
-use crate::Error;
 use crate::comm::Signal;
 use crate::criteria::{
     Criterion,
     GPIOCriterion,
 };
 use crate::facility::EnergyMetering;
-use crate::io::{DeviceInputs, DeviceOutputs};
+use crate::io::{DeviceInputs, DeviceOutputs, IOError};
 use crate::mem::MemoryTrace;
 
-type Result<T> = std::result::Result<T, Error>;
+type Result<T> = std::result::Result<T, TestingError>;
+
+/// Testing error.
+#[derive(Debug)]
+pub enum TestingError {
+    /// GPIO-related error.
+    GPIO(gpio::Error),
+    /// Testbed to device I/O error.
+    IO(IOError),
+    /// Energy meter does not exist.
+    NoSuchMeter(String),
+    /// Invalid test protocol data received.
+    Protocol,
+    /// Reset requested when [`io::Mapping`] does not specify one.
+    Reset(IOError),
+    /// Error configuring UART hardware.
+    UART(uart::Error),
+}
+
+impl error::Error for TestingError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        use TestingError::*;
+        match self {
+            GPIO(ref e) => Some(e),
+            IO(ref e) => Some(e),
+            Protocol => None,
+            Reset(ref e) => Some(e),
+            UART(ref e) => Some(e),
+            _ => None,
+        }
+    }
+}
+
+impl From<IOError> for TestingError {
+    fn from(e: IOError) -> Self {
+        TestingError::IO(e)
+    }
+}
+
+impl From<gpio::Error> for TestingError {
+    fn from(e: gpio::Error) -> Self {
+        TestingError::GPIO(e)
+    }
+}
+
+impl From<uart::Error> for TestingError {
+    fn from(e: uart::Error) -> Self {
+        TestingError::UART(e)
+    }
+}
+
+impl Display for TestingError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use TestingError::*;
+        match self {
+            GPIO(ref e) => write!(f, "GPIO error while testing: {}", e),
+            IO(ref e) => write!(f, "I/O error: {}", e),
+            NoSuchMeter(ref id) => write!(f, "the meter '{}' does not exist", id),
+            Protocol => write!(f, "testbed/DUT test protocol mismatch"),
+            Reset(ref e) => write!(f, "failed to reset device: {}", e),
+            UART(ref e) => write!(f, "UART configuration error: {}", e),
+        }
+    }
+}
 
 /// An action that occurs as part of an operation.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -379,7 +443,7 @@ impl Test {
                 has_energy_criteria = true;
                 let meter_id = energy_criterion.get_meter();
                 if !meters.contains_key(meter_id) {
-                    return Err(Error::NoSuchMeter(meter_id.to_string()));
+                    return Err(TestingError::NoSuchMeter(meter_id.to_string()));
                 } else {
                     out.entry(meter_id.to_string())
                         .or_insert(Vec::new())
@@ -555,7 +619,7 @@ impl Test {
                             NomError::Incomplete(_need) => break,
                             // Parser tried to parse data and it didn't understand.
                             // We can't recover from this at this level (yet).
-                            NomError::Failure(_parse_error) => return Err(Error::Protocol),
+                            NomError::Failure(_parse_error) => return Err(TestingError::Protocol),
                             // Parser should not return an Error to us.
                             NomError::Error(parse_error) => {
                                 let mut msg: String = format!("Temporary parser error surfaced.\nThis is a bug. Check byte offset {}. Buffer:\n",

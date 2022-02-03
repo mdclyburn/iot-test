@@ -15,12 +15,12 @@ use std::thread::JoinHandle;
 use std::time::Instant;
 
 use crate::facility::EnergyMetering;
-use crate::io::{self, Mapping, UART};
+use crate::io::{IOError, Mapping, UART};
 use crate::mem::MemoryTrace;
 use crate::output::DataWriter;
 use crate::sw::{self, PlatformSupport};
 use crate::sw::instrument::Spec;
-use crate::test::{Execution, Response, Test};
+use crate::test::{Execution, Response, Test, TestingError};
 use crate::trace;
 use crate::trace::SerialTrace;
 
@@ -31,11 +31,11 @@ type Result<T> = std::result::Result<T, TestbedError>;
 #[derive(Debug)]
 pub enum TestbedError {
     /// A problem occured while executing a test.
-    Execution(crate::error::Error),
+    Execution(TestingError),
     /// A problem occured while performing a reset operation on the device.
-    Reset(io::Error),
+    Reset(IOError),
     /// A problem occured while interacting with software ([`sw::error::Error`]).
-    Software(sw::error::Error),
+    Software(sw::error::SoftwareError),
 }
 
 impl error::Error for TestbedError {
@@ -49,14 +49,14 @@ impl error::Error for TestbedError {
     }
 }
 
-impl From<crate::error::Error> for TestbedError {
-    fn from(e: crate::error::Error) -> Self {
+impl From<TestingError> for TestbedError {
+    fn from(e: TestingError) -> Self {
         TestbedError::Execution(e)
     }
 }
 
-impl From<sw::error::Error> for TestbedError {
-    fn from(e: sw::error::Error) -> TestbedError {
+impl From<sw::error::SoftwareError> for TestbedError {
+    fn from(e: sw::error::SoftwareError) -> TestbedError {
         TestbedError::Software(e)
     }
 }

@@ -11,10 +11,10 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::fmt::{Debug, Display};
 
-use error::Error;
+use error::SoftwareError;
 use instrument::Spec;
 
-type Result<T> = std::result::Result<T, Error>;
+type Result<T> = std::result::Result<T, SoftwareError>;
 
 /// Embedded systems software platform.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -66,8 +66,8 @@ pub trait PlatformSupport: Debug {
     fn loaded_software(&self) -> HashSet<String>;
 
     /// Apply reconfigured platform software to the target.
+    #[allow(unused)]
     fn reconfigure(&self, trace_points: &Vec<String>) -> Result<Spec> {
-        let _ = trace_points;
-        Err(Error::Unsupported)
+        Err(SoftwareError::Unsupported)
     }
 }

@@ -4,7 +4,6 @@
 
 pub mod comm;
 pub mod criteria;
-pub mod error;
 pub mod facility;
 pub mod hw;
 pub mod input;
@@ -16,4 +15,4 @@ pub mod test;
 pub mod testbed;
 pub mod trace;
 
-type Error = error::Error;
+// type Error = error::Error;

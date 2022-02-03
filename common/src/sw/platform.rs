@@ -8,7 +8,7 @@ use std::process::{Command, Output};
 
 use crate::sw::instrument::Spec;
 
-use super::error::Error;
+use super::error::SoftwareError;
 use super::Platform;
 use super::PlatformSupport;
 use super::Result;
@@ -96,7 +96,7 @@ impl Tock {
         println!("Cleaning Tock OS build with [[ {:?} ]].", command);
         command
             .output()
-            .map_err(|io_err| Error::IO(io_err))
+            .map_err(|io_err| SoftwareError::IO(io_err))
     }
 
     /// Build Tock OS.
@@ -107,7 +107,7 @@ impl Tock {
         println!("Building Tock OS with [[ {:?} ]].", command);
         command
             .output()
-            .map_err(|io_err| Error::IO(io_err))
+            .map_err(|io_err| SoftwareError::IO(io_err))
     }
 
 
@@ -124,7 +124,7 @@ impl Tock {
         println!("Building instrumented Tock OS with [[ {:?} ]].", command);
         command
             .output()
-            .map_err(|io_err| Error::IO(io_err))
+            .map_err(|io_err| SoftwareError::IO(io_err))
     }
 
     fn program(&self) -> Result<Output> {
@@ -134,7 +134,7 @@ impl Tock {
         println!("Programming target with Tock OS with [[ {:?} ]].", command);
         command
             .output()
-            .map_err(|io_err| Error::IO(io_err))
+            .map_err(|io_err| SoftwareError::IO(io_err))
     }
 }
 
@@ -149,7 +149,7 @@ impl PlatformSupport for Tock {
         let app_path = self.app_path.join(tab_name);
 
         if !app_path.is_file() {
-            return Err(Error::AppForPlatform(name.to_string(), self.platform()));
+            return Err(SoftwareError::AppForPlatform(name.to_string(), self.platform()));
         }
 
         let output = Command::new(tockloader_path_str)
@@ -161,7 +161,7 @@ impl PlatformSupport for Tock {
                 .insert(name.to_string());
             Ok(())
         } else {
-            Err(Error::Tool(output))
+            Err(SoftwareError::Tool(output))
         }
     }
 
@@ -181,7 +181,7 @@ impl PlatformSupport for Tock {
                 Ok(())
             } else {
                 // Question: what state is the device in if we fail?
-                Err(Error::Tool(output))
+                Err(SoftwareError::Tool(output))
             }
         }
     }
@@ -212,7 +212,7 @@ impl PlatformSupport for Tock {
             println!(">>>>>>>>>>>>>>>> STDOUT:\n{}\n\n>>>>>>>>>>>>> STDERR:\n{}", stdout, stderr);
 
             if !output.status.success() {
-                Err(Error::Tool(output))
+                Err(SoftwareError::Tool(output))
             } else {
                 self.program()?;
                 Ok(spec)

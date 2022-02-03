@@ -1,7 +1,4 @@
-/*! Interacting with inputs and outputs.
-
-This module contains types for organizing and managing the I/O between the Raspberry Pi and the device under test.
- */
+//! Managing inputs to and outputs from the device under test.
 
 use std::collections::HashMap;
 use std::convert::From;
@@ -26,7 +23,7 @@ use crate::comm::{
 };
 
 /// Testbed I/O result type.
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, IOError>;
 
 /// Set of pins that provide input _to_ the device under test.
 pub type DeviceInputs = Pins<OutputPin>;
@@ -35,7 +32,7 @@ pub type DeviceOutputs = Pins<InputPin>;
 
 /// Errors related to acquiring and configuring I/O.
 #[derive(Debug)]
-pub enum Error {
+pub enum IOError {
     /// GPIO-specific error.
     Gpio(gpio::Error),
     /// Mapping does not allow I2C.
@@ -52,18 +49,18 @@ pub enum Error {
     UndefinedPin(u8),
 }
 
-impl std::error::Error for Error {
+impl std::error::Error for IOError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Error::Gpio(ref gpio_error) => Some(gpio_error),
+            IOError::Gpio(ref gpio_error) => Some(gpio_error),
             _ => None,
         }
     }
 }
 
-impl Display for Error {
+impl Display for IOError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use Error::*;
+        use IOError::*;
         match self {
             Gpio(ref e) => write!(f, "error with GPIO interface: {}", e),
             I2CUnavailable => write!(f, "I2C pins (2, 3) are mapped"),
@@ -76,21 +73,21 @@ impl Display for Error {
     }
 }
 
-impl From<gpio::Error> for Error {
+impl From<gpio::Error> for IOError {
     fn from(e: gpio::Error) -> Self {
-        Error::Gpio(e)
+        IOError::Gpio(e)
     }
 }
 
-impl From<i2c::Error> for Error {
+impl From<i2c::Error> for IOError {
     fn from(e: i2c::Error) -> Self {
-        Error::I2C(e)
+        IOError::I2C(e)
     }
 }
 
-impl From<uart::Error> for Error {
+impl From<uart::Error> for IOError {
     fn from(e: uart::Error) -> Self {
-        Error::UART(e)
+        IOError::UART(e)
     }
 }
 
@@ -116,13 +113,13 @@ impl<T> Pins<T> {
     #[allow(dead_code)]
     pub fn get_pin(&self, pin_no: u8) -> Result<&T> {
         self.pins.get(&pin_no)
-            .ok_or(Error::UndefinedPin(pin_no))
+            .ok_or(IOError::UndefinedPin(pin_no))
     }
 
     /// Returns a mutable reference to the specified pin.
     pub fn get_pin_mut(&mut self, pin_no: u8) -> Result<&mut T> {
         self.pins.get_mut(&pin_no)
-            .ok_or(Error::UndefinedPin(pin_no))
+            .ok_or(IOError::UndefinedPin(pin_no))
     }
 
     /// Returns all configured pins as plain references.
@@ -228,7 +225,7 @@ impl Device {
     {
         for pin_no in pins {
             if !self.has_pin(pin_no) {
-                return Err(Error::UndefinedPin(pin_no));
+                return Err(IOError::UndefinedPin(pin_no));
             }
         }
 
@@ -241,7 +238,7 @@ impl Device {
     pub fn direction_of(&self, pin: u8) -> Result<Direction> {
         self.io.get(&pin)
             .map(|&(dir, _sig)| dir )
-            .ok_or(Error::UndefinedPin(pin))
+            .ok_or(IOError::UndefinedPin(pin))
     }
 
     /// Returns the signal of the pin.
@@ -251,18 +248,18 @@ impl Device {
     pub fn signal_of(&self, pin: u8) -> Result<SignalClass> {
         self.io.get(&pin)
             .map(|&(_dir, sig)| sig)
-            .ok_or(Error::UndefinedPin(pin))
+            .ok_or(IOError::UndefinedPin(pin))
     }
 
     /// Place the device in reset.
     pub fn hold_in_reset(&self, inputs: &mut DeviceInputs) -> Result<()> {
-        let hold_reset = &*self.hold_reset.as_ref().ok_or(Error::NoReset)?;
+        let hold_reset = &*self.hold_reset.as_ref().ok_or(IOError::NoReset)?;
         hold_reset(inputs)
     }
 
     /// Release the device from reset.
     pub fn release_from_reset(&self, inputs: &mut DeviceInputs) -> Result<()> {
-        let release_reset = &*self.release_reset.as_ref().ok_or(Error::NoReset)?;
+        let release_reset = &*self.release_reset.as_ref().ok_or(IOError::NoReset)?;
         release_reset(inputs)
     }
 }
@@ -396,15 +393,15 @@ impl Mapping {
     /** Configures and returns the I2C interface.
 
     # Errors
-    - If the I/O mapping has mapped the pins used for the I2C bus, this function returns `Error::I2CUnavailable`.
-    - If the underlying implementation encounters an error initializing I2C, this function returns `Error::I2C`.
+    - If the I/O mapping has mapped the pins used for the I2C bus, this function returns `IOError::I2CUnavailable`.
+    - If the underlying implementation encounters an error initializing I2C, this function returns `IOError::I2C`.
      */
     pub fn get_i2c(&self) -> Result<I2c> {
         let i2c_pins_mapped =
             self.numbering.contains_key(&2)
             || self.numbering.contains_key(&3);
         if i2c_pins_mapped {
-            Err(Error::I2CUnavailable)
+            Err(IOError::I2CUnavailable)
         } else {
             Ok(I2c::new()?)
         }
@@ -419,7 +416,7 @@ impl Mapping {
         if *which_uart == UART::PL011
             && (self.numbering.contains_key(&14) || self.numbering.contains_key(&15))
         {
-            Err(Error::UARTUnavailable)
+            Err(IOError::UARTUnavailable)
         } else {
             // Use hard-coded values here to avoid complexity
             // in code wanting to use the UART.

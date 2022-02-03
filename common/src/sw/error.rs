@@ -8,9 +8,9 @@ use std::process::Output;
 
 use super::Platform;
 
-/// Software interaction errors.
+/// Erros that occur while interacting with software that facilitates testing or runs on DUTs.
 #[derive(Debug)]
-pub enum Error {
+pub enum SoftwareError {
     /// A [`std::io`] error.
     IO(std::io::Error),
     /// Problem while working with external tools.
@@ -21,28 +21,29 @@ pub enum Error {
     Unsupported,
 }
 
-impl error::Error for Error {
+impl error::Error for SoftwareError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match self {
-            Error::IO(ref e) => Some(e),
+            SoftwareError::IO(ref e) => Some(e),
             _ => None,
         }
     }
 }
 
-impl Display for Error {
+impl Display for SoftwareError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use SoftwareError::*;
         match self {
-            Error::IO(ref e) => write!(f, "I/O error: {}", e),
-            Error::Tool(ref output) => write!(f, "could not load software (status: {})", output.status),
-            Error::AppForPlatform(ref name, platform) => write!(f, "no '{}' app defined for {}", name, platform),
-            Error::Unsupported => write!(f, "requested operation is implemented for the platform"),
+            IO(ref e) => write!(f, "I/O error: {}", e),
+            Tool(ref output) => write!(f, "could not load software (status: {})", output.status),
+            AppForPlatform(ref name, platform) => write!(f, "no '{}' app defined for {}", name, platform),
+            Unsupported => write!(f, "requested operation is implemented for the platform"),
         }
     }
 }
 
-impl From<std::io::Error> for Error {
+impl From<std::io::Error> for SoftwareError {
     fn from(e: std::io::Error) -> Self {
-        Error::IO(e)
+        SoftwareError::IO(e)
     }
 }
