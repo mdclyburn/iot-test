@@ -1,11 +1,7 @@
 //! Flexible testbed and test providers.
 
-use std::convert::From;
-use std::error;
-use std::fmt;
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 
-use crate::io::IOError;
 use crate::test::Test;
 use crate::testbed::Testbed;
 
