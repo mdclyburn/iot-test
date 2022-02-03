@@ -32,9 +32,9 @@ type Result<T> = std::result::Result<T, TestbedError>;
 pub enum TestbedError {
     /// A problem occured while executing a test.
     Execution(crate::error::Error),
-    /// Reset requested when [`clockwise_common::io::Mapping`] does not specify one.
+    /// A problem occured while performing a reset operation on the device.
     Reset(io::Error),
-    /// Error originating from interacting with software ([`sw::error::Error`]).
+    /// A problem occured while interacting with software ([`sw::error::Error`]).
     Software(sw::error::Error),
 }
 
