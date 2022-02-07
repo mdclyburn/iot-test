@@ -4,6 +4,7 @@
 
 pub mod comm;
 pub mod criteria;
+pub mod evaluation;
 pub mod facility;
 pub mod hw;
 pub mod input;

@@ -665,4 +665,34 @@ impl Observation {
             energy_metrics: HashMap::new(),
         }
     }
+
+    /// Return the test that the `Observation` is for.
+    pub fn source_test(&self) -> &Test {
+        &self.test
+    }
+
+    /// Return the execution metadata of running the test against the device.
+    pub fn execution_result(&self) -> &Result<Execution> {
+        &self.execution_result
+    }
+
+    /// Return the software configuration used for the test.
+    pub fn software_config(&self) -> Option<&Spec> {
+        self.software_spec.as_ref().clone()
+    }
+
+    /// Return GPIO state changes observed during the test.
+    pub fn gpio_responses(&self) -> &Vec<Response> {
+        &self.gpio_responses
+    }
+
+    /// Return the traces received from the device during the test.
+    pub fn traces(&self) -> &Vec<SerialTrace> {
+        &self.traces
+    }
+
+    /// Return data from all energy meters active during the test.
+    pub fn energy_metrics(&self) -> &HashMap<String, Vec<(Instant, f32)>> {
+        &self.energy_metrics
+    }
 }

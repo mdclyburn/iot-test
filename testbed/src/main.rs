@@ -5,7 +5,6 @@ use std::process;
 mod input;
 mod opts;
 mod output;
-mod testing;
 
 fn main() {
     let result = opts::parse();
