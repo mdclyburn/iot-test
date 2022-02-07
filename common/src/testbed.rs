@@ -118,7 +118,7 @@ impl Testbed {
     testbed.execute(&[test], &mut results);
     ```
      */
-    pub fn execute<'b, T>(&self, tests: &mut T) -> Result<Vec<ExecutionData>>
+    pub fn execute<'b, T>(&self, tests: &mut T) -> Result<Vec<Observation>>
     where
         T: Iterator<Item = Test>,
     {
@@ -161,16 +161,11 @@ impl Testbed {
                 .collect();
             let res = self.platform_support.reconfigure(&trace_points);
             if let Err(reconfig_err) = res {
-                test_results.push(
-                    ExecutionData {
-                        test,
-                        spec: None,
-                        exec_result: Err(TestbedError::Software(reconfig_err)),
-                        device_responses: Vec::new(),
-                        serial_traces: Vec::new(),
-                        energy_metrics: HashMap::new(),
-                    }
-                );
+                let observation = Observation::failed(
+                    test.clone(),
+                    None,
+                    TestbedError::Software(reconfig_err));
+                test_results.push(observation);
                 continue;
             }
             let platform_spec = res.unwrap();
@@ -178,16 +173,11 @@ impl Testbed {
             // Load application(s) if necessary.
             if let Err(load_err) = self.load_apps(&test) {
                 println!("executor: error loading/removing application(s)");
-                test_results.push(
-                    ExecutionData {
-                        test,
-                        spec: Some(platform_spec),
-                        exec_result: Err(load_err),
-                        device_responses: Vec::new(),
-                        serial_traces: Vec::new(),
-                        energy_metrics: HashMap::new(),
-                    }
-                );
+                let observation = Observation::failed(
+                    test.clone(),
+                    Some(platform_spec.clone()),
+                    load_err);
+                test_results.push(observation);
                 continue;
             }
 
@@ -204,16 +194,11 @@ impl Testbed {
                 println!("Placing device in reset.");
                 let reset_res = self.pin_mapping.get_device().hold_in_reset(&mut inputs);
                 if let Err(e) = reset_res {
-                    test_results.push(
-                        ExecutionData {
-                            test,
-                            spec: Some(platform_spec),
-                            exec_result: Err(TestbedError::Reset(e)),
-                            device_responses: Vec::new(),
-                            serial_traces: Vec::new(),
-                            energy_metrics: HashMap::new(),
-                        }
-                    );
+                    let observation = Observation::failed(
+                        test.clone(),
+                        Some(platform_spec.clone()),
+                        TestbedError::Reset(e));
+                    test_results.push(observation);
                     continue;
                 }
             }
@@ -289,15 +274,14 @@ impl Testbed {
                     .expect("failed to save test data");
             }
 
-            let data = ExecutionData {
-                test,
-                spec: Some(platform_spec),
+            let observation = Observation::completed(
+                test.clone(),
+                Some(platform_spec.clone()),
                 exec_result,
-                device_responses: gpio_activity,
+                gpio_activity,
                 serial_traces,
-                energy_metrics: energy_data,
-            };
-            test_results.push(data);
+                energy_data);
+            test_results.push(observation);
             println!("executor: test finished.");
         }
 
@@ -637,19 +621,48 @@ impl Display for Testbed {
     }
 }
 
-/// Result of running a test definition
+/// Aggregated collection of test execution data.
 #[derive(Debug)]
-pub struct ExecutionData {
-    /// Test that produced the data.
-    pub test: Test,
-    /// Software configuration information.
-    pub spec: Option<Spec>,
-    /// Execution stats for the test run.
-    pub exec_result: Result<Execution>,
-    /// DUT GPIO responses.
-    pub device_responses: Vec<Response>,
-    /// DUT serial traces the testbed detected.
-    pub serial_traces: Vec<SerialTrace>,
-    /// Energy usage statistics.
-    pub energy_metrics: HashMap<String, Vec<(Instant, f32)>>,
+pub struct Observation {
+    test: Test,
+    software_spec: Option<Spec>,
+    execution_result: Result<Execution>,
+    gpio_responses: Vec<Response>,
+    traces: Vec<SerialTrace>,
+    energy_metrics: HashMap<String, Vec<(Instant, f32)>>,
+}
+
+impl Observation {
+    fn completed(
+        test: Test,
+        software_spec: Option<Spec>,
+        execution_result: Result<Execution>,
+        gpio_responses: Vec<Response>,
+        traces: Vec<SerialTrace>,
+        energy_metrics: HashMap<String, Vec<(Instant, f32)>>
+    ) -> Observation {
+        Observation {
+            test,
+            software_spec,
+            execution_result,
+            gpio_responses,
+            traces,
+            energy_metrics,
+        }
+    }
+
+    fn failed(
+        test: Test,
+        software_spec: Option<Spec>,
+        error: TestbedError,
+    ) -> Observation {
+        Observation {
+            test,
+            software_spec,
+            execution_result: Err(error),
+            gpio_responses: Vec::new(),
+            traces: Vec::new(),
+            energy_metrics: HashMap::new(),
+        }
+    }
 }
