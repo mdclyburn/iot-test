@@ -118,7 +118,7 @@ impl Testbed {
     testbed.execute(&[test], &mut results);
     ```
      */
-    pub fn execute<'b, T>(&self, tests: &mut T) -> Result<Vec<Observation>>
+    pub fn execute<'b, T>(&self, tests: &mut T) -> Vec<Observation>
     where
         T: Iterator<Item = Test>,
     {
@@ -305,7 +305,7 @@ impl Testbed {
             println!("executore: failed to join with memory thread");
         });
 
-        Ok(test_results)
+        test_results
     }
 
     fn launch_observer(

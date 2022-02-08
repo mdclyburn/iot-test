@@ -27,12 +27,8 @@ fn main() {
     print!("{}\n", testbed);
 
     let mut tests = configuration.get_test_adapter().tests();
-    let res = testbed.execute(&mut tests);
-    if let Ok(results) = res {
-        for r in results {
-            println!("{:?}", r);
-        }
-    } else {
-        println!("Error running tests: {}", res.unwrap_err());
+    let observations = testbed.execute(&mut tests);
+    for o in &observations {
+        println!("{:?}", o);
     }
 }
