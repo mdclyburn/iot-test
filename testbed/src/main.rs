@@ -28,7 +28,4 @@ fn main() {
 
     let mut tests = configuration.get_test_adapter().tests();
     let observations = testbed.execute(&mut tests);
-    for o in &observations {
-        println!("{:?}", o);
-    }
 }
