@@ -6,7 +6,6 @@ use clockwise_common::evaluation::{Evaluator, StandardEvaluator};
 
 mod input;
 mod opts;
-mod output;
 
 fn main() {
     let result = opts::parse();
