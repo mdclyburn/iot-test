@@ -2,6 +2,8 @@
 
 use std::process;
 
+use clockwise_common::evaluation::{Evaluator, StandardEvaluator};
+
 mod input;
 mod opts;
 mod output;
@@ -28,4 +30,13 @@ fn main() {
 
     let mut tests = configuration.get_test_adapter().tests();
     let observations = testbed.execute(&mut tests);
+
+    // Use the evaluator to produce results from collected data.
+    // Here we only use the StandardEvaluator for now.
+    let evaluator = StandardEvaluator::new();
+    let evaluation_iter = observations.iter()
+        .map(|obs| evaluator.evaluate(obs));
+    for evaluation in evaluation_iter {
+        println!("{}", evaluation);
+    }
 }
