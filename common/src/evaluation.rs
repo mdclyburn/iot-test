@@ -61,6 +61,11 @@ impl<'a> Outcome<'a> {
         }
     }
 
+    /// Return the criterion this Outcome is for.
+    pub fn source_criterion(&self) -> &'a Criterion {
+        self.criterion
+    }
+
     /// Return the satisfaction status of the criterion.
     pub fn status(&self) -> Status {
         self.status
@@ -103,6 +108,17 @@ impl<'a> Display for Evaluation<'a> {
             test_outcome => write!(f, "{} (in {:?})", test_outcome, self.data.execution_result().as_ref().unwrap().duration()),
         }?;
         write!(f, "\n")?;
+
+        if let Some(sw_config) = self.data.software_config() {
+            write!(f, "{}\n", sw_config)?;
+        }
+
+        for outcome in &self.outcomes {
+            write!(f, "  - {} ({})(\n", outcome.source_criterion(), outcome.status())?;
+            if let Some(message) = outcome.message() {
+                write!(f, "    Message: {}\n", message)?;
+            }
+        }
 
         Ok(())
     }
