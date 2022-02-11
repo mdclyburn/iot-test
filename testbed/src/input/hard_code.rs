@@ -19,7 +19,7 @@ use clockwise_common::criteria::{
 };
 use clockwise_common::facility::EnergyMetering;
 use clockwise_common::hw::INA219;
-use clockwise_common::input::{self, TestProvider, TestbedProvider};
+use clockwise_common::input::{TestProvider, TestbedProvider};
 use clockwise_common::io;
 use clockwise_common::io::{
     Device,
@@ -30,8 +30,6 @@ use clockwise_common::io::{
 use clockwise_common::sw::platform::Tock;
 use clockwise_common::test::{Operation, Test};
 use clockwise_common::testbed::Testbed;
-
-use crate::output::csv::CSVDataWriter;
 
 /// Testbed created from code compiled into the binary.
 #[derive(Debug)]
@@ -99,15 +97,12 @@ impl TestbedProvider for HardCodedTestbed {
             Path::new("/home/ubuntu/work/tock"),
             Path::new("/home/ubuntu/work/apps/tock"));
 
-        let mut testbed = Testbed::new(
+        let testbed = Testbed::new(
             mapping,
             Box::new(platform),
             energy_meters,
             Some(UART::PL011),
             None);
-
-        let data_writer = CSVDataWriter::new(Path::new("/tmp/clockwise-data"));
-        testbed.save_results_with(Box::new(data_writer));
 
         Ok(testbed)
     }

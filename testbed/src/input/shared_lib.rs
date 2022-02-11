@@ -1,8 +1,9 @@
 use std::path::{Path, PathBuf};
 
-use clockwise_common::input::{self, TestProvider, TestbedProvider};
+use clockwise_common::input::{TestProvider, TestbedProvider};
 use clockwise_common::test::Test;
 use clockwise_common::testbed::Testbed;
+
 use libloading::{Library, Symbol};
 
 /** Shared library testbed provider.
