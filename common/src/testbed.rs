@@ -80,7 +80,7 @@ pub struct Testbed {
     energy_meters: Arc<Mutex<HashMap<String, Box<dyn EnergyMetering>>>>,
     tracing_uart: Option<UART>,
     memory_uart: Option<UART>,
-    tracing: Vec<(UART, TraceKind)>,
+    tracing: Vec<(TraceKind, UART)>,
     data_writer: Option<Box<dyn DataWriter>>,
 }
 
@@ -92,7 +92,7 @@ impl Testbed {
         energy_meters: HashMap<String, Box<dyn EnergyMetering>>,
         tracing_uart: Option<UART>,
         memory_uart: Option<UART>,
-        tracing: Vec<(UART, TraceKind)>,
+        tracing: Vec<(TraceKind, UART)>,
     ) -> Testbed
     {
         Testbed {
@@ -127,7 +127,21 @@ impl Testbed {
     {
         let mut test_results = Vec::new();
 
-        let barrier = Arc::new(Barrier::new(5));
+        let barrier = {
+            let barrier_count =
+            // One for each staticly allocated thread we have:
+            // - Main testbed thread
+            // - Observer thread
+            // - Energy metering thread
+            // - Serial tracing thread
+            // - Memory tracing thread
+                5
+            // One for each user-defined tracing thread
+                + self.tracing.len();
+
+            Arc::new(Barrier::new(barrier_count))
+        };
+
         let current_test: Arc<RwLock<Option<Test>>> = Arc::new(RwLock::new(None));
 
         let (observer_schannel, observer_rchannel) = mpsc::sync_channel(0);
@@ -151,6 +165,25 @@ impl Testbed {
                                              Arc::clone(&barrier),
                                              mem_schannel,
                                              self.memory_uart.as_ref());
+
+        // Create threads for the defined tracing purposes.
+        // Keep track of the receiving ends of their channels.
+        // The ordering must be consistent between the two vectors.
+        let tracing_rchannels = {
+            let mut rchannels = Vec::new();
+            for (kind, uart) in &self.tracing {
+                let (schannel, rchannel) = mpsc::sync_channel(0);
+                self.launch_tracing_kind(
+                    kind.clone(),
+                    uart,
+                    Arc::clone(&current_test),
+                    Arc::clone(&barrier),
+                    schannel);
+                rchannels.push(rchannel);
+            }
+
+            rchannels
+        };
 
         for test in tests {
             println!("executor: running '{}'", test.get_id());
@@ -263,6 +296,10 @@ impl Testbed {
                          counter,
                          mem_event.value());
                 mem_traces.push(mem_event);
+            }
+
+            // Receive tracing data.
+            for tracing in &self.tracing {
             }
 
             // save data
@@ -587,7 +624,7 @@ impl Testbed {
     fn launch_tracing_kind(
         &self,
         kind: TraceKind,
-        uart: UART,
+        uart: &UART,
         test_container: Arc<RwLock<Option<Test>>>,
         barrier: Arc<Barrier>,
         mem_schannel: SyncSender<Option<MemoryTrace>>,
