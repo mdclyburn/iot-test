@@ -1,8 +1,20 @@
-//! Interpret GPIO-based execution trace information.
+//! Interpret execution trace information emitted from a DUT.
 
 use std::fmt;
 use std::fmt::Display;
 use std::time::{Duration, Instant};
+
+/// Purpose of a tracing channel.
+pub enum TraceKind {
+    /// Tracking processed by a means external to Clockwise.
+    Raw,
+    /// Control flow tracking.
+    ControlFlow,
+    /// Memory usage tracking.
+    Memory,
+    /// Benchmarking and data flow tracking.
+    Performance(BenchmarkMetadata),
+}
 
 /// Trace execution information derived from UART communication.
 #[derive(Clone, Debug)]
@@ -75,4 +87,41 @@ where
     }
 
     traces
+}
+
+/// Information to interpret a waypoint.
+#[derive(Clone)]
+pub struct WaypointMetadata {
+    /// An identifying name of the waypoint.
+    pub label: String,
+    /// Unit of the data measurement.
+    pub unit: String,
+}
+
+const MAX_WAYPOINT_LABELS: usize = 8;
+
+/// Information to interpret performance tracking data.
+pub struct BenchmarkMetadata {
+    waypoints: [Option<WaypointMetadata>; MAX_WAYPOINT_LABELS],
+}
+
+impl BenchmarkMetadata {
+    /// Create a new `BenchmarkMetadata`.
+    pub fn new(waypoints: &[WaypointMetadata]) -> BenchmarkMetadata {
+        let waypoints = {
+            let waypoints_iter = waypoints.iter();
+            let mut waypoints_dest = [None, None, None, None,
+                                      None, None, None, None];
+
+            for (wp_dst, wp_src) in waypoints_dest.iter_mut().zip(waypoints_iter) {
+                *wp_dst = Some(wp_src.clone());
+            }
+
+            waypoints_dest
+        };
+
+        BenchmarkMetadata {
+            waypoints,
+        }
+    }
 }
