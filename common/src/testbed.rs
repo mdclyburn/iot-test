@@ -22,7 +22,7 @@ use crate::sw::{self, PlatformSupport};
 use crate::sw::instrument::Spec;
 use crate::test::{Execution, Response, Test, TestingError};
 use crate::trace;
-use crate::trace::SerialTrace;
+use crate::trace::{TraceKind, SerialTrace};
 
 // Errors that originate within the testbed code should map to a relevant TestbedError.
 type Result<T> = std::result::Result<T, TestbedError>;
@@ -80,6 +80,7 @@ pub struct Testbed {
     energy_meters: Arc<Mutex<HashMap<String, Box<dyn EnergyMetering>>>>,
     tracing_uart: Option<UART>,
     memory_uart: Option<UART>,
+    tracing: Vec<(UART, TraceKind)>,
     data_writer: Option<Box<dyn DataWriter>>,
 }
 
@@ -91,6 +92,7 @@ impl Testbed {
         energy_meters: HashMap<String, Box<dyn EnergyMetering>>,
         tracing_uart: Option<UART>,
         memory_uart: Option<UART>,
+        tracing: Vec<(UART, TraceKind)>,
     ) -> Testbed
     {
         Testbed {
@@ -99,6 +101,7 @@ impl Testbed {
             energy_meters: Arc::new(Mutex::new(energy_meters)),
             tracing_uart,
             memory_uart,
+            tracing,
             data_writer: None,
         }
     }
@@ -302,7 +305,7 @@ impl Testbed {
             println!("executor: failed to join with tracing thread");
         });
         mem_thread.join().unwrap_or_else(|_e| {
-            println!("executore: failed to join with memory thread");
+            println!("executor: failed to join with memory thread");
         });
 
         test_results
@@ -579,6 +582,40 @@ impl Testbed {
                 })
                 .expect("Could not spawn tracing thread.")
         }
+    }
+
+    fn launch_tracing_kind(
+        &self,
+        kind: TraceKind,
+        uart: UART,
+        test_container: Arc<RwLock<Option<Test>>>,
+        barrier: Arc<Barrier>,
+        mem_schannel: SyncSender<Option<MemoryTrace>>,
+    ) -> JoinHandle<()> {
+        let name = format!("test-{}", kind);
+        thread::Builder::new()
+            .name(name.clone())
+            .spawn(move || {
+                println!("trace-{}", &name);
+
+                loop {
+                    // Wait for next test.
+                    barrier.wait();
+
+                    if let Some(ref test) = *test_container.read().unwrap() {
+                        // Prepare for testing.
+                        barrier.wait();
+                    } else {
+                        // No more tests to run.
+                        break;
+                    }
+
+                    // Post-testing wait.
+                    barrier.wait();
+
+                    // Send data to process (custom test-defined or built-in).
+                }
+            }).expect("Could not spawn tracing thread.")
     }
 
     /// Load specified applications onto the device.

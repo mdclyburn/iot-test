@@ -102,7 +102,8 @@ impl TestbedProvider for HardCodedTestbed {
             Box::new(platform),
             energy_meters,
             Some(UART::PL011),
-            None);
+            None,
+            vec![]);
 
         Ok(testbed)
     }

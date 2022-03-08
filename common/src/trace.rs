@@ -5,6 +5,7 @@ use std::fmt::Display;
 use std::time::{Duration, Instant};
 
 /// Purpose of a tracing channel.
+#[derive(Clone, Debug)]
 pub enum TraceKind {
     /// Tracking processed by a means external to Clockwise.
     Raw,
@@ -14,6 +15,31 @@ pub enum TraceKind {
     Memory,
     /// Benchmarking and data flow tracking.
     Performance(BenchmarkMetadata),
+}
+
+impl TraceKind {
+    /// Returns a short name suitable for labelling.
+    pub fn label(&self) -> &'static str {
+        use TraceKind::*;
+        match self {
+            Raw => "raw",
+            ControlFlow => "control-flow",
+            Memory => "memory",
+            Performance(ref _meta) => "performance",
+        }
+    }
+}
+
+impl Display for TraceKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use TraceKind::*;
+        match self {
+            Raw => write!(f, "raw trace data"),
+            ControlFlow => write!(f, "control flow trace data"),
+            Memory => write!(f, "memory usage trace data"),
+            Performance(ref _meta) => write!(f, "performance benchmarking data"),
+        }
+    }
 }
 
 /// Trace execution information derived from UART communication.
@@ -90,7 +116,7 @@ where
 }
 
 /// Information to interpret a waypoint.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct WaypointMetadata {
     /// An identifying name of the waypoint.
     pub label: String,
@@ -101,6 +127,7 @@ pub struct WaypointMetadata {
 const MAX_WAYPOINT_LABELS: usize = 8;
 
 /// Information to interpret performance tracking data.
+#[derive(Clone, Debug)]
 pub struct BenchmarkMetadata {
     waypoints: [Option<WaypointMetadata>; MAX_WAYPOINT_LABELS],
 }
