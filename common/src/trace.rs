@@ -42,6 +42,18 @@ impl Display for TraceKind {
     }
 }
 
+/// Trace data organized by type of the data.
+pub enum TraceData {
+    /// Raw tracing data, given as a sequence of bytes.
+    Raw(Vec<u8>),
+    /// Control flow tracing data.
+    ControlFlow(SerialTrace),
+    /// Memory usage data.
+    Memory(SerialTrace),
+    /// Performance benchmarking data.
+    Performance(Vec<Metric>),
+}
+
 /// Trace execution information derived from UART communication.
 #[derive(Clone, Debug)]
 pub struct SerialTrace {
@@ -150,5 +162,38 @@ impl BenchmarkMetadata {
         BenchmarkMetadata {
             waypoints,
         }
+    }
+}
+
+/// Measurement from performance benchmarking.
+pub struct Metric {
+    t_start: u32,
+    t_end: u32,
+    data_size: u32,
+}
+
+impl Metric {
+    /// Create a new metric.
+    pub fn new(t_start: u32, t_end: u32, data_size: u32) -> Metric {
+        Metric {
+            t_start,
+            t_end,
+            data_size
+        }
+    }
+
+    /// Returns the start time the metric accounts.
+    pub fn start_time(&self) -> u32 {
+        self.t_start
+    }
+
+    /// Returns the end time the metric accounts.
+    pub fn end_time(&self) -> u32 {
+        self.t_end
+    }
+
+    /// Returns the total value of data counted in this instance.
+    pub fn data_size(&self) -> u32 {
+        self.data_size
     }
 }

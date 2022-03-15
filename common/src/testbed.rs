@@ -22,7 +22,7 @@ use crate::sw::{self, PlatformSupport};
 use crate::sw::instrument::Spec;
 use crate::test::{Execution, Response, Test, TestingError};
 use crate::trace;
-use crate::trace::{TraceKind, SerialTrace};
+use crate::trace::{TraceData, TraceKind, SerialTrace};
 
 // Errors that originate within the testbed code should map to a relevant TestbedError.
 type Result<T> = std::result::Result<T, TestbedError>;
@@ -627,7 +627,7 @@ impl Testbed {
         uart: &UART,
         test_container: Arc<RwLock<Option<Test>>>,
         barrier: Arc<Barrier>,
-        mem_schannel: SyncSender<Option<MemoryTrace>>,
+        schannel: SyncSender<Option<TraceData>>,
     ) -> JoinHandle<()> {
         let name = format!("test-{}", kind);
         thread::Builder::new()
