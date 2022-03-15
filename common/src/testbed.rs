@@ -627,13 +627,18 @@ impl Testbed {
         uart: &UART,
         test_container: Arc<RwLock<Option<Test>>>,
         barrier: Arc<Barrier>,
-        schannel: SyncSender<Option<TraceData>>,
+        schannel: SyncSender<TraceData>,
     ) -> JoinHandle<()> {
         let name = format!("test-{}", kind);
+        let mut uart = self.pin_mapping.get_uart(uart)
+            .expect("Could not obtain UART for tracing.");
+
         thread::Builder::new()
             .name(name.clone())
             .spawn(move || {
-                println!("trace-{}", &name);
+                println!("trace-{}: starting", &name);
+
+                let mut uart = uart;
 
                 loop {
                     // Wait for next test.
@@ -642,6 +647,8 @@ impl Testbed {
                     if let Some(ref test) = *test_container.read().unwrap() {
                         // Prepare for testing.
                         barrier.wait();
+                        let trace_data = trace::collect(&kind, &mut uart);
+                        schannel.send(trace_data);
                     } else {
                         // No more tests to run.
                         break;
@@ -649,8 +656,6 @@ impl Testbed {
 
                     // Post-testing wait.
                     barrier.wait();
-
-                    // Send data to process (custom test-defined or built-in).
                 }
             }).expect("Could not spawn tracing thread.")
     }

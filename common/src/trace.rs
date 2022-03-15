@@ -4,6 +4,10 @@ use std::fmt;
 use std::fmt::Display;
 use std::time::{Duration, Instant};
 
+use rppal::uart::Uart;
+
+use crate::io::UART;
+
 /// Purpose of a tracing channel.
 #[derive(Clone, Debug)]
 pub enum TraceKind {
@@ -47,9 +51,9 @@ pub enum TraceData {
     /// Raw tracing data, given as a sequence of bytes.
     Raw(Vec<u8>),
     /// Control flow tracing data.
-    ControlFlow(SerialTrace),
+    ControlFlow(Vec<SerialTrace>),
     /// Memory usage data.
-    Memory(SerialTrace),
+    Memory(Vec<SerialTrace>),
     /// Performance benchmarking data.
     Performance(Vec<Metric>),
 }
@@ -195,5 +199,15 @@ impl Metric {
     /// Returns the total value of data counted in this instance.
     pub fn data_size(&self) -> u32 {
         self.data_size
+    }
+}
+
+/// Collect tracing data from the given UART.
+pub fn collect(kind: &TraceKind, uart: &Uart) -> TraceData {
+    match kind {
+        TraceKind::Raw => TraceData::Raw(Vec::new()),
+        TraceKind::ControlFlow => TraceData::ControlFlow(Vec::new()),
+        TraceKind::Memory => TraceData::ControlFlow(Vec::new()),
+        TraceKind::Performance(ref _metadata) => TraceData::Performance(Vec::new()),
     }
 }
