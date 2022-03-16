@@ -55,7 +55,7 @@ pub enum TraceData {
     /// Memory usage data.
     Memory(Vec<SerialTrace>),
     /// Performance benchmarking data.
-    Performance(Vec<Metric>),
+    Performance(Vec<PeriodMetric>),
 }
 
 /// Trace execution information derived from UART communication.
@@ -167,22 +167,35 @@ impl BenchmarkMetadata {
             waypoints,
         }
     }
+
+    /// Return metadata about the specified waypoint.
+    fn waypoint_no(&self, no: usize) -> &WaypointMetadata {
+        self.waypoints[no].as_ref().unwrap()
+    }
 }
 
-/// Measurement from performance benchmarking.
-pub struct Metric {
+/// Measurements from performance benchmarking passing the same data.
+pub struct PeriodMetric {
     t_start: u32,
-    t_end: u32,
+    t_ends: [u32; MAX_WAYPOINT_LABELS],
     data_size: u32,
 }
 
-impl Metric {
+impl PeriodMetric {
     /// Create a new metric.
-    pub fn new(t_start: u32, t_end: u32, data_size: u32) -> Metric {
-        Metric {
+    pub fn new<T>(t_start: u32, data_size: u32, waypoint_t_ends: T) -> PeriodMetric
+    where
+        T: IntoIterator<Item = u32>,
+    {
+        let mut t_ends: [u32; MAX_WAYPOINT_LABELS] = [0; MAX_WAYPOINT_LABELS];
+        for (src, dst) in waypoint_t_ends.into_iter().zip(&mut t_ends) {
+            *dst = src;
+        }
+
+        PeriodMetric {
             t_start,
-            t_end,
-            data_size
+            t_ends,
+            data_size,
         }
     }
 
@@ -191,9 +204,9 @@ impl Metric {
         self.t_start
     }
 
-    /// Returns the end time the metric accounts.
-    pub fn end_time(&self) -> u32 {
-        self.t_end
+    /// Returns the end time for a waypoint.
+    pub fn end_time(&self, waypoint_no: usize) -> u32 {
+        self.t_ends[waypoint_no]
     }
 
     /// Returns the total value of data counted in this instance.
@@ -207,7 +220,10 @@ pub fn collect(kind: &TraceKind, uart: &Uart) -> TraceData {
     match kind {
         TraceKind::Raw => TraceData::Raw(Vec::new()),
         TraceKind::ControlFlow => TraceData::ControlFlow(Vec::new()),
-        TraceKind::Memory => TraceData::ControlFlow(Vec::new()),
-        TraceKind::Performance(ref _metadata) => TraceData::Performance(Vec::new()),
+        TraceKind::Memory => TraceData::Memory(Vec::new()),
+        TraceKind::Performance(ref _metadata) => {
+            // Process the raw data into a bunch of PeriodMetrics.
+            TraceData::Performance(Vec::new())
+        },
     }
 }

@@ -299,7 +299,8 @@ impl Testbed {
             }
 
             // Receive tracing data.
-            for tracing in &self.tracing {
+            for (trace_kind, _uart) in &self.tracing {
+
             }
 
             // save data
