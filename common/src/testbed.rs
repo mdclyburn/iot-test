@@ -639,6 +639,7 @@ impl Testbed {
             .spawn(move || {
                 println!("trace-{}: starting", &name);
 
+                let mut buffer: Vec<u8> = Vec::new();
                 let mut uart = uart;
 
                 loop {
@@ -647,9 +648,16 @@ impl Testbed {
 
                     if let Some(ref test) = *test_container.read().unwrap() {
                         // Prepare for testing.
+                        //
+                        // Break out allocating the space in the buffer prior to actually running testing
+                        // to minimize any jitter between the barrier and the collection starting.
+                        let prepared_buffer = trace::prepare(&mut buffer, &mut uart)
+                            .unwrap();
                         barrier.wait();
-                        let trace_data = trace::collect(&kind, &mut uart);
-                        schannel.send(trace_data);
+
+                        let trace_data = trace::collect(&kind, &mut uart, prepared_buffer);
+                        schannel.send(trace_data)
+                            .unwrap();
                     } else {
                         // No more tests to run.
                         break;

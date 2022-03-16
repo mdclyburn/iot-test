@@ -1,12 +1,15 @@
 //! Interpret execution trace information emitted from a DUT.
 
+use std::convert::From;
 use std::fmt;
 use std::fmt::Display;
 use std::time::{Duration, Instant};
 
+use rppal::uart;
 use rppal::uart::Uart;
 
-use crate::io::UART;
+use crate::io;
+use crate::io::{IOError, UART};
 
 /// Purpose of a tracing channel.
 #[derive(Clone, Debug)]
@@ -215,8 +218,33 @@ impl PeriodMetric {
     }
 }
 
+/// Size of a pre-allocated buffer.
+const SERIAL_BUFFER_SIZE: usize = 64 * 1024;
+
+/// Container structure for a buffer prepared to collect trace data.
+pub struct PreparedBuffer<'a>(&'a Vec<u8>);
+
+/// Prepare the a buffer and the UART for serial data collection.
+pub fn prepare<'a>(buffer: &'a mut Vec<u8>, uart: &mut Uart) -> io::Result<PreparedBuffer<'a>> {
+    buffer.clear();
+    // Just use a constant size for now.
+    // We have to push data into the buffer to make it possible to
+    // update the values in place when the buffer is used as a slice.
+    buffer.reserve(SERIAL_BUFFER_SIZE);
+    while buffer.len() < SERIAL_BUFFER_SIZE { buffer.push(0); }
+
+    uart.set_read_mode(0, Duration::from_millis(50))?;
+    uart.flush(uart::Queue::Input)?;
+
+    Ok(PreparedBuffer(buffer))
+}
+
 /// Collect tracing data from the given UART.
-pub fn collect(kind: &TraceKind, uart: &Uart) -> TraceData {
+pub fn collect(kind: &TraceKind, uart: &Uart, buffer: PreparedBuffer) -> TraceData {
+    // Collecting data for each trace kind is the same.
+    // We are just reading bytes from the chosen serial line.
+
+
     match kind {
         TraceKind::Raw => TraceData::Raw(Vec::new()),
         TraceKind::ControlFlow => TraceData::ControlFlow(Vec::new()),
