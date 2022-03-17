@@ -653,9 +653,10 @@ impl Testbed {
                         // to minimize any jitter between the barrier and the collection starting.
                         let prepared_buffer = trace::prepare(&mut buffer, &mut uart)
                             .unwrap();
+                        let t_stop_at = Instant::now() + test.max_runtime();
                         barrier.wait();
 
-                        let trace_data = trace::collect(&kind, &mut uart, prepared_buffer);
+                        let trace_data = trace::collect(&kind, &mut uart, prepared_buffer, t_stop_at);
                         schannel.send(trace_data)
                             .unwrap();
                     } else {

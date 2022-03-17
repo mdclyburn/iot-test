@@ -222,7 +222,7 @@ impl PeriodMetric {
 const SERIAL_BUFFER_SIZE: usize = 64 * 1024;
 
 /// Container structure for a buffer prepared to collect trace data.
-pub struct PreparedBuffer<'a>(&'a Vec<u8>);
+pub struct PreparedBuffer<'a>(&'a mut Vec<u8>);
 
 /// Prepare the a buffer and the UART for serial data collection.
 pub fn prepare<'a>(buffer: &'a mut Vec<u8>, uart: &mut Uart) -> io::Result<PreparedBuffer<'a>> {
@@ -240,10 +240,19 @@ pub fn prepare<'a>(buffer: &'a mut Vec<u8>, uart: &mut Uart) -> io::Result<Prepa
 }
 
 /// Collect tracing data from the given UART.
-pub fn collect(kind: &TraceKind, uart: &Uart, buffer: PreparedBuffer) -> TraceData {
+pub fn collect(kind: &TraceKind, uart: &mut Uart, buffer: PreparedBuffer, until: Instant) -> TraceData {
     // Collecting data for each trace kind is the same.
     // We are just reading bytes from the chosen serial line.
 
+    // Shadow the buffer as a &mut [_].
+    let buffer: &mut [u8] = buffer.0.as_mut_slice();
+    let mut bytes_read: usize = 0;
+
+    while Instant::now() < until {
+        let read = uart.read(&mut buffer[bytes_read..])
+            .unwrap();
+        bytes_read += read;
+    }
 
     match kind {
         TraceKind::Raw => TraceData::Raw(Vec::new()),

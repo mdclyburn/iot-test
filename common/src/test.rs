@@ -394,7 +394,7 @@ impl Test {
                    out: &mut Vec<Response>) -> Result<()>
     {
         let gpio = Gpio::new()?;
-        let t_end = t0 + self.get_max_runtime();
+        let t_end = t0 + self.max_runtime();
         let mut t = Instant::now();
 
         while t < t_end {
@@ -433,7 +433,7 @@ impl Test {
         out.clear();
 
         let approx_loop_micros = 545;
-        let max_sample_count = (self.get_max_runtime().as_micros() /
+        let max_sample_count = (self.max_runtime().as_micros() /
                                 approx_loop_micros as u128) + 1;
 
         let mut has_energy_criteria = false;
@@ -463,7 +463,7 @@ impl Test {
                  out: &mut HashMap<String, Vec<(Instant, f32)>>)
     {
         let start = Instant::now();
-        let runtime = self.get_max_runtime();
+        let runtime = self.max_runtime();
 
         // Without the call to thread::sleep, a single loop iteration
         // takes between 545.568us and 699.682us, averages 568.521us.
@@ -512,7 +512,7 @@ impl Test {
         let buffer: &mut [u8] = buffer.as_mut_slice();
         let mut bytes_read: usize = 0;
 
-        let max_runtime = self.get_max_runtime();
+        let max_runtime = self.max_runtime();
         let start = Instant::now();
 
         loop {
@@ -558,7 +558,7 @@ impl Test {
         let buffer: &mut [u8] = buffer.as_mut_slice();
         let mut bytes_read = 0;
 
-        let max_runtime = self.get_max_runtime();
+        let max_runtime = self.max_runtime();
         let start = Instant::now();
 
         let mut buffered_now = start;
@@ -642,7 +642,7 @@ impl Test {
     /// Return the maximum length of time the test can run.
     ///
     /// TODO: make this dependent on actions' timing, criteria timing, and another tail duration(?).
-    fn get_max_runtime(&self) -> Duration {
+    pub fn max_runtime(&self) -> Duration {
         let duration_ms = self.actions.iter()
             // Only Operations with actions.
             .filter(|Reverse(op)| op.action.is_some())
