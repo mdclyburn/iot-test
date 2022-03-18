@@ -218,10 +218,25 @@ impl PeriodMetric {
     }
 }
 
+fn parse_benchmarking<'a>(data: &'a [u8]) -> Vec<PeriodMetric> {
+    use nom::bytes::complete as bytes;
+    use nom::{combinator, sequence};
+    use crate::parsing::{ByteError, little_u32};
+
+    let f_parse_init = sequence::pair::<_, _, _, ByteError<'a>, _, _>(
+        bytes::tag([0]),
+        combinator::map(bytes::take(4usize), |s: &[u8]| little_u32!(s[0], s[1], s[2], s[3])));
+
+    Vec::new()
+}
+
 /// Size of a pre-allocated buffer.
 const SERIAL_BUFFER_SIZE: usize = 64 * 1024;
 
 /// Container structure for a buffer prepared to collect trace data.
+///
+/// [`prepare()`] provides a `PreparedBuffer` which can then be an argument to [`collect()`].
+/// This ensures that `prepare()` has executed prior to the call to `collect()`.
 pub struct PreparedBuffer<'a>(&'a mut Vec<u8>);
 
 /// Prepare the a buffer and the UART for serial data collection.
@@ -254,13 +269,16 @@ pub fn collect(kind: &TraceKind, uart: &mut Uart, buffer: PreparedBuffer, until:
         bytes_read += read;
     }
 
+    // Parsing the raw serial data is what is different.
+    // Use the respective parser to recreate the structured data.
     match kind {
         TraceKind::Raw => TraceData::Raw(Vec::new()),
         TraceKind::ControlFlow => TraceData::ControlFlow(Vec::new()),
         TraceKind::Memory => TraceData::Memory(Vec::new()),
         TraceKind::Performance(ref _metadata) => {
             // Process the raw data into a bunch of PeriodMetrics.
-            TraceData::Performance(Vec::new())
+            let metrics = parse_benchmarking(&buffer);
+            TraceData::Performance(metrics)
         },
     }
 }

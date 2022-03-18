@@ -14,6 +14,14 @@ use nom::{
 };
 use clockwise_shared::mem::CounterId;
 
+use crate::parsing::{
+    little_u32,
+
+    BitsInput,
+    BitsResult,
+    ByteError,
+};
+
 /// Operation to apply to aggregated memory statistic.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum StreamOperation {
@@ -61,13 +69,6 @@ impl Display for MemoryTrace {
     }
 }
 
-type BitsInput<'a> = (&'a [u8], usize);
-type BitsResult<'a, O> =
-    nom::IResult<(&'a [u8], usize),
-                 O,
-                 nom::error::Error<(&'a [u8], usize)>>;
-type ByteError<'a> = nom::error::Error<&'a [u8]>;
-
 fn stream_operation_op<'a>(input: BitsInput<'a>) -> BitsResult<StreamOperation> {
     branch::alt(
         (combinator::value(StreamOperation::Add, bits::tag(0usize, 1usize)),
@@ -83,16 +84,6 @@ fn counter_stream<'a>(id: usize,
         bits::tag(id, 7usize),
         make_bit_compatible::<&[u8], _, ByteError<'a>, _, _>(bytes::take(specific_byte_len)));
     combinator::map(f_get_data, construct)
-}
-
-macro_rules! little_u32 {
-    ($b0:expr, $b8:expr, $b16:expr, $b24:expr) => {{
-        let val = ((($b0) as u32) << 0
-                   | (($b8) as u32) << 8
-                   | (($b16) as u32) << 16
-                   | (($b24) as u32) << 24);
-        val
-    }}
 }
 
 fn pcb(input: BitsInput) -> BitsResult<CounterId> {
