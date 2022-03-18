@@ -220,12 +220,25 @@ impl PeriodMetric {
 
 fn parse_benchmarking<'a>(data: &'a [u8]) -> Vec<PeriodMetric> {
     use nom::bytes::complete as bytes;
-    use nom::{combinator, sequence};
-    use crate::parsing::{ByteError, little_u32};
+    use nom::{combinator, multi, sequence};
+    use crate::parsing::{ByteError, little_u32, little_u64};
 
-    let f_parse_init = sequence::pair::<_, _, _, ByteError<'a>, _, _>(
+    // Initial packet parser.
+    let f_parse_init = sequence::preceded::<_, _, _, ByteError<'a>, _, _>(
         bytes::tag([0]),
-        combinator::map(bytes::take(4usize), |s: &[u8]| little_u32!(s[0], s[1], s[2], s[3])));
+        combinator::map(bytes::take(4usize), |s: &[u8]| little_u32));
+
+    // Stat packet parser.
+    let f_parse_take = sequence::preceded(
+        // Header tag for the benchmarking data.
+        bytes::tag([1 << 7]),
+        // pair: <start time> <counter buckets>
+        sequence::pair::<_, _, _, ByteError<'a>, _, _>(
+            combinator::map(bytes::take(8usize), little_u64),
+            // many1: counter buckets = <end time> <data size>
+            multi::many1(sequence::pair(
+                combinator::map(bytes::take(8usize), little_u64),
+                combinator::map(bytes::take(4usize), little_u32)))));
 
     Vec::new()
 }

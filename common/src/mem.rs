@@ -69,6 +69,16 @@ impl Display for MemoryTrace {
     }
 }
 
+macro_rules! little_u32 {
+    ($b0:expr, $b8:expr, $b16:expr, $b24:expr) => {{
+        let val: u32 = ((($b0) as u32) << 0
+                        | (($b8) as u32) << 8
+                        | (($b16) as u32) << 16
+                        | (($b24) as u32) << 24);
+        val
+    }}
+}
+
 fn stream_operation_op<'a>(input: BitsInput<'a>) -> BitsResult<StreamOperation> {
     branch::alt(
         (combinator::value(StreamOperation::Add, bits::tag(0usize, 1usize)),
