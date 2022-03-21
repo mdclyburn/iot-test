@@ -14,7 +14,7 @@ use nom::{
 };
 use clockwise_shared::mem::CounterId;
 
-use crate::parsing::{
+use crate::parsing_support::{
     little_u32,
 
     BitsInput,

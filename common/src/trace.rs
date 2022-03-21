@@ -224,7 +224,7 @@ mod parsing {
     use nom::bytes::complete as bytes;
     use nom::{combinator, multi, sequence};
 
-    use crate::parsing::{
+    use crate::parsing_support::{
         ByteError,
         ByteResult,
         little_u32,
