@@ -179,18 +179,18 @@ impl BenchmarkMetadata {
 
 /// Measurements from performance benchmarking passing the same data.
 pub struct PeriodMetric {
-    t_start: u32,
-    t_ends: [u32; MAX_WAYPOINT_LABELS],
+    t_start: f32,
+    t_ends: [f32; MAX_WAYPOINT_LABELS],
     data_size: u32,
 }
 
 impl PeriodMetric {
     /// Create a new metric.
-    pub fn new<T>(t_start: u32, data_size: u32, waypoint_t_ends: T) -> PeriodMetric
+    pub fn new<T>(t_start: f32, data_size: u32, waypoint_t_ends: T) -> PeriodMetric
     where
-        T: IntoIterator<Item = u32>,
+        T: IntoIterator<Item = f32>,
     {
-        let mut t_ends: [u32; MAX_WAYPOINT_LABELS] = [0; MAX_WAYPOINT_LABELS];
+        let mut t_ends: [f32; MAX_WAYPOINT_LABELS] = [0.0; MAX_WAYPOINT_LABELS];
         for (src, dst) in waypoint_t_ends.into_iter().zip(&mut t_ends) {
             *dst = src;
         }
@@ -203,12 +203,12 @@ impl PeriodMetric {
     }
 
     /// Returns the start time the metric accounts.
-    pub fn start_time(&self) -> u32 {
+    pub fn start_time(&self) -> f32 {
         self.t_start
     }
 
     /// Returns the end time for a waypoint.
-    pub fn end_time(&self, waypoint_no: usize) -> u32 {
+    pub fn end_time(&self, waypoint_no: usize) -> f32 {
         self.t_ends[waypoint_no]
     }
 
@@ -218,18 +218,18 @@ impl PeriodMetric {
     }
 }
 
-fn parse_benchmarking<'a>(data: &'a [u8]) -> Vec<PeriodMetric> {
+fn parse_benchmarking<'a>(data: &'a [u8]) -> Result<Vec<PeriodMetric>, String> {
     use nom::bytes::complete as bytes;
     use nom::{combinator, multi, sequence};
     use crate::parsing::{ByteError, little_u32, little_u64};
 
     // Initial packet parser.
-    let f_parse_init = sequence::preceded::<_, _, _, ByteError<'a>, _, _>(
+    let mut f_parse_init = sequence::preceded::<_, _, _, ByteError<'a>, _, _>(
         bytes::tag([0]),
-        combinator::map(bytes::take(4usize), |s: &[u8]| little_u32));
+        combinator::map(bytes::take(4usize), little_u32));
 
     // Stat packet parser.
-    let f_parse_take = sequence::preceded(
+    let mut f_parse_packet = sequence::preceded(
         // Header tag for the benchmarking data.
         bytes::tag([1 << 7]),
         // pair: <start time> <counter buckets>
@@ -240,7 +240,23 @@ fn parse_benchmarking<'a>(data: &'a [u8]) -> Vec<PeriodMetric> {
                 combinator::map(bytes::take(8usize), little_u64),
                 combinator::map(bytes::take(4usize), little_u32)))));
 
-    Vec::new()
+    let (data, counter_freq) = f_parse_init(data)
+        .map_err(|e| "bad initialization data".to_string())?;
+
+    let mut metrics = Vec::new();
+    loop {
+        let (data, (t_start, raw_metrics)) = f_parse_packet(data)
+            .map_err(|e| "bad metric data".to_string())?;
+
+        let metric = PeriodMetric::new(
+            (t_start as f32) / (counter_freq as f32),
+            raw_metrics[0].1,
+            raw_metrics.iter().map(|(t_end, data_size)| (*t_end as f32) / (counter_freq as f32)));
+        metrics.push(metric);
+    }
+
+
+    Ok(metrics)
 }
 
 /// Size of a pre-allocated buffer.
@@ -290,7 +306,8 @@ pub fn collect(kind: &TraceKind, uart: &mut Uart, buffer: PreparedBuffer, until:
         TraceKind::Memory => TraceData::Memory(Vec::new()),
         TraceKind::Performance(ref _metadata) => {
             // Process the raw data into a bunch of PeriodMetrics.
-            let metrics = parse_benchmarking(&buffer);
+            let metrics = parse_benchmarking(&buffer)
+                .unwrap();
             TraceData::Performance(metrics)
         },
     }
