@@ -220,45 +220,57 @@ impl PeriodMetric {
     }
 }
 
-fn parse_benchmarking<'a>(data: &'a [u8]) -> Result<Vec<PeriodMetric>> {
+mod parsing {
     use nom::bytes::complete as bytes;
     use nom::{combinator, multi, sequence};
-    use crate::parsing::{ByteError, little_u32, little_u64};
 
-    // Initial packet parser.
-    let mut f_parse_init = sequence::preceded::<_, _, _, ByteError<'a>, _, _>(
-        bytes::tag([0]),
-        combinator::map(bytes::take(4usize), little_u32));
+    use crate::parsing::{
+        ByteError,
+        ByteResult,
+        little_u32,
+        little_u64,
+    };
 
-    // Stat packet parser.
-    let mut f_parse_packet = sequence::preceded(
-        // Header tag for the benchmarking data.
-        bytes::tag([1 << 7]),
-        // pair: <start time> <counter buckets>
-        sequence::pair::<_, _, _, ByteError<'a>, _, _>(
-            combinator::map(bytes::take(8usize), little_u64),
-            // many1: counter buckets = <end time> <data size>
-            multi::many1(sequence::pair(
-                combinator::map(bytes::take(8usize), little_u64),
-                combinator::map(bytes::take(4usize), little_u32)))));
+    use super::PeriodMetric;
 
-    let (data, counter_freq) = f_parse_init(data)
-        .map_err(|e| "bad initialization data".to_string())?;
-
-    let mut metrics = Vec::new();
-    loop {
-        let (data, (t_start, raw_metrics)) = f_parse_packet(data)
-            .map_err(|e| "bad metric data".to_string())?;
-
-        let metric = PeriodMetric::new(
-            (t_start as f32) / (counter_freq as f32),
-            raw_metrics[0].1,
-            raw_metrics.iter().map(|(t_end, data_size)| (*t_end as f32) / (counter_freq as f32)));
-        metrics.push(metric);
+    /// Initialization data parser.
+    fn benchmark_init<'a>(data: &'a [u8]) -> ByteResult<'a, u32> {
+        sequence::preceded::<_, _, _, ByteError<'a>, _, _>(
+            bytes::tag([0]),
+            combinator::map(bytes::take(4usize), little_u32))
+            (data)
     }
 
+    /// Period metrics parser.
+    fn benchmark_period_metrics<'a>(counter_freq: u32, data: &'a [u8]) -> ByteResult<'a, Vec<PeriodMetric>> {
+        let (data, t_start) = sequence::preceded(
+            // Header tag for the benchmarking data.
+            bytes::tag([1 << 7]),
+            // pair: <start time> <counter buckets>
+            combinator::map(bytes::take(8usize), little_u64))
+            (data)?;
 
-    Ok(metrics)
+        // many1: counter buckets = <end time> <data size>
+        multi::many1(combinator::map(
+            multi::many1(sequence::pair(
+                combinator::map(bytes::take(8usize), |b: &[u8]| (little_u64(b) as f32) / (counter_freq as f32)),
+                combinator::map(bytes::take(4usize), little_u32))),
+            move |wp_data: Vec<(f32, u32)>| {
+                PeriodMetric::new(
+                    (t_start as f32) / (counter_freq as f32),
+                    // Just take the first size for now.
+                    // Later on, this may vary from waypoint to waypoint.
+                    wp_data[0].1,
+                    wp_data.iter().map(|(t_end, _ds)| *t_end))
+            }))
+            (data)
+    }
+
+    /// Benchmark data complete parser.
+    pub fn benchmark_data<'a>(data: &'a [u8]) -> ByteResult<Vec<PeriodMetric>> {
+        let (data, freq) = benchmark_init(data)?;
+        benchmark_period_metrics(freq, data)
+    }
 }
 
 /// Size of a pre-allocated buffer.
@@ -303,9 +315,10 @@ pub fn collect(kind: &TraceKind, uart: &mut Uart, buffer: PreparedBuffer, until:
     // Parsing the raw serial data is what is different.
     // Use the respective parser to recreate the structured data.
     match kind {
-        TraceKind::Performance(ref _metadata) =>
-            parse_benchmarking(&buffer)
-                .map(|data| TraceData::Performance(data)),
+        TraceKind::Performance(ref _metadata) => parsing::benchmark_data(&buffer)
+            .map(|(unparsed, metrics)| TraceData::Performance(metrics))
+            .map_err(|e| format!("parsing error: {}", e)),
+
 
         _ => unimplemented!()
     }
