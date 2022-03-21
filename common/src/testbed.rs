@@ -656,9 +656,10 @@ impl Testbed {
                         let t_stop_at = Instant::now() + test.max_runtime();
                         barrier.wait();
 
-                        let trace_data = trace::collect(&kind, &mut uart, prepared_buffer, t_stop_at);
-                        schannel.send(trace_data)
-                            .unwrap();
+                        match trace::collect(&kind, &mut uart, prepared_buffer, t_stop_at) {
+                            Ok(trace_data) => schannel.send(trace_data).unwrap(),
+                            Err(e) => println!("trace-{}: tracing for {} failed: {}", name, kind, e),
+                        };
                     } else {
                         // No more tests to run.
                         break;

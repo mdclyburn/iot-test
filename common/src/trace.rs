@@ -11,6 +11,8 @@ use rppal::uart::Uart;
 use crate::io;
 use crate::io::{IOError, UART};
 
+type Result<T> = std::result::Result<T, String>;
+
 /// Purpose of a tracing channel.
 #[derive(Clone, Debug)]
 pub enum TraceKind {
@@ -218,7 +220,7 @@ impl PeriodMetric {
     }
 }
 
-fn parse_benchmarking<'a>(data: &'a [u8]) -> Result<Vec<PeriodMetric>, String> {
+fn parse_benchmarking<'a>(data: &'a [u8]) -> Result<Vec<PeriodMetric>> {
     use nom::bytes::complete as bytes;
     use nom::{combinator, multi, sequence};
     use crate::parsing::{ByteError, little_u32, little_u64};
@@ -284,7 +286,7 @@ pub fn prepare<'a>(buffer: &'a mut Vec<u8>, uart: &mut Uart) -> io::Result<Prepa
 }
 
 /// Collect tracing data from the given UART.
-pub fn collect(kind: &TraceKind, uart: &mut Uart, buffer: PreparedBuffer, until: Instant) -> TraceData {
+pub fn collect(kind: &TraceKind, uart: &mut Uart, buffer: PreparedBuffer, until: Instant) -> Result<TraceData> {
     // Collecting data for each trace kind is the same.
     // We are just reading bytes from the chosen serial line.
 
@@ -301,14 +303,10 @@ pub fn collect(kind: &TraceKind, uart: &mut Uart, buffer: PreparedBuffer, until:
     // Parsing the raw serial data is what is different.
     // Use the respective parser to recreate the structured data.
     match kind {
-        TraceKind::Raw => TraceData::Raw(Vec::new()),
-        TraceKind::ControlFlow => TraceData::ControlFlow(Vec::new()),
-        TraceKind::Memory => TraceData::Memory(Vec::new()),
-        TraceKind::Performance(ref _metadata) => {
-            // Process the raw data into a bunch of PeriodMetrics.
-            let metrics = parse_benchmarking(&buffer)
-                .unwrap();
-            TraceData::Performance(metrics)
-        },
+        TraceKind::Performance(ref _metadata) =>
+            parse_benchmarking(&buffer)
+                .map(|data| TraceData::Performance(data)),
+
+        _ => unimplemented!()
     }
 }
