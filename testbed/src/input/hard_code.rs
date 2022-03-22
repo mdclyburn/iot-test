@@ -30,6 +30,7 @@ use clockwise_common::io::{
 use clockwise_common::sw::platform::Tock;
 use clockwise_common::test::{Operation, Test};
 use clockwise_common::testbed::Testbed;
+use clockwise_common::trace::{TraceKind, BenchmarkMetadata};
 
 /// Testbed created from code compiled into the binary.
 #[derive(Debug)]
@@ -90,6 +91,17 @@ impl TestbedProvider for HardCodedTestbed {
         ]).into_iter()
             .collect();
 
+        // Tracing capabilities
+        let tracing = {
+            let benchmark_tracing = TraceKind::Performance(
+                BenchmarkMetadata::new(&[
+                ]));
+
+            vec![
+                (benchmark_tracing, UART::PL011),
+            ]
+        };
+
         // platform support
         let platform = Tock::new(
             "hail",
@@ -101,9 +113,9 @@ impl TestbedProvider for HardCodedTestbed {
             mapping,
             Box::new(platform),
             energy_meters,
-            Some(UART::PL011),
             None,
-            vec![]);
+            None,
+            tracing);
 
         Ok(testbed)
     }
