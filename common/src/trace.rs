@@ -237,7 +237,7 @@ mod parsing {
     fn benchmark_init<'a>(data: &'a [u8]) -> ByteResult<'a, u32> {
         sequence::preceded::<_, _, _, ByteError<'a>, _, _>(
             bytes::tag([0]),
-            combinator::map(bytes::take(4usize), little_u32))
+            little_u32)
             (data)
     }
 
@@ -250,7 +250,7 @@ mod parsing {
             // Header tag for the benchmarking data.
             bytes::tag([0b1000_0000]),
             // pair: <start time> <counter buckets>
-            combinator::map(bytes::take(8usize), little_u64)));
+            little_u64));
 
         match parse_header(data)? {
             (data, None) => Ok((data, Vec::new())),
@@ -258,8 +258,8 @@ mod parsing {
                 // The number of waypoints is not fixed but will be at least one.
                 // Each is a pair of the 64-bit counter value and the data size accounted in the waypoint.
                 multi::many1(sequence::pair(
-                    combinator::map(bytes::take(8usize), |b: &[u8]| (little_u64(b) as f32) / (counter_freq as f32)),
-                    combinator::map(bytes::take(4usize), little_u32))),
+                    combinator::map(little_u64, |cv: u64| (cv as f32) / (counter_freq as f32)),
+                    little_u32)),
                 move |wp_data: Vec<(f32, u32)>| {
                     PeriodMetric::new(
                         (t_start as f32) / (counter_freq as f32),

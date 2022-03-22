@@ -2,11 +2,8 @@
 
 use nom;
 use nom::{
-    bits::bytes as make_bit_compatible,
-    bits::streaming as bits,
-    bytes::streaming as bytes,
-
     branch,
+    bytes,
     combinator,
     sequence,
 };
@@ -27,23 +24,33 @@ pub type ByteResult<'a, O> =
 pub type ByteError<'a> = nom::error::Error<&'a [u8]>;
 
 /// Parse a u32 from a little-endian representation in bytes.
-pub fn little_u32(b: &[u8]) -> u32 {
-    let mut x: u32 = 0;
-    for i in 0..4 {
-        let i = 3 - i;
-        x |= (b[i] as u32) << (8 * i);
-    }
+pub fn little_u32<'a>(data: &'a [u8]) -> ByteResult<'a, u32> {
+    combinator::map(
+        bytes::complete::take(4usize),
+        |b: &[u8]| {
+            let mut x: u32 = 0;
+            for i in 0..4 {
+                let i = 3 - i;
+                x |= (b[i] as u32) << (8 * i);
+            }
 
-    x
+            x
+        })
+        (data)
 }
 
 /// Parse a u64 from a little-endian representation in bytes.
-pub fn little_u64(b: &[u8]) -> u64 {
-    let mut x: u64 = 0;
-    for i in 0..8 {
-        let i = 7 - i;
-        x |= (b[i] as u64) << (8 * i);
-    }
+pub fn little_u64<'a>(data: &'a [u8]) -> ByteResult<'a, u64> {
+    combinator::map(
+        bytes::complete::take(4usize),
+        |b: &[u8]| {
+            let mut x: u64 = 0;
+            for i in 0..8 {
+                let i = 7 - i;
+                x |= (b[i] as u64) << (8 * i);
+            }
 
-    x
+            x
+        })
+        (data)
 }
