@@ -243,27 +243,32 @@ mod parsing {
 
     /// Period metrics parser.
     fn benchmark_period_metrics<'a>(counter_freq: u32, data: &'a [u8]) -> ByteResult<'a, Vec<PeriodMetric>> {
-        let (data, t_start) = sequence::preceded(
-            // Header tag for the benchmarking data.
-            bytes::tag([1 << 7]),
-            // pair: <start time> <counter buckets>
-            combinator::map(bytes::take(8usize), little_u64))
-            (data)?;
+        // We perform two separate parses here since there does not seem to be a method
+        // for passing result and data from one parser to another.
 
-        // many1: counter buckets = <end time> <data size>
-        multi::many1(combinator::map(
-            multi::many1(sequence::pair(
-                combinator::map(bytes::take(8usize), |b: &[u8]| (little_u64(b) as f32) / (counter_freq as f32)),
-                combinator::map(bytes::take(4usize), little_u32))),
-            move |wp_data: Vec<(f32, u32)>| {
-                PeriodMetric::new(
-                    (t_start as f32) / (counter_freq as f32),
-                    // Just take the first size for now.
-                    // Later on, this may vary from waypoint to waypoint.
-                    wp_data[0].1,
-                    wp_data.iter().map(|(t_end, _ds)| *t_end))
-            }))
-            (data)
+        let mut parse_header = combinator::opt(sequence::preceded(
+            // Header tag for the benchmarking data.
+            bytes::tag([0b1000_0000]),
+            // pair: <start time> <counter buckets>
+            combinator::map(bytes::take(8usize), little_u64)));
+
+        match parse_header(data)? {
+            (data, None) => Ok((data, Vec::new())),
+            (data, Some(t_start)) => multi::many1(combinator::map(
+                // The number of waypoints is not fixed but will be at least one.
+                // Each is a pair of the 64-bit counter value and the data size accounted in the waypoint.
+                multi::many1(sequence::pair(
+                    combinator::map(bytes::take(8usize), |b: &[u8]| (little_u64(b) as f32) / (counter_freq as f32)),
+                    combinator::map(bytes::take(4usize), little_u32))),
+                move |wp_data: Vec<(f32, u32)>| {
+                    PeriodMetric::new(
+                        (t_start as f32) / (counter_freq as f32),
+                        // Just take the first size for now.
+                        // Later on, this may vary from waypoint to waypoint.
+                        wp_data[0].1,
+                        wp_data.iter().map(|(t_end, _ds)| *t_end))
+                }))(data)
+        }
     }
 
     /// Benchmark data complete parser.
@@ -291,7 +296,7 @@ pub fn prepare<'a>(buffer: &'a mut Vec<u8>, uart: &mut Uart) -> io::Result<Prepa
     buffer.reserve(SERIAL_BUFFER_SIZE);
     while buffer.len() < SERIAL_BUFFER_SIZE { buffer.push(0); }
 
-    uart.set_read_mode(0, Duration::from_millis(50))?;
+    uart.set_read_mode(0, Duration::from_millis(100))?;
     uart.flush(uart::Queue::Input)?;
 
     Ok(PreparedBuffer(buffer))
@@ -311,14 +316,14 @@ pub fn collect(kind: &TraceKind, uart: &mut Uart, buffer: PreparedBuffer, until:
             .unwrap();
         bytes_read += read;
     }
+    println!("tracing read {} bytes", bytes_read);
 
     // Parsing the raw serial data is what is different.
     // Use the respective parser to recreate the structured data.
     match kind {
         TraceKind::Performance(ref _metadata) => parsing::benchmark_data(&buffer[0..bytes_read])
             .map(|(unparsed, metrics)| TraceData::Performance(metrics))
-            .map_err(|e| format!("parsing error: {}", e)),
-
+            .map_err(|e| format!("parsing error: {:?}", e)),
 
         _ => unimplemented!()
     }

@@ -648,16 +648,15 @@ impl Testbed {
 
                     if let Some(ref test) = *test_container.read().unwrap() {
                         // Prepare for testing.
-                        //
                         // Break out allocating the space in the buffer prior to actually running testing
                         // to minimize any jitter between the barrier and the collection starting.
                         let prepared_buffer = trace::prepare(&mut buffer, &mut uart)
                             .unwrap();
-                        let t_stop_at = Instant::now() + test.max_runtime();
                         barrier.wait();
+                        let t_stop_at = Instant::now() + test.max_runtime();
 
                         match trace::collect(&kind, &mut uart, prepared_buffer, t_stop_at) {
-                            Ok(trace_data) => schannel.send(trace_data).unwrap(),
+                            Ok(trace_data) => schannel.send(trace_data).expect("failed to send trace data to main thread"),
                             Err(e) => println!("trace-{}: tracing for {} failed: {}", name, kind, e),
                         };
                     } else {
