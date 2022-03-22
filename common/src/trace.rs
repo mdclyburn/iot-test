@@ -315,7 +315,7 @@ pub fn collect(kind: &TraceKind, uart: &mut Uart, buffer: PreparedBuffer, until:
     // Parsing the raw serial data is what is different.
     // Use the respective parser to recreate the structured data.
     match kind {
-        TraceKind::Performance(ref _metadata) => parsing::benchmark_data(&buffer)
+        TraceKind::Performance(ref _metadata) => parsing::benchmark_data(&buffer[0..bytes_read])
             .map(|(unparsed, metrics)| TraceData::Performance(metrics))
             .map_err(|e| format!("parsing error: {}", e)),
 
