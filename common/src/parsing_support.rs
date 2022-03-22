@@ -42,7 +42,7 @@ pub fn little_u32<'a>(data: &'a [u8]) -> ByteResult<'a, u32> {
 /// Parse a u64 from a little-endian representation in bytes.
 pub fn little_u64<'a>(data: &'a [u8]) -> ByteResult<'a, u64> {
     combinator::map(
-        bytes::complete::take(4usize),
+        bytes::complete::take(8usize),
         |b: &[u8]| {
             let mut x: u64 = 0;
             for i in 0..8 {

@@ -135,7 +135,7 @@ impl HardCodedTests {
                     "empty-test",
                     (&[]).into_iter().copied(),
                     (&[]).into_iter().copied(),
-                    &[Operation::at(0).idle_sync(Duration::from_millis(3000))],
+                    &[Operation::at(0).idle_sync(Duration::from_millis(10000))],
                     &[],
                     true),
             ],
