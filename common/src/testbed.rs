@@ -299,8 +299,13 @@ impl Testbed {
             }
 
             // Receive tracing data.
-            for (trace_kind, _uart) in &self.tracing {
-
+            let mut trace_data = Vec::new();
+            let iter = tracing_rchannels.iter()
+                .zip(self.tracing.iter());
+            for (rchannel, (trace_kind, _uart)) in iter {
+                let data = rchannel.recv()
+                    .expect("Failed to receive data from tracing channel.");
+                trace_data.push(data);
             }
 
             // save data
@@ -321,6 +326,7 @@ impl Testbed {
                 exec_result,
                 gpio_activity,
                 serial_traces,
+                trace_data,
                 energy_data);
             test_results.push(observation);
             println!("executor: test finished.");
@@ -718,6 +724,7 @@ pub struct Observation {
     execution_result: Result<Execution>,
     gpio_responses: Vec<Response>,
     traces: Vec<SerialTrace>,
+    trace_data: Vec<TraceData>,
     energy_metrics: HashMap<String, Vec<(Instant, f32)>>,
 }
 
@@ -728,6 +735,7 @@ impl Observation {
         execution_result: Result<Execution>,
         gpio_responses: Vec<Response>,
         traces: Vec<SerialTrace>,
+        trace_data: Vec<TraceData>,
         energy_metrics: HashMap<String, Vec<(Instant, f32)>>
     ) -> Observation {
         Observation {
@@ -736,6 +744,7 @@ impl Observation {
             execution_result,
             gpio_responses,
             traces,
+            trace_data,
             energy_metrics,
         }
     }
@@ -751,6 +760,7 @@ impl Observation {
             execution_result: Err(error),
             gpio_responses: Vec::new(),
             traces: Vec::new(),
+            trace_data: Vec::new(),
             energy_metrics: HashMap::new(),
         }
     }

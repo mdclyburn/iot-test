@@ -52,6 +52,7 @@ impl Display for TraceKind {
 }
 
 /// Trace data organized by type of the data.
+#[derive(Debug)]
 pub enum TraceData {
     /// Raw tracing data, given as a sequence of bytes.
     Raw(Vec<u8>),
@@ -180,6 +181,7 @@ impl BenchmarkMetadata {
 }
 
 /// Measurements from performance benchmarking passing the same data.
+#[derive(Debug)]
 pub struct PeriodMetric {
     t_start: f32,
     t_ends: [f32; MAX_WAYPOINT_LABELS],
