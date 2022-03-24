@@ -66,33 +66,6 @@ pub enum TraceData {
 impl TraceData {
     /// Create a `Display`able summary of trace information.
     pub fn summary<'a>(&'a self, info: &'a TraceKind) -> Display<'a> {
-        // First, ensure the TraceKind is the correct variant for this data.
-        let matches: bool = match info {
-            TraceKind::Raw => match self {
-                TraceData::Raw(_data) => true,
-                _ => false,
-            },
-
-            TraceKind::ControlFlow => match self {
-                TraceData::ControlFlow(_data) => true,
-                _ => false,
-            },
-
-            TraceKind::Memory => match self {
-                TraceData::Memory(_data) => true,
-                _ => false,
-            },
-
-            TraceKind::Performance(_info) => match self {
-                TraceData::Performance(_data) => true,
-                _ => false,
-            }
-        };
-
-        if !matches {
-            panic!("TraceKind-TraceData mismatch; this is a bug.");
-        }
-
         Display {
             info,
             data: &self,
@@ -106,9 +79,62 @@ pub struct Display<'a> {
     data: &'a TraceData,
 }
 
+impl<'a> Display<'a> {
+    fn panic_mismatch() -> ! {
+        panic!("TraceKind-TraceData mismatch; this is a bug.");
+    }
+
+    fn display_performance(
+        metadata: &BenchmarkMetadata,
+        data: &[PeriodMetric],
+        f: &mut fmt::Formatter) -> fmt::Result
+    {
+        let no_waypoints = metadata.no_waypoints();
+
+        for period in data {
+            // Show redundant metadata.
+            write!(f, "Start: {:2.06}s\n", period.start_time())?;
+            write!(f, "Data size: {} {}\n", period.data_size(), metadata.unit())?;
+
+            // Headers
+            write!(f, "|   waypoint   | t_end (s) |\n")?;
+            // A row for each datapoint.
+            for i in 0..no_waypoints {
+                write!(f, "| {:^12} |  {:>2.06} |\n",
+                       metadata.waypoint_no(i).label.as_str(),
+                       period.end_time(i))?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
 impl<'a> fmt::Display for Display<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "it works!")
+        // Ensure the TraceKind is the correct variant for this data.
+        match self.info {
+            TraceKind::Raw => match self.data {
+                TraceData::Raw(_data) => unimplemented!(),
+                _ => Display::panic_mismatch(),
+            },
+
+            TraceKind::ControlFlow => match self.data {
+                TraceData::ControlFlow(_data) => unimplemented!(),
+                _ => Display::panic_mismatch(),
+            },
+
+            TraceKind::Memory => match self.data {
+                TraceData::Memory(_data) => unimplemented!(),
+                _ => Display::panic_mismatch(),
+            },
+
+            TraceKind::Performance(info) => match self.data {
+                TraceData::Performance(data) =>
+                    Display::display_performance(info, data, f),
+                _ => Display::panic_mismatch(),
+            }
+        }
     }
 }
 
@@ -190,8 +216,6 @@ where
 pub struct WaypointMetadata {
     /// An identifying name of the waypoint.
     pub label: String,
-    /// Unit of the data measurement.
-    pub unit: String,
 }
 
 const MAX_WAYPOINT_LABELS: usize = 8;
@@ -199,12 +223,13 @@ const MAX_WAYPOINT_LABELS: usize = 8;
 /// Information to interpret performance tracking data.
 #[derive(Clone, Debug)]
 pub struct BenchmarkMetadata {
+    unit: String,
     waypoints: [Option<WaypointMetadata>; MAX_WAYPOINT_LABELS],
 }
 
 impl BenchmarkMetadata {
     /// Create a new `BenchmarkMetadata`.
-    pub fn new(waypoints: &[WaypointMetadata]) -> BenchmarkMetadata {
+    pub fn new(unit: &str, waypoints: &[WaypointMetadata]) -> BenchmarkMetadata {
         let waypoints = {
             let waypoints_iter = waypoints.iter();
             let mut waypoints_dest = [None, None, None, None,
@@ -218,8 +243,19 @@ impl BenchmarkMetadata {
         };
 
         BenchmarkMetadata {
+            unit: unit.to_string(),
             waypoints,
         }
+    }
+
+    fn unit(&self) -> &str {
+        &self.unit
+    }
+
+    fn no_waypoints(&self) -> usize {
+        (&self.waypoints).into_iter()
+            .take_while(|w| w.is_some())
+            .count()
     }
 
     /// Return metadata about the specified waypoint.
@@ -231,18 +267,18 @@ impl BenchmarkMetadata {
 /// Measurements from performance benchmarking passing the same data.
 #[derive(Debug)]
 pub struct PeriodMetric {
-    t_start: f32,
-    t_ends: [f32; MAX_WAYPOINT_LABELS],
+    t_start: f64,
+    t_ends: [f64; MAX_WAYPOINT_LABELS],
     data_size: u32,
 }
 
 impl PeriodMetric {
     /// Create a new metric.
-    pub fn new<T>(t_start: f32, data_size: u32, waypoint_t_ends: T) -> PeriodMetric
+    pub fn new<T>(t_start: f64, data_size: u32, waypoint_t_ends: T) -> PeriodMetric
     where
-        T: IntoIterator<Item = f32>,
+        T: IntoIterator<Item = f64>,
     {
-        let mut t_ends: [f32; MAX_WAYPOINT_LABELS] = [0.0; MAX_WAYPOINT_LABELS];
+        let mut t_ends: [f64; MAX_WAYPOINT_LABELS] = [0.0; MAX_WAYPOINT_LABELS];
         for (src, dst) in waypoint_t_ends.into_iter().zip(&mut t_ends) {
             *dst = src;
         }
@@ -255,12 +291,12 @@ impl PeriodMetric {
     }
 
     /// Returns the start time the metric accounts.
-    pub fn start_time(&self) -> f32 {
+    pub fn start_time(&self) -> f64 {
         self.t_start
     }
 
     /// Returns the end time for a waypoint.
-    pub fn end_time(&self, waypoint_no: usize) -> f32 {
+    pub fn end_time(&self, waypoint_no: usize) -> f64 {
         self.t_ends[waypoint_no]
     }
 
@@ -308,11 +344,11 @@ mod parsing {
                 // The number of waypoints is not fixed but will be at least one.
                 // Each is a pair of the 64-bit counter value and the data size accounted in the waypoint.
                 multi::many1(sequence::pair(
-                    combinator::map(little_u64, |cv: u64| (cv as f32) / (counter_freq as f32)),
+                    combinator::map(little_u64, |cv: u64| (cv as f64) / (counter_freq as f64)),
                     little_u32)),
-                move |wp_data: Vec<(f32, u32)>| {
+                move |wp_data: Vec<(f64, u32)>| {
                     PeriodMetric::new(
-                        (t_start as f32) / (counter_freq as f32),
+                        (t_start as f64) / (counter_freq as f64),
                         // Just take the first size for now.
                         // Later on, this may vary from waypoint to waypoint.
                         wp_data[0].1,
