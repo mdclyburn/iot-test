@@ -37,7 +37,7 @@ impl Display for Status {
 /// A judge for test data corresponding to tests executed by the testbed.
 pub trait Evaluator {
     /// Evaluate a single observation that arose from executing a test.
-    fn evaluate<'a>(&self, observation: &'a Observation) -> Evaluation<'a>;
+    fn evaluate<'a>(&self, observation: &'a Observation<'a>) -> Evaluation<'a>;
 }
 
 /// Result of evaluating a single `Criterion`.
@@ -81,7 +81,7 @@ impl<'a> Outcome<'a> {
 pub struct Evaluation<'a> {
     status: Status,
     outcomes: Vec<Outcome<'a>>,
-    data: &'a Observation,
+    data: &'a Observation<'a>,
 }
 
 impl<'a> Evaluation<'a> {
@@ -89,7 +89,7 @@ impl<'a> Evaluation<'a> {
     pub fn new(
         status: Status,
         outcomes: Vec<Outcome<'a>>,
-        data: &'a Observation,
+        data: &'a Observation<'a>,
     ) -> Evaluation<'a>
     {
         Evaluation {
@@ -135,7 +135,7 @@ impl StandardEvaluator {
 }
 
 impl Evaluator for StandardEvaluator {
-    fn evaluate<'a>(&self, observation: &'a Observation) -> Evaluation<'a> {
+    fn evaluate<'a>(&self, observation: &'a Observation<'a>) -> Evaluation<'a> {
         match observation.execution_result() {
             Ok(_execution_info) => {
                 let criteria = observation.source_test().get_criteria();
@@ -178,7 +178,7 @@ impl Evaluator for StandardEvaluator {
 }
 
 /// Evaluate criterion defined within Clockwise.
-pub fn evaluate<'a>(criterion: &'a Criterion, data: &Observation) -> Outcome<'a> {
+pub fn evaluate<'a>(criterion: &'a Criterion, data: &Observation<'a>) -> Outcome<'a> {
     let (status, message) = match criterion {
         Criterion::GPIO(criterion) => {
             match criterion {

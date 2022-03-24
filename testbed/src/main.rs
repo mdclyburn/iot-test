@@ -32,9 +32,13 @@ fn main() {
 
     // Use the evaluator to produce results from collected data.
     // Here we only use the StandardEvaluator for now.
+    // Later it may be advantageous to allow another kind of evaluator,
+    // say, for instance, if a provider wanted to evaluate its own data.
     let evaluator = StandardEvaluator::new();
     let evaluation_iter = observations.iter()
         .map(|obs| evaluator.evaluate(obs));
+
+    println!("Results Summary:");
     for evaluation in evaluation_iter {
         println!("{}", evaluation);
     }

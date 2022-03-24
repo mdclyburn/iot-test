@@ -327,6 +327,9 @@ impl Testbed {
                 exec_result,
                 gpio_activity,
                 serial_traces,
+                self.tracing.iter()
+                    .map(|(kind, _uart)| kind)
+                    .collect(),
                 trace_data,
                 energy_data);
             test_results.push(observation);
@@ -726,32 +729,35 @@ impl Display for Testbed {
 
 /// Aggregated collection of test execution data.
 #[derive(Debug)]
-pub struct Observation {
+pub struct Observation<'a> {
     test: Test,
     software_spec: Option<Spec>,
     execution_result: Result<Execution>,
     gpio_responses: Vec<Response>,
     traces: Vec<SerialTrace>,
+    trace_info: Vec<&'a TraceKind>,
     trace_data: Vec<Option<TraceData>>,
     energy_metrics: HashMap<String, Vec<(Instant, f32)>>,
 }
 
-impl Observation {
+impl<'a> Observation<'a> {
     fn completed(
         test: Test,
         software_spec: Option<Spec>,
         execution_result: Result<Execution>,
         gpio_responses: Vec<Response>,
         traces: Vec<SerialTrace>,
+        trace_info: Vec<&'a TraceKind>,
         trace_data: Vec<Option<TraceData>>,
         energy_metrics: HashMap<String, Vec<(Instant, f32)>>
-    ) -> Observation {
+    ) -> Observation<'a> {
         Observation {
             test,
             software_spec,
             execution_result,
             gpio_responses,
             traces,
+            trace_info,
             trace_data,
             energy_metrics,
         }
@@ -761,13 +767,14 @@ impl Observation {
         test: Test,
         software_spec: Option<Spec>,
         error: TestbedError,
-    ) -> Observation {
+    ) -> Observation<'a> {
         Observation {
             test,
             software_spec,
             execution_result: Err(error),
             gpio_responses: Vec::new(),
             traces: Vec::new(),
+            trace_info: Vec::new(),
             trace_data: Vec::new(),
             energy_metrics: HashMap::new(),
         }
