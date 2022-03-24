@@ -810,3 +810,53 @@ impl<'a> Observation<'a> {
         &self.energy_metrics
     }
 }
+
+impl<'a> Display for Observation<'a> {
+    /// Pretty-print data observed during the test run.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Name of the test.
+        write!(f, "'{}' data\n", self.test.get_id())?;
+
+        // How long the test lasted.
+        // This is only possible to see if the test completed successfully.
+        let duration_text = match self.execution_result.as_ref() {
+            Ok(e) => format!("{:?}", e.duration()),
+            Err(_e) => " - ".to_string(),
+        };
+        write!(f, "Duration: {}\n", duration_text)?;
+
+        // GPIO responses.
+        // We manually calculate the offset here since each Response does not
+        // carry the associated t0 to calculate the duration into the test.
+        write!(f, "--- GPIO timeline\n")?;
+        write!(f, " pin no. |   signal   | time\n")?;
+        for response in &self.gpio_responses {
+            // If execution is in error, there is no start time available.
+            let time = match self.execution_result.as_ref() {
+                Ok(e) => format!("{:?}", response.get_time() - e.get_start()),
+                Err(_e) => " - ".to_string(),
+            };
+
+            write!(f, " {:>7} | {:<10} | {}\n",
+                   response.get_pin(),
+                   response.get_output(),
+                   time)?;
+        }
+
+        // Trace data.
+        // There is a one-to-one correspondence between the info about the traces
+        // and the traces themselves.
+        let iter = self.trace_info.iter()
+            .zip(self.trace_data.iter());
+        for (info, data) in iter {
+            write!(f, "--- Traces ({})\n", info.label())?;
+            if let Some(data) = data {
+                write!(f, "{}\n", data.summary(info))?;
+            } else {
+                write!(f, "no data\n")?;
+            }
+        }
+
+        write!(f, "\n")
+    }
+}

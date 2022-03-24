@@ -30,6 +30,11 @@ fn main() {
     let mut tests = configuration.get_test_adapter().tests();
     let observations = testbed.execute(&mut tests);
 
+    // Show test observation data.
+    for obs in &observations {
+        println!("{}", obs);
+    }
+
     // Use the evaluator to produce results from collected data.
     // Here we only use the StandardEvaluator for now.
     // Later it may be advantageous to allow another kind of evaluator,

@@ -2,7 +2,6 @@
 
 use std::convert::From;
 use std::fmt;
-use std::fmt::Display;
 use std::time::{Duration, Instant};
 
 use rppal::uart;
@@ -39,7 +38,7 @@ impl TraceKind {
     }
 }
 
-impl Display for TraceKind {
+impl fmt::Display for TraceKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use TraceKind::*;
         match self {
@@ -62,6 +61,55 @@ pub enum TraceData {
     Memory(Vec<SerialTrace>),
     /// Performance benchmarking data.
     Performance(Vec<PeriodMetric>),
+}
+
+impl TraceData {
+    /// Create a `Display`able summary of trace information.
+    pub fn summary<'a>(&'a self, info: &'a TraceKind) -> Display<'a> {
+        // First, ensure the TraceKind is the correct variant for this data.
+        let matches: bool = match info {
+            TraceKind::Raw => match self {
+                TraceData::Raw(_data) => true,
+                _ => false,
+            },
+
+            TraceKind::ControlFlow => match self {
+                TraceData::ControlFlow(_data) => true,
+                _ => false,
+            },
+
+            TraceKind::Memory => match self {
+                TraceData::Memory(_data) => true,
+                _ => false,
+            },
+
+            TraceKind::Performance(_info) => match self {
+                TraceData::Performance(_data) => true,
+                _ => false,
+            }
+        };
+
+        if !matches {
+            panic!("TraceKind-TraceData mismatch; this is a bug.");
+        }
+
+        Display {
+            info,
+            data: &self,
+        }
+    }
+}
+
+/// Helper struct for displaying a summary of tracing information.
+pub struct Display<'a> {
+    info: &'a TraceKind,
+    data: &'a TraceData,
+}
+
+impl<'a> fmt::Display for Display<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "it works!")
+    }
 }
 
 /// Trace execution information derived from UART communication.
@@ -107,7 +155,7 @@ impl SerialTrace {
     }
 }
 
-impl Display for SerialTrace {
+impl fmt::Display for SerialTrace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "[ ")?;
         for byte in &self.raw_data {
