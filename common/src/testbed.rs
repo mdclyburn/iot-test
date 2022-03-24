@@ -303,6 +303,7 @@ impl Testbed {
             let iter = tracing_rchannels.iter()
                 .zip(self.tracing.iter());
             for (rchannel, (trace_kind, _uart)) in iter {
+                println!("executor: receiving data from {} thread", trace_kind);
                 let data = rchannel.recv()
                     .expect("Failed to receive data from tracing channel.");
                 trace_data.push(data);
@@ -634,7 +635,7 @@ impl Testbed {
         uart: &UART,
         test_container: Arc<RwLock<Option<Test>>>,
         barrier: Arc<Barrier>,
-        schannel: SyncSender<TraceData>,
+        schannel: SyncSender<Option<TraceData>>,
     ) -> JoinHandle<()> {
         let name = format!("test-{}", kind);
         let mut uart = self.pin_mapping.get_uart(uart)
@@ -647,6 +648,7 @@ impl Testbed {
 
                 let mut buffer: Vec<u8> = Vec::new();
                 let mut uart = uart;
+                let mut trace_data = None;
 
                 loop {
                     // Wait for next test.
@@ -658,12 +660,15 @@ impl Testbed {
                         // to minimize any jitter between the barrier and the collection starting.
                         let prepared_buffer = trace::prepare(&mut buffer, &mut uart)
                             .unwrap();
+
                         barrier.wait();
                         let t_stop_at = Instant::now() + test.max_runtime();
-
-                        match trace::collect(&kind, &mut uart, prepared_buffer, t_stop_at) {
-                            Ok(trace_data) => schannel.send(trace_data).expect("failed to send trace data to main thread"),
-                            Err(e) => println!("trace-{}: tracing for {} failed: {}", name, kind, e),
+                        trace_data = match trace::collect(&kind, &mut uart, prepared_buffer, t_stop_at) {
+                            Ok(trace_data) => Some(trace_data),
+                            Err(e) => {
+                                println!("trace-{}: tracing for {} failed: {}", name, kind, e);
+                                None
+                            },
                         };
                     } else {
                         // No more tests to run.
@@ -672,6 +677,9 @@ impl Testbed {
 
                     // Post-testing wait.
                     barrier.wait();
+
+                    // Send data back.
+                    schannel.send(trace_data).expect("failed to send trace data to main thread");
                 }
             }).expect("Could not spawn tracing thread.")
     }
@@ -724,7 +732,7 @@ pub struct Observation {
     execution_result: Result<Execution>,
     gpio_responses: Vec<Response>,
     traces: Vec<SerialTrace>,
-    trace_data: Vec<TraceData>,
+    trace_data: Vec<Option<TraceData>>,
     energy_metrics: HashMap<String, Vec<(Instant, f32)>>,
 }
 
@@ -735,7 +743,7 @@ impl Observation {
         execution_result: Result<Execution>,
         gpio_responses: Vec<Response>,
         traces: Vec<SerialTrace>,
-        trace_data: Vec<TraceData>,
+        trace_data: Vec<Option<TraceData>>,
         energy_metrics: HashMap<String, Vec<(Instant, f32)>>
     ) -> Observation {
         Observation {
