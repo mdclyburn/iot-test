@@ -641,7 +641,7 @@ impl Testbed {
         schannel: SyncSender<Option<TraceData>>,
     ) -> JoinHandle<()> {
         let name = format!("test-{}", kind);
-        let mut uart = self.pin_mapping.get_uart(uart)
+        let uart = self.pin_mapping.get_uart(uart)
             .expect("Could not obtain UART for tracing.");
 
         thread::Builder::new()
@@ -651,7 +651,7 @@ impl Testbed {
 
                 let mut buffer: Vec<u8> = Vec::new();
                 let mut uart = uart;
-                let mut trace_data = None;
+                let mut trace_data;
 
                 loop {
                     // Wait for next test.
@@ -843,6 +843,8 @@ impl<'a> Display for Observation<'a> {
                    time)?;
         }
 
+        write!(f, "\n\n")?;
+
         // Trace data.
         // There is a one-to-one correspondence between the info about the traces
         // and the traces themselves.
@@ -856,7 +858,5 @@ impl<'a> Display for Observation<'a> {
                 write!(f, "no data\n")?;
             }
         }
-
-        write!(f, "\n")
     }
 }

@@ -2,10 +2,8 @@
 
 use nom;
 use nom::{
-    branch,
     bytes,
     combinator,
-    sequence,
 };
 
 /// Bit-level parsing input.

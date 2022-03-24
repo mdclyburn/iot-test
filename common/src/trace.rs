@@ -8,7 +8,6 @@ use rppal::uart;
 use rppal::uart::Uart;
 
 use crate::io;
-use crate::io::{IOError, UART};
 
 type Result<T> = std::result::Result<T, String>;
 
@@ -97,12 +96,18 @@ impl<'a> Display<'a> {
             write!(f, "Data size: {} {}\n", period.data_size(), metadata.unit())?;
 
             // Headers
-            write!(f, "|   waypoint   | t_end (s) |\n")?;
+            let rate_text = format!("rate ({}/s)", metadata.unit());
+            write!(f, "|   waypoint   |   t_end (s)   | duration (s) | {:^20} |\n", rate_text)?;
             // A row for each datapoint.
             for i in 0..no_waypoints {
-                write!(f, "| {:^12} |  {:>2.06} |\n",
+                let duration: f64 = period.end_time(i) - period.start_time();
+                let data_rate: f64 = (period.data_size() as f64) / duration;
+
+                write!(f, "| {:^12} | {:13.06} | {:12.06} | {:20.06} |\n",
                        metadata.waypoint_no(i).label.as_str(),
-                       period.end_time(i))?;
+                       period.end_time(i),
+                       duration,
+                       data_rate)?;
             }
         }
 
@@ -408,7 +413,7 @@ pub fn collect(kind: &TraceKind, uart: &mut Uart, buffer: PreparedBuffer, until:
     // Use the respective parser to recreate the structured data.
     match kind {
         TraceKind::Performance(ref _metadata) => parsing::benchmark_data(&buffer[0..bytes_read])
-            .map(|(unparsed, metrics)| TraceData::Performance(metrics))
+            .map(|(_unparsed, metrics)| TraceData::Performance(metrics))
             .map_err(|e| format!("parsing error: {:?}", e)),
 
         _ => unimplemented!()
