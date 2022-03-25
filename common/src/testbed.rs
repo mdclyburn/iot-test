@@ -858,5 +858,7 @@ impl<'a> Display for Observation<'a> {
                 write!(f, "no data\n")?;
             }
         }
+
+        Ok(())
     }
 }
