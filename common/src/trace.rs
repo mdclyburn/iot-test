@@ -333,7 +333,7 @@ mod parsing {
     }
 
     /// Period metrics parser.
-    fn benchmark_period_metrics<'a>(counter_freq: u32, data: &'a [u8]) -> ByteResult<'a, Vec<PeriodMetric>> {
+    fn benchmark_period_metrics<'a>(counter_freq: u32, no_containers: u8, data: &'a [u8]) -> ByteResult<'a, Vec<PeriodMetric>> {
         // We perform two separate parses here since there does not seem to be a method
         // for passing result and data from one parser to another.
 
@@ -348,9 +348,10 @@ mod parsing {
             (data, Some(t_start)) => multi::many1(combinator::map(
                 // The number of waypoints is not fixed but will be at least one.
                 // Each is a pair of the 64-bit counter value and the data size accounted in the waypoint.
-                multi::many1(sequence::pair(
+                multi::count(sequence::pair(
                     combinator::map(little_u64, |cv: u64| (cv as f64) / (counter_freq as f64)),
-                    little_u32)),
+                    little_u32),
+                             no_containers as usize),
                 move |wp_data: Vec<(f64, u32)>| {
                     PeriodMetric::new(
                         (t_start as f64) / (counter_freq as f64),
@@ -365,7 +366,7 @@ mod parsing {
     /// Benchmark data complete parser.
     pub fn benchmark_data<'a>(data: &'a [u8]) -> ByteResult<Vec<PeriodMetric>> {
         let (data, freq) = benchmark_init(data)?;
-        benchmark_period_metrics(freq, data)
+        benchmark_period_metrics(freq, 3, data)
     }
 }
 
@@ -413,7 +414,10 @@ pub fn collect(kind: &TraceKind, uart: &mut Uart, buffer: PreparedBuffer, until:
     // Use the respective parser to recreate the structured data.
     match kind {
         TraceKind::Performance(ref _metadata) => parsing::benchmark_data(&buffer[0..bytes_read])
-            .map(|(_unparsed, metrics)| TraceData::Performance(metrics))
+            .map(|(unparsed, metrics)| {
+                println!("tracing left {} bytes unparsed", unparsed.len());
+                TraceData::Performance(metrics)
+            })
             .map_err(|e| format!("parsing error: {:?}", e)),
 
         _ => unimplemented!()
