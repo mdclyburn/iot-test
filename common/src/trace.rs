@@ -333,34 +333,34 @@ mod parsing {
     }
 
     /// Period metrics parser.
-    fn benchmark_period_metrics<'a>(counter_freq: u32, no_containers: u8, data: &'a [u8]) -> ByteResult<'a, Vec<PeriodMetric>> {
+    fn benchmark_period_metrics<'a>(
+        counter_freq: u32,
+        no_containers: u8,
+        data: &'a [u8]
+    ) -> ByteResult<'a, Vec<PeriodMetric>>
+    {
         // We perform two separate parses here since there does not seem to be a method
         // for passing result and data from one parser to another.
 
-        let mut parse_header = combinator::opt(sequence::preceded(
-            // Header tag for the benchmarking data.
-            bytes::tag([0b1000_0000]),
-            // pair: <start time> <counter buckets>
-            little_u64));
+        multi::many0(combinator::map(
+            // pair: <header> + <N stat containers>
+            sequence::pair(
+                // preceded: <header tag> + <64-bit timestamp>
+                sequence::preceded(bytes::tag([0b1000_0000]), little_u64),
+                // count: exactly `no_containers` stat containers
+                multi::count(
+                    // pair: <64-bit timestamp> + <32-bit accumulated data size>
+                    sequence::pair(little_u64, little_u32),
+                    no_containers as usize)),
 
-        match parse_header(data)? {
-            (data, None) => Ok((data, Vec::new())),
-            (data, Some(t_start)) => multi::many1(combinator::map(
-                // The number of waypoints is not fixed but will be at least one.
-                // Each is a pair of the 64-bit counter value and the data size accounted in the waypoint.
-                multi::count(sequence::pair(
-                    combinator::map(little_u64, |cv: u64| (cv as f64) / (counter_freq as f64)),
-                    little_u32),
-                             no_containers as usize),
-                move |wp_data: Vec<(f64, u32)>| {
-                    PeriodMetric::new(
-                        (t_start as f64) / (counter_freq as f64),
-                        // Just take the first size for now.
-                        // Later on, this may vary from waypoint to waypoint.
-                        wp_data[0].1,
-                        wp_data.iter().map(|(t_end, _ds)| *t_end))
-                }))(data)
-        }
+            |(t_start, stats): (u64, Vec<(u64, u32)>)| {
+                PeriodMetric::new(
+                    (t_start as f64) / (counter_freq as f64),
+                    // Just take the first size for now, for simplicity's sake.
+                    // Later on, this may vary from waypoint to waypoint.
+                    stats[0].1,
+                    stats.iter().map(|(t_end, _ds)| (*t_end as f64) / (counter_freq as f64)))
+            }))(data)
     }
 
     /// Benchmark data complete parser.
