@@ -312,10 +312,13 @@ impl PeriodMetric {
 }
 
 mod parsing {
+    use nom::bits::complete as bits;
+    use nom::bits::bits as adapt_bit_parser;
     use nom::bytes::complete as bytes;
     use nom::{combinator, multi, sequence};
 
     use crate::parsing_support::{
+        BitError,
         ByteError,
         ByteResult,
         little_u32,
@@ -325,9 +328,14 @@ mod parsing {
     use super::PeriodMetric;
 
     /// Initialization data parser.
-    fn benchmark_init<'a>(data: &'a [u8]) -> ByteResult<'a, u32> {
-        sequence::preceded::<_, _, _, ByteError<'a>, _, _>(
-            bytes::tag([0]),
+    ///
+    /// Returns a tuple: (no. of stat containers, counter frequency).
+    fn benchmark_init<'a>(data: &'a [u8]) -> ByteResult<'a, (u8, u32)> {
+        sequence::pair::<_, _, _, ByteError<'a>, _, _>(
+            adapt_bit_parser::<_, _, BitError<'a>, _, _>(
+                sequence::preceded(
+                    bits::tag(0b0000, 4usize),
+                    bits::take(4usize))),
             little_u32)
             (data)
     }
@@ -365,8 +373,8 @@ mod parsing {
 
     /// Benchmark data complete parser.
     pub fn benchmark_data<'a>(data: &'a [u8]) -> ByteResult<Vec<PeriodMetric>> {
-        let (data, freq) = benchmark_init(data)?;
-        benchmark_period_metrics(freq, 3, data)
+        let (data, (no_stats, freq)) = benchmark_init(data)?;
+        benchmark_period_metrics(freq, no_stats, data)
     }
 }
 

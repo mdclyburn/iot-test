@@ -21,6 +21,9 @@ pub type ByteResult<'a, O> =
 /// Byte-level parsing error over a `u8` slice.
 pub type ByteError<'a> = nom::error::Error<&'a [u8]>;
 
+/// Bit-level parsing error over a `u8` slice.
+pub type BitError<'a> = nom::error::Error<(&'a [u8], usize)>;
+
 /// Parse a u32 from a little-endian representation in bytes.
 pub fn little_u32<'a>(data: &'a [u8]) -> ByteResult<'a, u32> {
     combinator::map(
