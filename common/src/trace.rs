@@ -59,7 +59,7 @@ pub enum TraceData {
     /// Memory usage data.
     Memory(Vec<SerialTrace>),
     /// Performance benchmarking data.
-    Performance(Vec<PeriodMetric>),
+    Performance(PerformanceData),
 }
 
 impl TraceData {
@@ -85,12 +85,12 @@ impl<'a> Display<'a> {
 
     fn display_performance(
         metadata: &BenchmarkMetadata,
-        data: &[PeriodMetric],
+        data: &PerformanceData,
         f: &mut fmt::Formatter) -> fmt::Result
     {
-        let no_waypoints = metadata.no_waypoints();
+        let no_waypoints = data.no_waypoints as usize;
 
-        for period in data {
+        for period in &data.metrics {
             // Show redundant metadata.
             write!(f, "Start: {:2.06}s\n", period.start_time())?;
             write!(f, "Data size: {} {}\n", period.data_size(), metadata.unit())?;
@@ -104,7 +104,7 @@ impl<'a> Display<'a> {
                 let data_rate: f64 = (period.data_size() as f64) / duration;
 
                 write!(f, "| {:^12} | {:13.06} | {:12.06} | {:20.06} |\n",
-                       metadata.waypoint_no(i).label.as_str(),
+                       metadata.waypoint_no(i).as_ref().map_or("???", |w| &w.label),
                        period.end_time(i),
                        duration,
                        data_rate)?;
@@ -257,20 +257,33 @@ impl BenchmarkMetadata {
         &self.unit
     }
 
-    fn no_waypoints(&self) -> usize {
-        (&self.waypoints).into_iter()
-            .take_while(|w| w.is_some())
-            .count()
-    }
-
     /// Return metadata about the specified waypoint.
-    fn waypoint_no(&self, no: usize) -> &WaypointMetadata {
-        self.waypoints[no].as_ref().unwrap()
+    fn waypoint_no(&self, no: usize) -> &Option<WaypointMetadata> {
+        &self.waypoints[no]
     }
 }
 
-/// Measurements from performance benchmarking passing the same data.
-#[derive(Debug)]
+/// Collected performance data.
+#[derive(Clone, Debug)]
+pub struct PerformanceData {
+    no_waypoints: u8,
+    metrics: Vec<PeriodMetric>,
+}
+
+impl PerformanceData {
+    fn new<T>(no_waypoints: u8, metrics: T) -> PerformanceData
+    where
+        T: IntoIterator<Item = PeriodMetric>
+    {
+        PerformanceData {
+            no_waypoints,
+            metrics: metrics.into_iter().collect(),
+        }
+    }
+}
+
+/// Set of measurements for a set of points taken within the same length of time.
+#[derive(Clone, Debug)]
 pub struct PeriodMetric {
     t_start: f64,
     t_ends: [f64; MAX_WAYPOINT_LABELS],
@@ -325,7 +338,7 @@ mod parsing {
         little_u64,
     };
 
-    use super::PeriodMetric;
+    use super::{PerformanceData, PeriodMetric};
 
     /// Initialization data parser.
     ///
@@ -345,34 +358,37 @@ mod parsing {
         counter_freq: u32,
         no_containers: u8,
         data: &'a [u8]
-    ) -> ByteResult<'a, Vec<PeriodMetric>>
+    ) -> ByteResult<'a, PerformanceData>
     {
         // We perform two separate parses here since there does not seem to be a method
         // for passing result and data from one parser to another.
 
-        multi::many0(combinator::map(
-            // pair: <header> + <N stat containers>
-            sequence::pair(
-                // preceded: <header tag> + <64-bit timestamp>
-                sequence::preceded(bytes::tag([0b1000_0000]), little_u64),
-                // count: exactly `no_containers` stat containers
-                multi::count(
-                    // pair: <64-bit timestamp> + <32-bit accumulated data size>
-                    sequence::pair(little_u64, little_u32),
-                    no_containers as usize)),
+        combinator::map(
+            multi::many0(combinator::map(
+                // pair: <header> + <N stat containers>
+                sequence::pair(
+                    // preceded: <header tag> + <64-bit timestamp>
+                    sequence::preceded(bytes::tag([0b1000_0000]), little_u64),
+                    // count: exactly `no_containers` stat containers
+                    multi::count(
+                        // pair: <64-bit timestamp> + <32-bit accumulated data size>
+                        sequence::pair(little_u64, little_u32),
+                        no_containers as usize)),
 
-            |(t_start, stats): (u64, Vec<(u64, u32)>)| {
-                PeriodMetric::new(
-                    (t_start as f64) / (counter_freq as f64),
-                    // Just take the first size for now, for simplicity's sake.
-                    // Later on, this may vary from waypoint to waypoint.
-                    stats[0].1,
-                    stats.iter().map(|(t_end, _ds)| (*t_end as f64) / (counter_freq as f64)))
-            }))(data)
+                |(t_start, stats): (u64, Vec<(u64, u32)>)| {
+                    PeriodMetric::new(
+                        (t_start as f64) / (counter_freq as f64),
+                        // Just take the first size for now, for simplicity's sake.
+                        // Later on, this may vary from waypoint to waypoint.
+                        stats[0].1,
+                        stats.iter().map(|(t_end, _ds)| (*t_end as f64) / (counter_freq as f64)))
+                })),
+            |metrics| PerformanceData::new(no_containers, metrics))
+            (data)
     }
 
     /// Benchmark data complete parser.
-    pub fn benchmark_data<'a>(data: &'a [u8]) -> ByteResult<Vec<PeriodMetric>> {
+    pub fn benchmark_data<'a>(data: &'a [u8]) -> ByteResult<PerformanceData> {
         let (data, (no_stats, freq)) = benchmark_init(data)?;
         benchmark_period_metrics(freq, no_stats, data)
     }
@@ -422,9 +438,9 @@ pub fn collect(kind: &TraceKind, uart: &mut Uart, buffer: PreparedBuffer, until:
     // Use the respective parser to recreate the structured data.
     match kind {
         TraceKind::Performance(ref _metadata) => parsing::benchmark_data(&buffer[0..bytes_read])
-            .map(|(unparsed, metrics)| {
+            .map(|(unparsed, data)| {
                 println!("tracing left {} bytes unparsed", unparsed.len());
-                TraceData::Performance(metrics)
+                TraceData::Performance(data)
             })
             .map_err(|e| format!("parsing error: {:?}", e)),
 
