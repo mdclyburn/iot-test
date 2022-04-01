@@ -92,19 +92,19 @@ impl<'a> Display<'a> {
 
         for period in &data.metrics {
             // Show redundant metadata.
-            write!(f, "Start: {:2.06}s\n", period.start_time())?;
             write!(f, "Data size: {} {}\n", period.data_size(), metadata.unit())?;
 
             // Headers
             let rate_text = format!("rate ({}/s)", metadata.unit());
-            write!(f, "|   waypoint   |   t_end (s)   | duration (s) | {:^20} |\n", rate_text)?;
+            write!(f, "|   waypoint   |  t_start (s)  |   t_end (s)   | duration (s) | {:^20} |\n", rate_text)?;
             // A row for each datapoint.
             for i in 0..no_waypoints {
-                let duration: f64 = period.end_time(i) - period.start_time();
+                let duration: f64 = period.end_time(i) - period.start_time(i);
                 let data_rate: f64 = (period.data_size() as f64) / duration;
 
-                write!(f, "| {:^12} | {:13.06} | {:12.06} | {:20.06} |\n",
+                write!(f, "| {:^12} | {:13.06} | {:13.06} | {:12.06} | {:20.06} |\n",
                        metadata.waypoint_no(i).as_ref().map_or("???", |w| &w.label),
+                       period.start_time(i),
                        period.end_time(i),
                        duration,
                        data_rate)?;
@@ -285,32 +285,37 @@ impl PerformanceData {
 /// Set of measurements for a set of points taken within the same length of time.
 #[derive(Clone, Debug)]
 pub struct PeriodMetric {
-    t_start: f64,
+    t_starts: [f64; MAX_WAYPOINT_LABELS],
     t_ends: [f64; MAX_WAYPOINT_LABELS],
     data_size: u32,
 }
 
 impl PeriodMetric {
     /// Create a new metric.
-    pub fn new<T>(t_start: f64, data_size: u32, waypoint_t_ends: T) -> PeriodMetric
+    pub fn new<T, U>(waypoint_t_starts: T, waypoint_t_ends: U, data_size: u32) -> PeriodMetric
     where
         T: IntoIterator<Item = f64>,
+        U: IntoIterator<Item = f64>,
     {
+        let mut t_starts: [f64; MAX_WAYPOINT_LABELS] = [0.0; MAX_WAYPOINT_LABELS];
         let mut t_ends: [f64; MAX_WAYPOINT_LABELS] = [0.0; MAX_WAYPOINT_LABELS];
+        for (src, dst) in waypoint_t_starts.into_iter().zip(&mut t_starts) {
+            *dst = src;
+        }
         for (src, dst) in waypoint_t_ends.into_iter().zip(&mut t_ends) {
             *dst = src;
         }
 
         PeriodMetric {
-            t_start,
+            t_starts,
             t_ends,
             data_size,
         }
     }
 
-    /// Returns the start time the metric accounts.
-    pub fn start_time(&self) -> f64 {
-        self.t_start
+    /// Returns the start time for a waypoint.
+    pub fn start_time(&self, waypoint_no: usize) -> f64 {
+        self.t_starts[waypoint_no]
     }
 
     /// Returns the end time for a waypoint.
@@ -365,23 +370,20 @@ mod parsing {
 
         combinator::map(
             multi::many0(combinator::map(
-                // pair: <header> + <N stat containers>
-                sequence::pair(
-                    // preceded: <header tag> + <64-bit timestamp>
-                    sequence::preceded(bytes::tag([0b1000_0000]), little_u64),
+                // preceded: <header tag> + <stats (there is nothing special in the header for now)
+                sequence::preceded(
+                    bytes::tag([0b1000_0000]),
                     // count: exactly `no_containers` stat containers
                     multi::count(
-                        // pair: <64-bit timestamp> + <32-bit accumulated data size>
-                        sequence::pair(little_u64, little_u32),
+                        // tuple: <64-bit timestamp> + <64-bit timestamp> + <32-bit accumulated data size>
+                        sequence::tuple((little_u64, little_u64, little_u32)),
                         no_containers as usize)),
 
-                |(t_start, stats): (u64, Vec<(u64, u32)>)| {
+                |stats: Vec<(u64, u64, u32)>| {
                     PeriodMetric::new(
-                        (t_start as f64) / (counter_freq as f64),
-                        // Just take the first size for now, for simplicity's sake.
-                        // Later on, this may vary from waypoint to waypoint.
-                        stats[0].1,
-                        stats.iter().map(|(t_end, _ds)| (*t_end as f64) / (counter_freq as f64)))
+                        stats.iter().map(|(t_start, _t_end, _ds)| (*t_start as f64) / (counter_freq as f64)),
+                        stats.iter().map(|(_t_start, t_end, _ds)| (*t_end as f64) / (counter_freq as f64)),
+                        stats[0].2)
                 })),
             |metrics| PerformanceData::new(no_containers, metrics))
             (data)
