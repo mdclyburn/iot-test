@@ -28,18 +28,22 @@ const BUS_VOLTAGE_LSB: f32 = 0.004;
 pub struct INA219 {
     address: u8,
     i2c: Mutex<RefCell<I2c>>,
+    current_lsb: f32,
 }
 
 impl INA219 {
-    const CURRENT_LSB: f32 = 0.0305;
+    const MAX_CURRENT_AMPS: f32 = 0.8;
+    const SHUNT_RESISTOR_OHMS: f32 = 0.1;
 
     /// Create a new INA219 driver.
     pub fn new(i2c: I2c, address: u8) -> Result<INA219, String> {
         let ina = INA219 {
             address,
             i2c: Mutex::new(RefCell::new(i2c)),
+            current_lsb: Self::MAX_CURRENT_AMPS / 2f32.powi(15),
         };
         ina.init()?;
+        println!("Current LSB: {}", ina.current_lsb);
 
         Ok(ina)
     }
@@ -56,12 +60,12 @@ impl INA219 {
 
     /// Return the current current draw in milliamps.
     pub fn current(&self) -> Result<f32, String> {
-        Ok(self.read(register::CURRENT)? as f32 * INA219::CURRENT_LSB)
+        Ok(self.read(register::CURRENT)? as f32 * self.current_lsb * 1_000f32)
     }
 
     /// Return the current power measurement in milliwatts.
     pub fn power(&self) -> Result<f32, String> {
-        Ok(self.read(register::POWER)? as f32 * 20.0f32 * INA219::CURRENT_LSB)
+        Ok(self.read(register::POWER)? as f32 * 20.0f32 * self.current_lsb * 1_000f32)
     }
 
     /// Return the bus voltage in volts.
@@ -81,18 +85,21 @@ impl INA219 {
 
         - gain amplifier: /4 (+/- 160mV)
         - ADC resolution/averaging: 12-bit
-        - shunt ADC resolution: 12-bit
+        - bus ADC resolution: 12-bit, 532 us conversion time
+        - shunt ADC resolution: 12-bit, 532 us conversion time
         - operating mode: shunt + bus, continuous
         -----
         Should yield a +/- 1.6A range with 0.390625mA resolution.
          */
-        let config = 0b0_0_1_11_0011_0011_111;
+        let config = 0b0_0_0_1_10_0011_0011_111;
         self.write(register::CONFIGURATION, config)?;
 
-        // expecting 1A with .1 ohm resistor
-        let cal = calculate_calibration(1f32, 0.1);
+        let cal = (0.04096f32 / (self.current_lsb * Self::SHUNT_RESISTOR_OHMS)) as u16;
         self.write(register::CALIBRATION, cal)?;
         println!("Calibration: {}", cal);
+
+        let current_current = self.current()?;
+        println!("Current draw: {}", current_current);
 
         Ok(())
     }
@@ -128,16 +135,6 @@ impl INA219 {
 
         op(i2c_cell.borrow_mut())
     }
-}
-
-/** Calculate the calibration value for the calibration register.
-
-- `max_expected_current` is current in amperes.
-- `r_shunt` is resistance in ohms.
- */
-fn calculate_calibration(max_expected_current: f32, r_shunt: f32) -> u16 {
-    let amps_per_bit = max_expected_current / 2f32.powi(15);
-    (0.04096f32 / (amps_per_bit * r_shunt)) as u16
 }
 
 impl EnergyMetering for INA219 {
