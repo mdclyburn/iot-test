@@ -4,6 +4,7 @@ members = [
   "common",
   "shared",
 
-  "tests/sample",
-  "tests/memory-simple",
+  # Uncomment to build the sample tests.
+  # "tests/sample",
+  # "tests/memory-simple",
 ]
