@@ -114,7 +114,7 @@ impl<'a> Display for Evaluation<'a> {
         }
 
         for outcome in &self.outcomes {
-            write!(f, "  - {} ({})(\n", outcome.source_criterion(), outcome.status())?;
+            write!(f, "  - {} ({})\n", outcome.source_criterion(), outcome.status())?;
             if let Some(message) = outcome.message() {
                 write!(f, "    Message: {}\n", message)?;
             }
