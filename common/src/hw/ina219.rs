@@ -32,7 +32,7 @@ pub struct INA219 {
 }
 
 impl INA219 {
-    const MAX_CURRENT_AMPS: f32 = 0.8;
+    const MAX_CURRENT_AMPS: f32 = 0.4;
     const SHUNT_RESISTOR_OHMS: f32 = 0.1;
 
     /// Create a new INA219 driver.
@@ -91,7 +91,8 @@ impl INA219 {
         -----
         Should yield a +/- 1.6A range with 0.390625mA resolution.
          */
-        let config = 0b0_0_0_1_10_0011_0011_111;
+        // let config = 0b0_0_0_1_10_0011_1011_111;
+        let config = 0b0_0_0_1_10_0011_1101_111;
         self.write(register::CONFIGURATION, config)?;
 
         let cal = (0.04096f32 / (self.current_lsb * Self::SHUNT_RESISTOR_OHMS)) as u16;

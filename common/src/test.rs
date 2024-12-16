@@ -472,13 +472,22 @@ impl Test {
         // It makes sense to lose about 5 out of 100 samples for
         // self.energy_sampling_rate = 10ms given a test that executes for
         // 1000ms. 1000ms / 10.5ms/samples = 95.238 samples.
+        // let mut ra: f32 = 0.0;
+        // let threshold = Duration::from_millis(1000);
         loop {
             let now = Instant::now();
-            if now - start >= runtime { break; }
+            let d_test = now - start;
+
+            if d_test >= runtime { break; }
 
             for (id, buf) in &mut *out {
                 let meter = meters.get(id).unwrap();
-                buf.push((now, meter.power()));
+                let p = meter.power();
+                // if p < 20.0 && d_test > threshold { panic!(); }
+                // if p > 97.0 { continue; }
+                // ra = (ra * 0.99) + (p * 0.01);
+                // buf.push((now, if buf.len() > 500 { ra } else { p }));
+                buf.push((now, p));
             }
         }
     }
