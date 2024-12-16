@@ -264,11 +264,10 @@ impl Testbed {
             }
 
             // get energy data
-            let mut energy_data = HashMap::new();
-            while let Some((meter_id, (t, sample))) = energy_rchannel.recv().unwrap() {
+            let mut energy_data: HashMap<String, f32> = HashMap::new();
+            while let Some((meter_id, energy_total)) = energy_rchannel.recv().unwrap() {
                 energy_data.entry(meter_id)
-                    .or_insert(Vec::new())
-                    .push((t, sample));
+                    .or_insert(energy_total);
             }
 
             // get tracing data
@@ -307,18 +306,6 @@ impl Testbed {
                 let data = rchannel.recv()
                     .expect("Failed to receive data from tracing channel.");
                 trace_data.push(data);
-            }
-
-            // save data
-            if let (Some(writer), Ok(execution)) = (self.data_writer.as_ref(), exec_result.as_ref()) {
-                println!("executor: sending test data to writer");
-                writer.save_output(
-                    &test,
-                    execution,
-                    &gpio_activity,
-                    &serial_traces,
-                    &energy_data)
-                    .expect("failed to save test data");
             }
 
             let observation = Observation::completed(
@@ -422,7 +409,7 @@ impl Testbed {
         &self,
         test_container: Arc<RwLock<Option<Test>>>,
         barrier: Arc<Barrier>,
-        energy_schannel: SyncSender<Option<(String, (Instant, f32))>>,
+        energy_schannel: SyncSender<Option<(String, f32)>>,
     ) -> JoinHandle<()> {
         println!("Starting energy metering thread.");
 
@@ -434,9 +421,7 @@ impl Testbed {
                 println!("metering: started.");
 
                 let meters = meters.lock().unwrap();
-                let mut samples: HashMap<String, Vec<(Instant, f32)>> = meters.keys()
-                    .map(|meter_id| { (meter_id.clone(), Vec::new()) })
-                    .collect();
+                let mut energy_totals: HashMap<String, f32> = HashMap::new();
 
                 loop {
                     // wait for next test
@@ -444,7 +429,7 @@ impl Testbed {
 
                     if let Some(ref test) = *test_container.read().unwrap() {
                         // here, better error management across threads would be nice!
-                        let need_metering = test.prep_meter(&meters, &mut samples).unwrap();
+                        let need_metering = test.prep_meter(&meters, &mut energy_totals).unwrap();
                         if !need_metering {
                             println!("metering: idling; not needed for this test");
                             barrier.wait();
@@ -453,7 +438,7 @@ impl Testbed {
                             println!("metering: ready to begin test");
                             barrier.wait();
 
-                            test.meter(&meters, &mut samples);
+                            test.meter(&meters, &mut energy_totals);
                         }
                     } else {
                         // no more tests to run
@@ -463,13 +448,9 @@ impl Testbed {
                     barrier.wait();
 
                     // communicate results back
-                    for (meter_id, samples) in &samples {
-                        for sample in samples {
-                            // .to_string()... kinda wasteful, but it works;
-                            // perhaps better comm. types wanted?
-                            let message = Some((meter_id.to_string(), *sample));
-                            energy_schannel.send(message).unwrap();
-                        }
+                    for (meter_id, energy_total) in &energy_totals {
+                        let message = Some((meter_id.to_string(), *energy_total));
+                        energy_schannel.send(message).unwrap();
                     }
                     energy_schannel.send(None).unwrap(); // done communicating results
                 }
@@ -737,7 +718,7 @@ pub struct Observation<'a> {
     traces: Vec<SerialTrace>,
     trace_info: Vec<&'a TraceKind>,
     trace_data: Vec<Option<TraceData>>,
-    energy_metrics: HashMap<String, Vec<(Instant, f32)>>,
+    energy_metrics: HashMap<String, f32>,
 }
 
 impl<'a> Observation<'a> {
@@ -749,7 +730,7 @@ impl<'a> Observation<'a> {
         traces: Vec<SerialTrace>,
         trace_info: Vec<&'a TraceKind>,
         trace_data: Vec<Option<TraceData>>,
-        energy_metrics: HashMap<String, Vec<(Instant, f32)>>
+        energy_metrics: HashMap<String, f32>,
     ) -> Observation<'a> {
         Observation {
             test,
@@ -806,7 +787,7 @@ impl<'a> Observation<'a> {
     }
 
     /// Return data from all energy meters active during the test.
-    pub fn energy_metrics(&self) -> &HashMap<String, Vec<(Instant, f32)>> {
+    pub fn energy_metrics(&self) -> &HashMap<String, f32> {
         &self.energy_metrics
     }
 }

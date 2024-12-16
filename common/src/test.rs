@@ -6,6 +6,7 @@ use std::error;
 use std::fmt;
 use std::fmt::Display;
 use std::iter::IntoIterator;
+use std::thread;
 use std::time::{Duration, Instant};
 
 use rppal::gpio::{
@@ -427,14 +428,10 @@ impl Test {
     /// [`Test::meter`] should be called when running the test.
     pub fn prep_meter(&self,
                       meters: &HashMap<String, Box<dyn EnergyMetering>>,
-                      out: &mut HashMap<String, Vec<(Instant, f32)>>,
+                      out: &mut HashMap<String, f32>,
     ) -> Result<bool> {
         // only care about meters defined in the criteria
         out.clear();
-
-        let approx_loop_micros = 545;
-        let max_sample_count = (self.max_runtime().as_micros() /
-                                approx_loop_micros as u128) + 1;
 
         let mut has_energy_criteria = false;
         // pre-allocate space in sample output vectors
@@ -445,9 +442,7 @@ impl Test {
                 if !meters.contains_key(meter_id) {
                     return Err(TestingError::NoSuchMeter(meter_id.to_string()));
                 } else {
-                    out.entry(meter_id.to_string())
-                        .or_insert(Vec::new())
-                        .reserve_exact(max_sample_count as usize);
+                    out.insert(meter_id.to_string(), 0.0);
                 }
             }
         }
@@ -460,35 +455,24 @@ impl Test {
     /// The `out` parameter should be the same `out` passed to [`Test::prep_meter`].
     pub fn meter(&self,
                  meters: &HashMap<String, Box<dyn EnergyMetering>>,
-                 out: &mut HashMap<String, Vec<(Instant, f32)>>)
+                 out: &mut HashMap<String, f32>)
     {
         let start = Instant::now();
         let runtime = self.max_runtime();
 
-        // Without the call to thread::sleep, a single loop iteration
-        // takes between 545.568us and 699.682us, averages 568.521us.
-        // Reading a single meter in this loop yields me 94 samples.
-        // So, sampling interval is actually: self.energy_sampling_rate + ~.5ms.
-        // It makes sense to lose about 5 out of 100 samples for
-        // self.energy_sampling_rate = 10ms given a test that executes for
-        // 1000ms. 1000ms / 10.5ms/samples = 95.238 samples.
-        // let mut ra: f32 = 0.0;
-        // let threshold = Duration::from_millis(1000);
         loop {
             let now = Instant::now();
             let d_test = now - start;
 
             if d_test >= runtime { break; }
 
-            for (id, buf) in &mut *out {
-                let meter = meters.get(id).unwrap();
-                let p = meter.power();
-                // if p < 20.0 && d_test > threshold { panic!(); }
-                // if p > 97.0 { continue; }
-                // ra = (ra * 0.99) + (p * 0.01);
-                // buf.push((now, if buf.len() > 500 { ra } else { p }));
-                buf.push((now, p));
+            for (meter_id, energy_total) in out.iter_mut() {
+                let meter = meters.get(meter_id).unwrap();
+                let consumption = meter.power() * 5.0 / 1000.0;
+                *energy_total += consumption;
             }
+
+            thread::sleep(Duration::from_millis(5));
         }
     }
 

@@ -30,7 +30,11 @@ use clockwise_common::io::{
 use clockwise_common::sw::platform::Tock;
 use clockwise_common::test::{Operation, Test};
 use clockwise_common::testbed::Testbed;
-use clockwise_common::trace::{TraceKind, BenchmarkMetadata};
+use clockwise_common::trace::{
+    BenchmarkMetadata,
+    TraceKind,
+    WaypointMetadata,
+};
 
 /// Testbed created from code compiled into the binary.
 #[derive(Debug)]
@@ -57,8 +61,9 @@ impl TestbedProvider for HardCodedTestbed {
         let hold_reset_fn: Rc<dyn Fn(&mut DeviceInputs) -> io::Result<()>> = Rc::new(
             |to_device| {
                 let reset_pin = to_device.get_pin_mut(23)?;
+                reset_pin.set_reset_on_drop(false);
                 reset_pin.set_low();
-                thread::sleep(Duration::from_millis(10));
+                thread::sleep(Duration::from_millis(200));
 
                 Ok(())
             });
@@ -92,15 +97,22 @@ impl TestbedProvider for HardCodedTestbed {
             .collect();
 
         // Tracing capabilities
-        let tracing = {
-            let benchmark_tracing = TraceKind::Performance(
-                BenchmarkMetadata::new(&[
-                ]));
+        // let tracing = {
+        //     let benchmark_tracing = TraceKind::Performance(
+        //         BenchmarkMetadata::new(
+        //             "samples",
+        //             &[
+        //                 WaypointMetadata { label: "sam4l-adc".to_string() },
+        //                 WaypointMetadata { label: "adc-capsule".to_string() },
+        //                 WaypointMetadata { label: "application".to_string() },
+        //                 WaypointMetadata { label: "dac-capsule".to_string() },
+        //             ]));
 
-            vec![
-                (benchmark_tracing, UART::PL011),
-            ]
-        };
+        //     vec![
+        //         (benchmark_tracing, UART::PL011),
+        //     ]
+        // };
+        let tracing = vec![];
 
         // platform support
         let platform = Tock::new(
@@ -135,8 +147,9 @@ impl HardCodedTests {
                     "empty-test",
                     (&[]).into_iter().copied(),
                     (&[]).into_iter().copied(),
-                    &[Operation::at(0).idle_sync(Duration::from_millis(10000))],
-                    &[],
+                    &[Operation::at(0).idle_sync(Duration::from_millis(20_000))],
+                    &[Criterion::Energy(EnergyCriterion::new("system", EnergyStat::Average)),
+                      Criterion::Energy(EnergyCriterion::new("system", EnergyStat::Total))],
                     true),
             ],
         }
