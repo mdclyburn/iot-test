@@ -147,7 +147,7 @@ impl HardCodedTests {
                     "empty-test",
                     (&[]).into_iter().copied(),
                     (&[]).into_iter().copied(),
-                    &[Operation::at(0).idle_sync(Duration::from_millis(20_000))],
+                    &[Operation::at(0).idle_sync(Duration::from_millis(18_000_000))],
                     &[Criterion::Energy(EnergyCriterion::new("system", EnergyStat::Average)),
                       Criterion::Energy(EnergyCriterion::new("system", EnergyStat::Total))],
                     true),

@@ -6,6 +6,7 @@ use std::error;
 use std::fmt;
 use std::fmt::Display;
 use std::iter::IntoIterator;
+use std::io;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -460,6 +461,9 @@ impl Test {
         let start = Instant::now();
         let runtime = self.max_runtime();
 
+        let display_update_interval: usize = 1000;
+        let mut display_update_cd: usize = display_update_interval;
+
         loop {
             let now = Instant::now();
             let d_test = now - start;
@@ -468,8 +472,19 @@ impl Test {
 
             for (meter_id, energy_total) in out.iter_mut() {
                 let meter = meters.get(meter_id).unwrap();
-                let consumption = meter.power() * 5.0 / 1000.0;
+                let current_power = meter.power();
+                let consumption = current_power * 5.0 / 1000.0;
                 *energy_total += consumption;
+
+                if display_update_cd >= 5 {
+                    display_update_cd -= 5;
+                } else {
+                    display_update_cd = display_update_interval;
+                    print!("\rPower: {:.2} mW", current_power);
+
+                    use std::io::Write as _;
+                    let _r = io::stdout().flush();
+                }
             }
 
             thread::sleep(Duration::from_millis(5));
